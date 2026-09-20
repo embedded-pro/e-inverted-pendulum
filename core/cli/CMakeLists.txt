@@ -8,6 +8,7 @@ target_include_directories(inverted_pendulum_bot.cli PUBLIC
 target_link_libraries(inverted_pendulum_bot.cli PUBLIC
     inverted_pendulum_bot.motion_actuation.interfaces
     inverted_pendulum_bot.wheel_odometry.interfaces
+    inverted_pendulum_bot.inertial_sensing.interfaces
     inverted_pendulum_bot.platform_abstraction
     services.util
     services.peripheral

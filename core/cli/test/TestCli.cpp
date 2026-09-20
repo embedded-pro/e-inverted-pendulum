@@ -1,4 +1,5 @@
 #include "core/cli/Cli.hpp"
+#include "core/inertial_sensing/interfaces/InertialSensing.hpp"
 #include "core/motion_actuation/interfaces/MotionActuation.hpp"
 #include "core/platform_abstraction/test_doubles/PlatformMock.hpp"
 #include "core/wheel_odometry/interfaces/WheelOdometry.hpp"
@@ -75,6 +76,19 @@ namespace
         MOCK_METHOD(odometry::ChassisMotion, Chassis, (), (const, override));
     };
 
+    class InertialSensingMock
+        : public sensing::InertialSensing
+    {
+    public:
+        virtual ~InertialSensingMock() = default;
+
+        MOCK_METHOD(sensing::Measurement, Latest, (), (const, override));
+        MOCK_METHOD(sensing::InvalidCause, Cause, (), (const, override));
+        MOCK_METHOD(void, StartCalibration, (), (override));
+        MOCK_METHOD(sensing::CalibrationState, Calibration, (), (const, override));
+        MOCK_METHOD(platform::InertialAxes, GyroscopeBias, (), (const, override));
+    };
+
     class CliTest
         : public testing::Test
         , public infra::ClockFixture
@@ -115,12 +129,13 @@ namespace
         testing::StrictMock<platform::PlatformMock> platform;
         testing::StrictMock<MotionActuationMock> motionActuation;
         testing::StrictMock<WheelOdometryMock> wheelOdometry;
+        testing::StrictMock<InertialSensingMock> inertialSensing;
     };
 }
 
 TEST_F(CliTest, greets_and_shows_a_prompt_on_construction)
 {
-    application::Cli cli{ platform, motionActuation, wheelOdometry };
+    application::Cli cli{ platform, motionActuation, wheelOdometry, inertialSensing };
 
     EXPECT_THAT(Output(), testing::HasSubstr("ready"));
     EXPECT_THAT(Output(), testing::HasSubstr("drive"));
@@ -129,7 +144,7 @@ TEST_F(CliTest, greets_and_shows_a_prompt_on_construction)
 
 TEST_F(CliTest, ping_replies_pong)
 {
-    application::Cli cli{ platform, motionActuation, wheelOdometry };
+    application::Cli cli{ platform, motionActuation, wheelOdometry, inertialSensing };
 
     Send("ping");
 
@@ -138,7 +153,7 @@ TEST_F(CliTest, ping_replies_pong)
 
 TEST_F(CliTest, id_prints_the_board_identifier)
 {
-    application::Cli cli{ platform, motionActuation, wheelOdometry };
+    application::Cli cli{ platform, motionActuation, wheelOdometry, inertialSensing };
 
     Send("id");
 
@@ -147,7 +162,7 @@ TEST_F(CliTest, id_prints_the_board_identifier)
 
 TEST_F(CliTest, drive_applies_both_efforts)
 {
-    application::Cli cli{ platform, motionActuation, wheelOdometry };
+    application::Cli cli{ platform, motionActuation, wheelOdometry, inertialSensing };
 
     EXPECT_CALL(motionActuation, Fault()).WillOnce(testing::Return(motion::FaultCause::none));
     EXPECT_CALL(motionActuation, Apply(testing::FloatEq(0.3f), testing::FloatEq(-0.7f)));
@@ -159,7 +174,7 @@ TEST_F(CliTest, drive_applies_both_efforts)
 
 TEST_F(CliTest, drive_without_a_second_argument_prints_usage)
 {
-    application::Cli cli{ platform, motionActuation, wheelOdometry };
+    application::Cli cli{ platform, motionActuation, wheelOdometry, inertialSensing };
 
     EXPECT_CALL(motionActuation, Fault()).WillOnce(testing::Return(motion::FaultCause::none));
 
@@ -170,7 +185,7 @@ TEST_F(CliTest, drive_without_a_second_argument_prints_usage)
 
 TEST_F(CliTest, drive_is_refused_while_a_fault_is_latched)
 {
-    application::Cli cli{ platform, motionActuation, wheelOdometry };
+    application::Cli cli{ platform, motionActuation, wheelOdometry, inertialSensing };
 
     EXPECT_CALL(motionActuation, Fault()).WillOnce(testing::Return(motion::FaultCause::driverFault));
 
@@ -181,7 +196,7 @@ TEST_F(CliTest, drive_is_refused_while_a_fault_is_latched)
 
 TEST_F(CliTest, tristate_releases_the_bridges)
 {
-    application::Cli cli{ platform, motionActuation, wheelOdometry };
+    application::Cli cli{ platform, motionActuation, wheelOdometry, inertialSensing };
 
     EXPECT_CALL(motionActuation, Disable(motion::DisableState::tristate));
 
@@ -192,7 +207,7 @@ TEST_F(CliTest, tristate_releases_the_bridges)
 
 TEST_F(CliTest, brake_shorts_the_motors)
 {
-    application::Cli cli{ platform, motionActuation, wheelOdometry };
+    application::Cli cli{ platform, motionActuation, wheelOdometry, inertialSensing };
 
     EXPECT_CALL(motionActuation, Disable(motion::DisableState::brake));
 
@@ -203,7 +218,7 @@ TEST_F(CliTest, brake_shorts_the_motors)
 
 TEST_F(CliTest, drive_with_a_missing_right_argument_is_rejected)
 {
-    application::Cli cli{ platform, motionActuation, wheelOdometry };
+    application::Cli cli{ platform, motionActuation, wheelOdometry, inertialSensing };
 
     EXPECT_CALL(motionActuation, Fault()).WillOnce(testing::Return(motion::FaultCause::none));
 
@@ -214,7 +229,7 @@ TEST_F(CliTest, drive_with_a_missing_right_argument_is_rejected)
 
 TEST_F(CliTest, drive_with_a_non_numeric_argument_is_rejected)
 {
-    application::Cli cli{ platform, motionActuation, wheelOdometry };
+    application::Cli cli{ platform, motionActuation, wheelOdometry, inertialSensing };
 
     EXPECT_CALL(motionActuation, Fault()).WillOnce(testing::Return(motion::FaultCause::none));
 
@@ -225,7 +240,7 @@ TEST_F(CliTest, drive_with_a_non_numeric_argument_is_rejected)
 
 TEST_F(CliTest, drive_with_a_trailing_third_argument_is_rejected)
 {
-    application::Cli cli{ platform, motionActuation, wheelOdometry };
+    application::Cli cli{ platform, motionActuation, wheelOdometry, inertialSensing };
 
     EXPECT_CALL(motionActuation, Fault()).WillOnce(testing::Return(motion::FaultCause::none));
 
@@ -236,7 +251,7 @@ TEST_F(CliTest, drive_with_a_trailing_third_argument_is_rejected)
 
 TEST_F(CliTest, drive_with_a_partially_numeric_argument_is_rejected)
 {
-    application::Cli cli{ platform, motionActuation, wheelOdometry };
+    application::Cli cli{ platform, motionActuation, wheelOdometry, inertialSensing };
 
     EXPECT_CALL(motionActuation, Fault()).WillOnce(testing::Return(motion::FaultCause::none));
 
@@ -247,7 +262,7 @@ TEST_F(CliTest, drive_with_a_partially_numeric_argument_is_rejected)
 
 TEST_F(CliTest, drive_with_an_over_long_argument_is_rejected)
 {
-    application::Cli cli{ platform, motionActuation, wheelOdometry };
+    application::Cli cli{ platform, motionActuation, wheelOdometry, inertialSensing };
 
     EXPECT_CALL(motionActuation, Fault()).WillOnce(testing::Return(motion::FaultCause::none));
 
@@ -258,7 +273,7 @@ TEST_F(CliTest, drive_with_an_over_long_argument_is_rejected)
 
 TEST_F(CliTest, odom_reports_both_wheels_and_the_chassis)
 {
-    application::Cli cli{ platform, motionActuation, wheelOdometry };
+    application::Cli cli{ platform, motionActuation, wheelOdometry, inertialSensing };
 
     EXPECT_CALL(wheelOdometry, Left()).WillOnce(testing::Return(odometry::WheelMotion{ 120, 3.5f }));
     EXPECT_CALL(wheelOdometry, Right()).WillOnce(testing::Return(odometry::WheelMotion{ -40, -1.25f }));
@@ -269,4 +284,48 @@ TEST_F(CliTest, odom_reports_both_wheels_and_the_chassis)
     EXPECT_THAT(Output(), testing::HasSubstr("left 120 counts"));
     EXPECT_THAT(Output(), testing::HasSubstr("right -40 counts"));
     EXPECT_THAT(Output(), testing::HasSubstr("chassis"));
+}
+
+TEST_F(CliTest, imu_reports_the_latest_sample_and_its_validity)
+{
+    application::Cli cli{ platform, motionActuation, wheelOdometry, inertialSensing };
+
+    sensing::Measurement measurement;
+    measurement.angularRate = { 0.5f, -0.25f, 0.125f };
+    measurement.acceleration = { 0.0f, 0.0f, -9.80665f };
+    measurement.valid = true;
+    measurement.cause = sensing::InvalidCause::none;
+
+    EXPECT_CALL(inertialSensing, Latest()).WillOnce(testing::Return(measurement));
+
+    Send("imu");
+
+    EXPECT_THAT(Output(), testing::HasSubstr("rate"));
+    EXPECT_THAT(Output(), testing::HasSubstr("accel"));
+    EXPECT_THAT(Output(), testing::HasSubstr("valid yes"));
+}
+
+TEST_F(CliTest, imu_reports_an_invalid_sample_as_such)
+{
+    application::Cli cli{ platform, motionActuation, wheelOdometry, inertialSensing };
+
+    sensing::Measurement stale;
+    stale.cause = sensing::InvalidCause::stale;
+
+    EXPECT_CALL(inertialSensing, Latest()).WillOnce(testing::Return(stale));
+
+    Send("imu");
+
+    EXPECT_THAT(Output(), testing::HasSubstr("valid no"));
+}
+
+TEST_F(CliTest, calibrate_starts_bias_calibration)
+{
+    application::Cli cli{ platform, motionActuation, wheelOdometry, inertialSensing };
+
+    EXPECT_CALL(inertialSensing, StartCalibration());
+
+    Send("calibrate");
+
+    EXPECT_THAT(Output(), testing::HasSubstr("calibrating"));
 }

@@ -27,6 +27,11 @@ namespace application
         return encoders;
     }
 
+    platform::InertialSensor& PlatformImpl::Inertial()
+    {
+        return inertial;
+    }
+
     void PlatformImpl::Run()
     {
         eventDispatcher.Run();

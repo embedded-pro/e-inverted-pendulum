@@ -356,7 +356,7 @@ path re-anchors the estimate within a few time constants.
   disappears entirely.
 - **Does not handle**: roll or yaw attitude. Only pitch is estimated; yaw *rate* comes from
   wheel odometry, and yaw angle is never estimated because nothing needs it.
-- **Does not handle**: magnetic heading. No magnetometer is fitted, so yaw has no absolute
+- **Does not handle**: magnetic heading. No magnetometer is used, so yaw has no absolute
   reference and would drift if integrated.
 - **Does not handle**: vibration aliasing. Structural resonance above the Nyquist frequency
   folds into the passband and is indistinguishable from real tilt.

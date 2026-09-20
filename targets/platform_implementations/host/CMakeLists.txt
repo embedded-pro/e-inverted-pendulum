@@ -8,6 +8,7 @@ target_include_directories(inverted_pendulum_bot.platform_host PUBLIC
 target_link_libraries(inverted_pendulum_bot.platform_host PUBLIC
     inverted_pendulum_bot.platform_abstraction
     hal.generic
+    infra.timer
     services.peripheral
     services.tracer
     infra.event
@@ -16,6 +17,7 @@ target_link_libraries(inverted_pendulum_bot.platform_host PUBLIC
 
 target_sources(inverted_pendulum_bot.platform_host PRIVATE
     GpioStub.hpp
+    InertialSensorStub.hpp
     MotorBridgeStub.hpp
     MotorDriverStub.hpp
     WheelEncoderStub.hpp

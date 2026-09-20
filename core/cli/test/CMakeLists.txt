@@ -6,6 +6,7 @@ target_link_libraries(inverted_pendulum_bot.cli_test PUBLIC
     gmock_main
     inverted_pendulum_bot.cli
     inverted_pendulum_bot.platform_abstraction_mock
+    inverted_pendulum_bot.inertial_sensing.interfaces
     hal.interfaces_test_doubles
     infra.event_test_helper
     infra.timer_test_helper

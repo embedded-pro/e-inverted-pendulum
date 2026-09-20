@@ -16,6 +16,7 @@ namespace platform
         MOCK_METHOD(services::Tracer&, Tracer, (), (override));
         MOCK_METHOD(MotorDriver&, Motors, (), (override));
         MOCK_METHOD(WheelEncoders&, Encoders, (), (override));
+        MOCK_METHOD(InertialSensor&, Inertial, (), (override));
         MOCK_METHOD(void, Run, (), (override));
     };
 }

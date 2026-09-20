@@ -8,6 +8,7 @@
 #include "infra/stream/OutputStream.hpp"
 #include "services/tracer/StreamWriterOnSerialCommunication.hpp"
 #include "services/tracer/Tracer.hpp"
+#include "targets/platform_implementations/st/InertialSensorStm.hpp"
 #include "targets/platform_implementations/st/MotorDriverStm.hpp"
 #include "targets/platform_implementations/st/WheelEncodersStm.hpp"
 
@@ -24,6 +25,7 @@ namespace application
         services::Tracer& Tracer() override;
         platform::MotorDriver& Motors() override;
         platform::WheelEncoders& Encoders() override;
+        platform::InertialSensor& Inertial() override;
         void Run() override;
 
     private:
@@ -47,6 +49,7 @@ namespace application
 
         MotorDriverStm motors;
         WheelEncodersStm encoders;
+        InertialSensorStm inertial{ platform::AxisMap{} };
 
         services::StreamWriterOnSerialCommunication::WithStorage<256> streamWriter{ console };
         infra::TextOutputStream::WithErrorPolicy stream{ streamWriter };

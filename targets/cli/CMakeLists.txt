@@ -10,6 +10,7 @@ target_link_libraries(inverted_pendulum_bot.cli.main PUBLIC
     inverted_pendulum_bot.cli
     inverted_pendulum_bot.motion_actuation.implementations
     inverted_pendulum_bot.wheel_odometry.implementations
+    inverted_pendulum_bot.inertial_sensing.implementations
 )
 
 target_sources(inverted_pendulum_bot.cli.main PRIVATE

@@ -8,6 +8,7 @@ target_include_directories(inverted_pendulum_bot.platform_st PUBLIC
 target_link_libraries(inverted_pendulum_bot.platform_st PUBLIC
     inverted_pendulum_bot.platform_abstraction
     hal_st.instantiations
+    drivers.imu.mpu9250
     hal_st.synchronous_stm32fxxx
     infra.timer
     services.peripheral
@@ -30,6 +31,8 @@ target_compile_definitions(inverted_pendulum_bot.platform_st PUBLIC
 )
 
 target_sources(inverted_pendulum_bot.platform_st PRIVATE
+    InertialSensorStm.hpp
+    InertialSensorStm.cpp
     MotorBridgeStm.hpp
     MotorBridgeStm.cpp
     MotorDriverStm.hpp

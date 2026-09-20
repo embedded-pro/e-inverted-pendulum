@@ -67,7 +67,20 @@ abstraction therefore fixes, as a contract every implementation must meet:
 - that the timebase is monotonic and that measured intervals, not nominal ones, are what
   callers receive.
 
-These are stated once here rather than rediscovered per board.
+These are stated once here rather than rediscovered per board. The body frame, which the first
+bullet makes binding, is:
+
+| Axis | Direction |
+|------|-----------|
+| x    | Forward   |
+| y    | Left      |
+| z    | Up        |
+
+Right-handed, with the accelerometer reporting the gravity vector — so at rest and upright the z
+axis reads about -9.81 m/s² — and positive pitch nose-up about y. This follows from the
+accelerometer model in `documentation/theory/attitude-estimation.md`, which infers pitch as
+`atan2(-a_x, -a_z)`. Mapping a particular part's axes onto these is the board's job, not the
+application's.
 
 ### Part C — The host implementation
 
@@ -98,10 +111,23 @@ rather than two duty cycles per motor on a four-channel one.
 | TIM16 | Left motor PWM                     |
 | TIM17 | Right motor PWM                    |
 
+The serial buses are just as constrained. This part has two SPIs and no usable I2C — every
+I2C1 pin option collides with the console UART, an encoder phase or a motor output, and I2C3's
+natural pins are the two direction outputs that the fault net must pull low in hardware. So:
+
+| Bus  | Use                                                   |
+|------|-------------------------------------------------------|
+| SPI1 | Reserved for the motor driver's configuration channel |
+| SPI2 | Inertial sensor, with data-ready on PA10              |
+
+The reservation matters. The motor driver's configuration and read-back channel is designed but
+not yet built, and it is the only other thing on this board that needs a bus; spending SPI1 on
+the sensor would have left it nowhere to go.
+
 This is a board-level allocation, not part of the abstraction — the roles above say nothing
-about timers, and a board with more of them is free to spend them differently. It is recorded
-here because it is the constraint that shaped two component designs, and rediscovering it
-from the pinout tables is expensive.
+about timers or buses, and a board with more of them is free to spend them differently. It is
+recorded here because it is the constraint that shaped three component designs, and
+rediscovering it from the pinout tables is expensive.
 
 ### Part F — Failure is expressible
 
@@ -237,9 +263,9 @@ graph LR
 
 ## Open Questions
 
-| # | Question                                                                                 | Options                                                               | Status |
-|---|------------------------------------------------------------------------------------------|-----------------------------------------------------------------------|--------|
-| 1 | Does the inertial role expose raw samples or a configured sample rate the board owns?    | Application-driven polling; board-driven sample callback              | open   |
-| 2 | Should the simulated plant live behind the host board or beside it as a separate tool?   | Behind the host board; separate simulator composed at the entry point | open   |
-| 3 | Is the parameter store a distinct role or part of the board's general configuration?     | Distinct role; folded into board configuration                        | open   |
-| 4 | Should a second board be defined now to prove the abstraction is not shaped by one part? | Defer until the first board works; define early as a design check     | open   |
+| # | Question                                                                                 | Options                                                               | Status                                                                                                                                                                                                                                                                   |
+|---|------------------------------------------------------------------------------------------|-----------------------------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| 1 | Does the inertial role expose raw samples or a configured sample rate the board owns?    | Application-driven polling; board-driven sample callback              | decided — a board-driven callback. The part asserts data-ready at its own cadence, so the board owns the rate and timestamps each sample as the driver delivers it, one bus transfer after the edge; polling would report the poller's interval rather than the sensor's |
+| 2 | Should the simulated plant live behind the host board or beside it as a separate tool?   | Behind the host board; separate simulator composed at the entry point | open                                                                                                                                                                                                                                                                     |
+| 3 | Is the parameter store a distinct role or part of the board's general configuration?     | Distinct role; folded into board configuration                        | open                                                                                                                                                                                                                                                                     |
+| 4 | Should a second board be defined now to prove the abstraction is not shaped by one part? | Defer until the first board works; define early as a design check     | open                                                                                                                                                                                                                                                                     |

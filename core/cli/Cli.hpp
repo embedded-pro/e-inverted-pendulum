@@ -1,5 +1,6 @@
 #pragma once
 
+#include "core/inertial_sensing/interfaces/InertialSensing.hpp"
 #include "core/motion_actuation/interfaces/MotionActuation.hpp"
 #include "core/platform_abstraction/Platform.hpp"
 #include "core/wheel_odometry/interfaces/WheelOdometry.hpp"
@@ -12,14 +13,14 @@ namespace application
     class Cli
     {
     public:
-        Cli(platform::Platform& platform, motion::MotionActuation& motionActuation, odometry::WheelOdometry& wheelOdometry);
+        Cli(platform::Platform& platform, motion::MotionActuation& motionActuation, odometry::WheelOdometry& wheelOdometry, sensing::InertialSensing& inertialSensing);
 
     private:
         class CliCommands final
             : public services::TerminalCommands
         {
         public:
-            CliCommands(services::TerminalWithCommands& terminal, services::Tracer& tracer, motion::MotionActuation& motionActuation, odometry::WheelOdometry& wheelOdometry);
+            CliCommands(services::TerminalWithCommands& terminal, services::Tracer& tracer, motion::MotionActuation& motionActuation, odometry::WheelOdometry& wheelOdometry, sensing::InertialSensing& inertialSensing);
 
             infra::MemoryRange<const Command> Commands() override;
 
@@ -30,12 +31,15 @@ namespace application
             void ReleaseBridges(const infra::BoundedConstString& params);
             void Brake(const infra::BoundedConstString& params);
             void Odometry(const infra::BoundedConstString& params);
+            void Imu(const infra::BoundedConstString& params);
+            void Calibrate(const infra::BoundedConstString& params);
 
             services::Tracer& tracer;
             motion::MotionActuation& motionActuation;
             odometry::WheelOdometry& wheelOdometry;
+            sensing::InertialSensing& inertialSensing;
 
-            std::array<Command, 6> commands;
+            std::array<Command, 8> commands;
         };
 
         services::DebugLed debugLed;

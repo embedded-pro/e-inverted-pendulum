@@ -24,14 +24,15 @@ date: 2026-09-16
 ## Responsibilities
 
 **Is responsible for:**
-- Producing a body pitch angle and a bias-corrected pitch rate from inertial measurements.
-- Estimating and removing the gyroscope bias during calibration.
-- Judging whether the robot is still enough for calibration to be meaningful.
+- Producing a body pitch angle and a pitch rate from inertial measurements.
 - Publishing an explicit validity indication with every estimate.
 - Limiting the influence of transient linear body acceleration on the pitch estimate.
 
 **Is NOT responsible for:**
 - Talking to the sensor part — it consumes calibrated measurements in a fixed body frame.
+- Estimating or removing the gyroscope bias, and judging stillness for calibration. Those belong
+  to inertial sensing, which publishes an already bias-corrected rate; see
+  `documentation/design/imu-sensing.md`.
 - Deciding what an invalid estimate means for the drive — the supervisor decides that.
 - Estimating wheel motion or chassis velocity — that is wheel odometry.
 - Choosing which sensor part is fitted; the design is deliberately part-agnostic.
@@ -213,9 +214,9 @@ graph LR
 
 ## Open Questions
 
-| # | Question                                                                                                        | Options                                                                                              | Status |
-|---|-----------------------------------------------------------------------------------------------------------------|------------------------------------------------------------------------------------------------------|--------|
-| 1 | Complementary filter or single-axis Kalman filter?                                                              | Complementary — fewer cycles, one tuning constant; Kalman — principled weighting, tracks bias online | open   |
-| 2 | Should gyroscope bias be tracked continuously rather than fixed at calibration?                                 | Fixed per power-on; online estimation as part of a Kalman formulation                                | open   |
-| 3 | Which inertial part is fitted, and does a separate accelerometer and gyroscope pair change the sampling design? | MPU6050 single part; LSM303 plus L3GD20 pair                                                         | open   |
-| 4 | Should calibration be rejected outright if the robot is not near upright, not merely if it is moving?           | Stillness only; also require near-upright                                                            | open   |
+| # | Question                                                                                                        | Options                                                                                              | Status                                                                         |
+|---|-----------------------------------------------------------------------------------------------------------------|------------------------------------------------------------------------------------------------------|--------------------------------------------------------------------------------|
+| 1 | Complementary filter or single-axis Kalman filter?                                                              | Complementary — fewer cycles, one tuning constant; Kalman — principled weighting, tracks bias online | open                                                                           |
+| 2 | Should gyroscope bias be tracked continuously rather than fixed at calibration?                                 | Fixed per power-on; online estimation as part of a Kalman formulation                                | open                                                                           |
+| 3 | Which inertial part is fitted, and does a separate accelerometer and gyroscope pair change the sampling design? | MPU6050 single part; LSM303 plus L3GD20 pair; MPU9250 single part                                    | decided — an MPU9250, sampled as one six-axis part on its data-ready interrupt |
+| 4 | Should calibration be rejected outright if the robot is not near upright, not merely if it is moving?           | Stillness only; also require near-upright                                                            | open                                                                           |

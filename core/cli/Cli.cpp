@@ -27,19 +27,20 @@ namespace application
         }
     }
 
-    Cli::Cli(platform::Platform& platform, motion::MotionActuation& motionActuation, odometry::WheelOdometry& wheelOdometry)
+    Cli::Cli(platform::Platform& platform, motion::MotionActuation& motionActuation, odometry::WheelOdometry& wheelOdometry, sensing::InertialSensing& inertialSensing)
         : debugLed{ platform.StatusLed() }
         , terminal{ platform.Communication(), platform.Tracer() }
-        , commands{ terminal, platform.Tracer(), motionActuation, wheelOdometry }
+        , commands{ terminal, platform.Tracer(), motionActuation, wheelOdometry, inertialSensing }
     {
         platform.Tracer().Trace() << "inverted-pendulum-bot ready - try 'ping', 'id', 'drive <left> <right>' or 'odom'";
     }
 
-    Cli::CliCommands::CliCommands(services::TerminalWithCommands& terminal, services::Tracer& tracer, motion::MotionActuation& motionActuation, odometry::WheelOdometry& wheelOdometry)
+    Cli::CliCommands::CliCommands(services::TerminalWithCommands& terminal, services::Tracer& tracer, motion::MotionActuation& motionActuation, odometry::WheelOdometry& wheelOdometry, sensing::InertialSensing& inertialSensing)
         : services::TerminalCommands(terminal)
         , tracer(tracer)
         , motionActuation(motionActuation)
         , wheelOdometry(wheelOdometry)
+        , inertialSensing(inertialSensing)
         , commands{ {
               { { "ping", "p", "reply with pong" },
                   [this](const infra::BoundedConstString& params)
@@ -70,6 +71,16 @@ namespace application
                   [this](const infra::BoundedConstString& params)
                   {
                       Odometry(params);
+                  } },
+              { { "imu", "m", "print the latest inertial sample" },
+                  [this](const infra::BoundedConstString& params)
+                  {
+                      Imu(params);
+                  } },
+              { { "calibrate", "c", "start gyroscope bias calibration" },
+                  [this](const infra::BoundedConstString& params)
+                  {
+                      Calibrate(params);
                   } },
           } }
     {}
@@ -138,5 +149,20 @@ namespace application
         tracer.Trace() << "left " << left.position << " counts " << left.angularVelocity << " rad/s";
         tracer.Trace() << "right " << right.position << " counts " << right.angularVelocity << " rad/s";
         tracer.Trace() << "chassis " << chassis.forwardVelocity << " m/s " << chassis.yawRate << " rad/s";
+    }
+
+    void Cli::CliCommands::Imu(const infra::BoundedConstString&)
+    {
+        const auto measurement = inertialSensing.Latest();
+
+        tracer.Trace() << "rate " << measurement.angularRate.x << " " << measurement.angularRate.y << " " << measurement.angularRate.z << " rad/s";
+        tracer.Trace() << "accel " << measurement.acceleration.x << " " << measurement.acceleration.y << " " << measurement.acceleration.z << " m/s2";
+        tracer.Trace() << "valid " << (measurement.valid ? "yes" : "no") << " cause " << static_cast<uint32_t>(measurement.cause);
+    }
+
+    void Cli::CliCommands::Calibrate(const infra::BoundedConstString&)
+    {
+        inertialSensing.StartCalibration();
+        tracer.Trace() << "calibrating - hold the robot still";
     }
 }

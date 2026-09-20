@@ -135,6 +135,7 @@ add new components.
 | [Attitude Estimation](documentation/design/attitude-estimation.md)                 | Pitch estimation, bias calibration and estimate validity                          |
 | [Motion Actuation](documentation/design/motion-actuation.md)                       | Motor driver, effort mapping and the bridge disable states                        |
 | [Wheel Odometry Design](documentation/design/wheel-odometry.md)                    | Wrap-safe count accumulation, wheel velocity and chassis motion                   |
+| [Inertial Sensing Design](documentation/design/imu-sensing.md)                     | MPU9250 wiring, body frame, gyroscope bias calibration and sample validity        |
 | [BLE Service](documentation/design/ble-service.md)                                 | GATT layout for teleoperation, telemetry and tuning                               |
 | [Platform Abstraction](documentation/design/platform-abstraction.md)               | The peripheral roles each board must supply                                       |
 | [Pendulum Dynamics](documentation/theory/pendulum-dynamics.md)                     | Equations of motion, linearisation and the fall time constant                     |
