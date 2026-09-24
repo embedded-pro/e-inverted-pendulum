@@ -2,7 +2,7 @@
 title: "Balance Control Design"
 type: design
 status: draft
-version: 0.3.0
+version: 0.4.0
 component: "balance-control"
 date: 2026-09-24
 ---
@@ -12,7 +12,7 @@ date: 2026-09-24
 | Title     | Balance Control Design |
 | Type      | design                 |
 | Status    | draft                  |
-| Version   | 0.3.0                  |
+| Version   | 0.4.0                  |
 | Component | balance-control        |
 | Date      | 2026-09-24             |
 
@@ -138,15 +138,18 @@ running controller is not disturbed by a rejected request.
 ### Part E — Setpoint arbitration and saturation
 
 Setpoints reach the controller from the operator, but the controller does not trust them
-unconditionally. They are range-checked, decayed to zero on operator silence or link loss,
-and forced to zero whenever the system is not ARMED. Until the link exists the operator commands
-them from the terminal; a command is accepted only while ARMED and within range, and holds for one
-second before it falls back to zero. Every engagement and disengagement also clears them, so a
-command from a previous session never carries into the next. Effort is clamped to the actuator
-range on output, and the active strategy is told that it saturated so that any accumulating
-internal term stops growing — otherwise a robot held against a wall builds up a correction
-it discharges violently on release. The strategy is handed the effort that was actually applied,
-and restarts its accumulation from that value rather than from what it asked for.
+unconditionally. They are range-checked, decayed to zero on operator silence or link loss, and
+forced to zero whenever the system is not ARMED. Commands arrive from the terminal and from the link
+alike; a command is accepted only while ARMED and within range. After 500 milliseconds without a new
+command the setpoints decay towards zero at a fixed deceleration — 0.5 metres per second squared for
+velocity and 1.6 radians per second squared for yaw rate — so braking feels the same from any speed
+and the balance loops bring the body upright as the robot slows. Losing the link starts the same
+decay at once. Every engagement and disengagement also clears the setpoints, so a command from a
+previous session never carries into the next. Effort is clamped to the actuator range on output, and
+the active strategy is told that it saturated so that any accumulating internal term stops growing —
+otherwise a robot held against a wall builds up a correction it discharges violently on release. The
+strategy is handed the effort that was actually applied, and restarts its accumulation from that
+value rather than from what it asked for.
 
 ### Part F — Engagement
 
@@ -162,16 +165,17 @@ mode. An invalid estimate reaching an engaged controller produces zero effort.
 
 ### Provided
 
-| Interface            | Purpose                                                  | Contract                                                                                                                    |
-|----------------------|----------------------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------|
-| Control strategy     | The common interface every law implements                | Consumes estimated state and setpoints, produces per-wheel effort; bounded execution, no allocation, no recursion           |
-| Effort command       | Per-wheel signed effort for actuation                    | Within the configured actuator range; zero whenever not ARMED                                                               |
-| Strategy registry    | Enumerate available strategies and report the active one | At least two strategies available; identifiers stable across builds                                                         |
-| Strategy selection   | Change the active strategy                               | Accepted only while not ARMED; a rejected request leaves the active strategy and its state untouched                        |
-| Parameter descriptor | Describe the active strategy's tunable parameters        | Reports count, order, identity and permitted range; changes when the active strategy changes                                |
-| Parameter access     | Read and write parameters by index                       | Writes accepted only while not ARMED; out-of-range values rejected with the stored value unchanged                          |
-| Strategy lifecycle   | Engage and disengage balance control                     | Engaged by the supervisor on every transition into ARMED, before the drive is permitted; disengaged on every transition out |
-| Motion setpoint      | Command forward velocity and yaw rate                    | Accepted only while engaged and within range; falls back to zero after 1 s without a new command                            |
+| Interface            | Purpose                                                  | Contract                                                                                                                                       |
+|----------------------|----------------------------------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------|
+| Control strategy     | The common interface every law implements                | Consumes estimated state and setpoints, produces per-wheel effort; bounded execution, no allocation, no recursion                              |
+| Effort command       | Per-wheel signed effort for actuation                    | Within the configured actuator range; zero whenever not ARMED                                                                                  |
+| Strategy registry    | Enumerate available strategies and report the active one | At least two strategies available; identifiers stable across builds                                                                            |
+| Strategy selection   | Change the active strategy                               | Accepted only while not ARMED; a rejected request leaves the active strategy and its state untouched                                           |
+| Parameter descriptor | Describe the active strategy's tunable parameters        | Reports count, order, identity and permitted range; changes when the active strategy changes                                                   |
+| Parameter access     | Read and write parameters by index                       | Writes accepted only while not ARMED; out-of-range values rejected with the stored value unchanged                                             |
+| Strategy lifecycle   | Engage and disengage balance control                     | Engaged by the supervisor on every transition into ARMED, before the drive is permitted; disengaged on every transition out                    |
+| Effort report        | The effort applied in the last balance iteration         | Zero while disengaged or when the estimate was invalid                                                                                         |
+| Motion setpoint      | Command forward velocity and yaw rate                    | Accepted only while engaged and within range; decays to zero at a fixed deceleration after 500 ms without a new command, or at once on request |
 
 ### Required
 
