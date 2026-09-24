@@ -23,6 +23,8 @@ target_link_libraries(inverted_pendulum_bot.cli PUBLIC
 target_sources(inverted_pendulum_bot.cli PRIVATE
     Cli.hpp
     Cli.cpp
+    DecimalParser.hpp
+    DecimalParser.cpp
 )
 
 add_subdirectory(test)
