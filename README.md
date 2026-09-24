@@ -130,7 +130,7 @@ add new components.
 | [System Architecture](documentation/architecture/system.md)                        | Components, interfaces and cross-cutting concerns of the robot                    |
 | [Use Cases](documentation/use-cases/README.md)                                     | Actors, flows and the Gherkin scenarios every requirement traces to               |
 | [Requirements](documentation/requirements/)                                        | Requirement sets, validated against `documentation/tools/requirement.schema.json` |
-| [Safety Supervisor](documentation/design/safety-supervisor.md)                     | Arm/disarm/fault state machine and the disarm conditions                          |
+| [Safety Supervisor](documentation/design/safety-supervisor.md)                     | Mode state machine: self-test, calibration, arming and the disarm conditions      |
 | [Balance Control](documentation/design/balance-control.md)                         | The selectable control-strategy interface and setpoint handling                   |
 | [Attitude Estimation](documentation/design/attitude-estimation.md)                 | Pitch estimation with a selectable complementary or Kalman filter                 |
 | [Control Loop](documentation/design/control-loop.md)                               | Sample-driven pacing of estimation, balance and outer loops, and loop timing      |

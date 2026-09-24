@@ -2,9 +2,9 @@
 title: "Safety Supervisor Design"
 type: design
 status: draft
-version: 0.1.0
+version: 0.2.0
 component: "safety-supervisor"
-date: 2026-09-16
+date: 2026-09-24
 ---
 
 | Field     | Value                    |
@@ -12,9 +12,9 @@ date: 2026-09-16
 | Title     | Safety Supervisor Design |
 | Type      | design                   |
 | Status    | draft                    |
-| Version   | 0.1.0                    |
+| Version   | 0.2.0                    |
 | Component | safety-supervisor        |
-| Date      | 2026-09-16               |
+| Date      | 2026-09-24               |
 
 > The supervisor owns the single decision that can hurt someone: whether the motors may
 > be energised. Everything else in the firmware is advisory to it.
@@ -26,6 +26,8 @@ date: 2026-09-16
 **Is responsible for:**
 - Owning the operating mode and permitting only defined transitions between modes.
 - Deciding whether the drive may be energised, and forcing it to a safe state otherwise.
+- Running the start-up self-test and gyroscope bias calibration, and later recalibration on
+  operator request.
 - Detecting the four disarm conditions: a fall, a motor driver fault, loss of a valid
   attitude estimate, and a control loop that is no longer being serviced.
 - Latching a fault together with its cause, and holding it until the operator clears it.
@@ -53,6 +55,10 @@ checked against the transition table for the active mode and rejected if not per
 Rejection is silent to the drive — a refused arm request leaves the system exactly as it
 was.
 
+The balance stage runs only while ARMED. The supervisor sees every balance iteration before the
+balance stage does, so an iteration that detects a disarm condition never reaches the balance stage.
+The operator's bench drive command is subject to the same permission: it is refused unless ARMED.
+
 ### Part B — Fall detection
 
 The supervisor compares the estimated pitch magnitude against the fall threshold on every
@@ -73,15 +79,31 @@ IDLE — never directly to ARMED. Arming is always a separate, deliberate second
 
 The supervisor is fed by the balance loop, so a loop that stops running would otherwise
 freeze the supervisor along with it. A timebase-driven check independent of the balance
-loop counts missed services; three consecutive misses is a fault. This is the one detector
-that must keep working when the rest of the control stack has stopped.
+loop counts missed services; three consecutive misses is a fault. The check runs at the
+balance period, 2 ms, so a stalled loop is caught within 6 ms. This is the one detector that
+must keep working when the rest of the control stack has stopped.
+
+A motor driver fault latches FAULT from IDLE as well as from ARMED: a driver that has reported a
+fault must not be energised by the next arm request.
 
 ### Part E — Arming preconditions
 
-Arming requires both a near-upright attitude and a valid estimate. The validity condition
-matters as much as the angle: an estimator that has not converged can report upright while
-being wrong. On a successful arm the supervisor resets the active strategy's internal state
-so that behaviour never depends on history from a previous session.
+Arming requires a near-upright attitude, a valid estimate, a loop that is being serviced, and a
+healthy, configured motor driver. The validity condition matters as much as the angle: an estimator
+that has not converged can report upright while being wrong. The liveness condition matters for the
+same reason — the last estimate of a stalled loop can read upright long after it stopped being
+true. On a successful arm the supervisor resets the active strategy's internal state so that
+behaviour never depends on history from a previous session.
+
+### Part F — Self-test and calibration
+
+After reset the supervisor waits in INIT for the self-test: the motor driver must report its
+configuration verified, and inertial sensing must have delivered at least one sample. Either failing
+to happen within 1 second is a self-test fault. On success the supervisor starts gyroscope bias
+calibration and waits in CALIBRATING; a failed calibration — typically because the robot moved — is
+a calibration fault. From IDLE the operator may request a recalibration, which re-enters
+CALIBRATING; clearing a calibration fault returns to IDLE, from which arming is refused until a
+calibration succeeds, because the uncalibrated estimate is invalid.
 
 ---
 
@@ -92,20 +114,21 @@ so that behaviour never depends on history from a previous session.
 | Interface                 | Purpose                                                       | Contract                                                                                                                                     |
 |---------------------------|---------------------------------------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------|
 | Mode query                | Report the active operating mode                              | Exactly one mode is active at any instant; readable from any context without blocking                                                        |
-| Mode command              | Request arm, disarm or clear-fault                            | Checked against the transition table; a rejected request changes nothing. Arming additionally requires upright attitude and a valid estimate |
+| Mode command              | Request arm, disarm, clear-fault or calibrate                 | Checked against the transition table; a rejected request changes nothing. Arming additionally requires upright attitude and a valid estimate |
 | Fault report              | Report the latched fault cause                                | Valid whenever the mode is FAULT; persists until the fault is cleared                                                                        |
 | Drive permission          | Tell actuation and control whether the drive may be energised | Deasserted before the mode leaves ARMED, never after                                                                                         |
 | Loop service notification | Accept the balance loop's periodic liveness signal            | Absence for 3 consecutive periods is a fault                                                                                                 |
 
 ### Required
 
-| Interface           | Purpose                                     | Contract                                                                         |
-|---------------------|---------------------------------------------|----------------------------------------------------------------------------------|
-| Attitude estimate   | Detect falls and check arming preconditions | Carries an explicit validity indication; the supervisor treats invalid as unsafe |
-| Motor driver health | Observe driver-reported faults              | An asserted fault is latched even if it clears immediately afterwards            |
-| Drive disable       | Force both bridges to tri-state             | Must succeed without a healthy control loop; tri-state, never brake              |
-| Strategy lifecycle  | Reset the active strategy on arming         | Reset completes before the drive is permitted                                    |
-| Timebase            | Drive liveness monitoring                   | Independent of the balance loop it supervises                                    |
+| Interface           | Purpose                                      | Contract                                                                         |
+|---------------------|----------------------------------------------|----------------------------------------------------------------------------------|
+| Attitude estimate   | Detect falls and check arming preconditions  | Carries an explicit validity indication; the supervisor treats invalid as unsafe |
+| Motor driver health | Observe driver-reported faults               | An asserted fault is latched even if it clears immediately afterwards            |
+| Drive disable       | Force both bridges to tri-state              | Must succeed without a healthy control loop; tri-state, never brake              |
+| Strategy lifecycle  | Reset the active strategy on arming          | Reset completes before the drive is permitted                                    |
+| Calibration         | Start and observe gyroscope bias calibration | Reports calibrating, calibrated or failed                                        |
+| Timebase            | Drive liveness monitoring                    | Independent of the balance loop it supervises                                    |
 
 ---
 
@@ -115,11 +138,13 @@ so that behaviour never depends on history from a previous session.
 stateDiagram-v2
     [*] --> Init
     Init --> Calibrating : Self-test passed
-    Init --> Fault : Sensor or driver identification failed
+    Init --> Fault : Self-test not passed within 1 s
     Calibrating --> Idle : Bias calibration succeeded
     Calibrating --> Fault : Calibration failed or robot moved
-    Idle --> Armed : Arm command, upright and estimate valid
-    Idle --> Idle : Arm command rejected (tilted or estimate invalid)
+    Idle --> Calibrating : Calibrate command
+    Idle --> Armed : Arm command, upright, estimate valid, loop serviced, driver healthy
+    Idle --> Idle : Arm command rejected
+    Idle --> Fault : Motor driver fault
     Armed --> Idle : Disarm command
     Armed --> Fault : Fall detected
     Armed --> Fault : Motor driver fault
@@ -182,14 +207,16 @@ sequenceDiagram
 
 ## Data Model
 
-| Entity           | Field            | Type / Unit  | Range                                                                 | Notes                                          |
-|------------------|------------------|--------------|-----------------------------------------------------------------------|------------------------------------------------|
-| Supervisor state | mode             | enumeration  | INIT, CALIBRATING, IDLE, ARMED, FAULT                                 | Exactly one active                             |
-| Supervisor state | latchedCause     | enumeration  | None, Fall, DriverFault, EstimateInvalid, LoopStalled, SelfTestFailed | Meaningful only in FAULT                       |
-| Supervisor state | missedServices   | count        | 0 to 3                                                                | Reset on each loop service; 3 triggers a fault |
-| Configuration    | fallThreshold    | degrees      | 35                                                                    | Magnitude of pitch from upright                |
-| Configuration    | armWindow        | degrees      | 5                                                                     | Maximum tilt permitted when arming             |
-| Configuration    | tristateDeadline | milliseconds | 20                                                                    | Budget from detection to bridges disabled      |
+| Entity           | Field            | Type / Unit  | Range                                                                                    | Notes                                              |
+|------------------|------------------|--------------|------------------------------------------------------------------------------------------|----------------------------------------------------|
+| Supervisor state | mode             | enumeration  | INIT, CALIBRATING, IDLE, ARMED, FAULT                                                    | Exactly one active                                 |
+| Supervisor state | latchedCause     | enumeration  | None, Fall, DriverFault, EstimateInvalid, LoopStalled, SelfTestFailed, CalibrationFailed | Meaningful only in FAULT                           |
+| Supervisor state | missedServices   | count        | 0 to 3                                                                                   | Reset on each loop service; 3 triggers a fault     |
+| Configuration    | fallThreshold    | degrees      | 35                                                                                       | Magnitude of pitch from upright                    |
+| Configuration    | armWindow        | degrees      | 5                                                                                        | Maximum tilt permitted when arming                 |
+| Configuration    | tristateDeadline | milliseconds | 20                                                                                       | Budget from detection to bridges disabled          |
+| Configuration    | servicePeriod    | milliseconds | 2                                                                                        | Liveness check period, equal to the balance period |
+| Configuration    | selfTestDeadline | milliseconds | 1000                                                                                     | Time allowed from reset to a passed self-test      |
 
 ---
 
@@ -208,9 +235,9 @@ sequenceDiagram
 
 ## Open Questions
 
-| # | Question                                                                                                     | Options                                               | Status |
-|---|--------------------------------------------------------------------------------------------------------------|-------------------------------------------------------|--------|
-| 1 | Should the fall threshold scale with measured wheel velocity, since a moving robot has less recovery margin? | Fixed threshold; velocity-dependent threshold         | open   |
-| 2 | Should a hardware watchdog back the software liveness monitor?                                               | Software only; add the microcontroller watchdog       | open   |
-| 3 | Should battery voltage be a supervised fault source?                                                         | Out of scope this revision; add an undervoltage fault | open   |
-| 4 | Should repeated falls within a short window require a longer operator acknowledgement?                       | Treat every fall identically; escalate on repetition  | open   |
+| # | Question                                                                                                     | Options                                               | Status   |
+|---|--------------------------------------------------------------------------------------------------------------|-------------------------------------------------------|----------|
+| 1 | Should the fall threshold scale with measured wheel velocity, since a moving robot has less recovery margin? | Fixed threshold; velocity-dependent threshold         | open     |
+| 2 | Should a hardware watchdog back the software liveness monitor?                                               | Software only; add the microcontroller watchdog       | deferred |
+| 3 | Should battery voltage be a supervised fault source?                                                         | Out of scope this revision; add an undervoltage fault | open     |
+| 4 | Should repeated falls within a short window require a longer operator acknowledgement?                       | Treat every fall identically; escalate on repetition  | deferred |
