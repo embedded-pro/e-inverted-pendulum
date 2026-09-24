@@ -7,8 +7,11 @@ target_link_libraries(inverted_pendulum_bot.motion_actuation_test PUBLIC
     inverted_pendulum_bot.motion_actuation.implementations
     inverted_pendulum_bot.platform_abstraction_mock
     hal.interfaces_test_doubles
+    infra.timer_test_helper
 )
 
 target_sources(inverted_pendulum_bot.motion_actuation_test PRIVATE
+    TestBridgeMapping.cpp
+    TestDrv8711DriverConfiguration.cpp
     TestMotionActuationImpl.cpp
 )

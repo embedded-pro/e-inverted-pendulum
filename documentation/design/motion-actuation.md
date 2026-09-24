@@ -2,9 +2,9 @@
 title: "Motion Actuation Design"
 type: design
 status: draft
-version: 0.1.0
+version: 0.2.0
 component: "motion-actuation"
-date: 2026-09-16
+date: 2026-09-24
 ---
 
 | Field     | Value                   |
@@ -12,9 +12,9 @@ date: 2026-09-16
 | Title     | Motion Actuation Design |
 | Type      | design                  |
 | Status    | draft                   |
-| Version   | 0.1.0                   |
+| Version   | 0.2.0                   |
 | Component | motion-actuation        |
-| Date      | 2026-09-16              |
+| Date      | 2026-09-24              |
 
 > Turns an abstract effort command into current through two motors. The one component that
 > must always be able to stop, whatever else has failed. What the wheels then did is measured
@@ -51,65 +51,76 @@ The motor driver part is nominally a stepper driver, but a stepper driver *is* t
 independent full H-bridges plus a step sequencer. Bypassing the sequencer and driving the
 two bridges directly yields exactly what a two-wheeled balancer needs: two independently
 commanded brushed DC motors, per-motor current regulation, and a single fault output, all
-configured over one serial channel.
+configured over one serial channel. The left motor hangs on the first bridge, the right on
+the second.
 
 The consequence for this design is that bridge state is commanded by the firmware on every
 control iteration rather than delegated to the part. Each bridge takes **two logic-level
-inputs**, so one driver needs four PWM lines in total — not four per motor. The part
-generates its own gate drive and its own dead time, so the timer supplies plain
-logic-level PWM: no complementary outputs, and no dead-time generator on the
-microcontroller side.
+inputs**, so one driver needs four lines in total, and all four are timer outputs: four
+channels of a single timer, one per bridge input, with no direction pin anywhere. The part
+generates its own gate drive and its own dead time, so the timer supplies plain logic-level
+PWM: no complementary outputs, and no dead-time generator on the microcontroller side.
 
-Only one of a bridge's two inputs has to carry a duty cycle. Holding the other as a
-direction level drives the motor sign-magnitude, which costs one timer channel per motor
-instead of two. That matters because the two channels it frees are the only two the part
-can decode quadrature on, and both wheels need one — see the platform design for the
-allocation.
+Putting all four inputs on one timer has three consequences the rest of the design leans on:
 
-The choice is not free. Forward toggles the bridge between driven and released, reverse
-between driven and shorted, so the two directions recirculate differently and their current
-ripple is not symmetric. Commanded magnitude is unaffected and the effort mapping stays
-monotonic, which is what Part C requires. The two motors also no longer share a timer, so
-their switching edges are not phase-locked.
+- **Both motors switch in phase.** One counter drives every edge, so the two bridges are
+  phase-locked, and all four compares are written in one step. The counter runs
+  centre-aligned, which halves current ripple against edge alignment at the same switching
+  frequency.
+- **Direction changes are glitch-free.** Compare preload is enabled, so a new command takes
+  effect as a whole at the next period boundary. Reversing a motor swaps which input is held
+  and which is switched in one update; there is no intermediate period in which the old
+  magnitude is applied in the new direction.
+- **The hardware stop owns every input.** The driver's fault output feeds the timer's break
+  input. A break forces all four outputs to their idle level, which is low, and both inputs
+  low is the tri-state. The release therefore does not depend on the commanded direction,
+  on firmware, or on any gate outside the timer.
 
-Two further consequences follow from the timers the motors land on. Those instances have no
-counter-mode selection, so the PWM is edge-aligned rather than centre-aligned, which raises
-current ripple relative to the arrangement a full-featured timer allows. And compare preload is
-disabled, so a duty cycle written mid-period takes effect immediately: a reversal must drop the
-magnitude to zero before the direction changes, and a preloaded write would defer that zero to the
-next update, leaving the old magnitude applied in the new direction for a full period. A runt pulse
-on an ordinary duty change is the lesser fault.
+Which two states a bridge alternates between is the decay mode, and it is a firmware choice
+made per command, not a wiring choice:
 
-It also moves one input off the timer, and that has a safety consequence the board must
-answer for. A break event forces a timer output to its idle state, which is low, but it
-cannot touch a pin the timer does not own. With the magnitude input released and the
-direction input left high, the bridge reads as fully reversed rather than released:
+| Decay | Forward effort *e*                    | Reverse effort *e*                        | Off-time state        |
+|-------|---------------------------------------|-------------------------------------------|-----------------------|
+| Slow  | input 1 held high, input 2 at 1 − *e* | input 1 at 1 − \|*e*\|, input 2 held high | both legs low (brake) |
+| Fast  | input 1 at *e*, input 2 held low      | input 1 held low, input 2 at \|*e*\|      | released (tri-state)  |
 
-|                             | Magnitude input          | Direction input      | Bridge             |
-|-----------------------------|--------------------------|----------------------|--------------------|
-| Break while driving forward | low, forced by the timer | low                  | released           |
-| Break while driving reverse | low, forced by the timer | **high, not forced** | **fully reversed** |
-
-**The fault line must therefore pull both direction inputs low in hardware**, by an
-open-drain gate or a device per pin. Without it the drive's hardware release is conditional
-on the commanded direction, which is exactly the dependency the safety design exists to
-remove. Firmware also drives the direction inputs low when it latches the fault, and the
-driver disables its own outputs on its own faults, but neither is the unconditional
-hardware path this requirement is about.
+Slow decay is the default. It keeps the motor current continuous down to small efforts, so
+torque stays proportional to effort through the zero crossing a balancer lives around, and
+at zero effort nothing switches at all. Fast decay lets current collapse during the off-time,
+which makes small efforts non-linear, and is kept for comparison on the bench.
 
 ### Part B — Configuration and verification
 
-Driver configuration — current limit, decay mode, sequencer bypass — is written during INIT
-and read back. A driver that does not read back what was written is treated as absent, not
-as merely misconfigured: energising motors through a driver in an unknown state is the
-failure mode this check exists to prevent.
+Driver configuration is written during INIT and read back: control (sense gain, dead time,
+enable), torque (current-limit setting), off-time with the sequencer bypass, blanking, decay,
+stall and gate drive. Every register written is read back and compared; the one field the part
+documents as write-only is masked. Only when every register matches are the latched status
+flags cleared and the enable bit set — the bridges can only be energised through a
+configuration that has been verified.
+
+The write, read-back and enable sequence belongs to the driver library, not to this component:
+the part answers nothing on a write, so every user of it needs the same check, and the library is
+where it is written once. This component only chooses the values — sense gain and torque from
+the trip current, dead time, decay — and waits out the part's wake-up time before asking for them.
+
+A driver that does not read back what was written is treated as absent, not as merely
+misconfigured: energising motors through a driver in an unknown state is the failure mode this
+check exists to prevent. Until configuration completes, and forever after it fails, effort and
+brake commands are refused; the tri-state is always accepted.
+
+The current limit is expressed as a trip current. The part trips at a reference voltage times
+the torque setting, divided by 256 times the sense gain times the sense resistance. The sense
+gain is chosen as the highest of its four values for which the torque setting still fits its
+eight bits, which keeps the most resolution. Sense resistance and the motor's continuous rating
+are board facts; until they are known the configured limit is deliberately conservative.
 
 ### Part C — Effort to duty mapping
 
-Effort arrives normalised and signed. Its magnitude selects duty cycle, its sign selects
-bridge direction. The mapping is monotonic and documented, so that a change in commanded
-effort always produces a change in the same direction at the wheel — a property the control
-strategies rely on and none of them verify.
+Effort arrives normalised and signed. Its magnitude selects duty cycle, its sign selects which
+input is switched, per the decay table in Part A. The mapping is monotonic and documented, so
+that a change in commanded effort always produces a change in the same direction at the wheel —
+a property the control strategies rely on and none of them verify. Duty is carried at the
+timer's resolution, not rounded to whole percent.
 
 Switching frequency sits above the audible band and is matched to the motor's electrical
 time constant: too low and the robot whines and the current ripples; too high and switching
@@ -126,19 +137,19 @@ backwards — driving both inputs low is a *tri-state*, not a brake:
 | Input 1 | Input 2 | Bridge         | Meaning   |
 |---------|---------|----------------|-----------|
 | low     | low     | released       | Tri-state |
-| PWM     | low     | driven forward | Forward   |
-| low     | PWM     | driven reverse | Reverse   |
+| high    | low     | driven forward | Forward   |
+| low     | high    | driven reverse | Reverse   |
 | high    | high    | both legs low  | Brake     |
 
 Safety-initiated disables always tri-state. A falling robot that brakes plants its wheels and
 converts a topple into a harder impact, and braking still drives current through the
 bridges at the moment a fault is suspected. The tri-state is also what the hardware reaches
 without firmware cooperation, which is what makes it reachable when the control loop is
-already gone.
+already gone. A brake requested while a fault is latched is refused for the same reason.
 
 ### Part E — Encoder decoding is configured here and consumed elsewhere
 
-Each encoder's A and B channels are decoded by a hardware timer in four-times quadrature,
+Each encoder's A and B channels are decoded by a hardware counter in four-times quadrature,
 counting every edge on both channels for maximum resolution. Configuring those timers is part
 of bringing up the platform, so it is described here beside the timer budget it competes for.
 
@@ -168,7 +179,7 @@ the wheel odometry component's, and is described in `documentation/design/wheel-
 | Interface                    | Purpose                                  | Contract                                             |
 |------------------------------|------------------------------------------|------------------------------------------------------|
 | Driver configuration channel | Write and read back driver configuration | Read-back mismatch is a fatal startup condition      |
-| Bridge control outputs       | Duty and direction per bridge            | Switching frequency above the audible band           |
+| Bridge control outputs       | Duty on both inputs of each bridge       | One timer, phase-locked, released by the break input |
 | Driver fault input           | Observe the driver's fault assertion     | Observable without polling the configuration channel |
 | Encoder channel inputs       | A, B and index per wheel                 | Decoded without losing edges at maximum wheel speed  |
 
@@ -183,6 +194,8 @@ the wheel odometry component's, and is described in `documentation/design/wheel-
 | Encoder       | countsPerRevolution     | counts            | fitted value                            | Four times the encoder line count          |
 | Configuration | currentLimit            | amperes           | at or below the motor continuous rating | Verified by read-back                      |
 | Configuration | switchingFrequency      | kilohertz         | above 20                                | Above the audible band                     |
+| Configuration | senseResistance         | milliohms         | fitted value                            | Board fact; sets the current-limit scale   |
+| Configuration | decay                   | enumeration       | Slow, Fast                              | Slow by default                            |
 
 ---
 
@@ -191,8 +204,9 @@ the wheel odometry component's, and is described in `documentation/design/wheel-
 ```mermaid
 stateDiagram-v2
     [*] --> Unconfigured
-    Unconfigured --> Configured : Configuration written and read back
-    Unconfigured --> Failed : Read-back mismatch or no response
+    Unconfigured --> Configuring : Driver awake
+    Configuring --> Configured : Every register read back as written
+    Configuring --> Failed : Read-back mismatch
     Configured --> Tristated : Bridges enabled, zero effort
     Tristated --> Driving : Drive permitted, non-zero effort
     Driving --> Tristated : Drive permission withdrawn
@@ -278,8 +292,8 @@ graph LR
 
 ## Open Questions
 
-| # | Question                                                                                                              | Options                                                           | Status |
-|---|-----------------------------------------------------------------------------------------------------------------------|-------------------------------------------------------------------|--------|
-| 1 | Should effort compensate for measured battery voltage so torque per unit effort stays constant as the battery drains? | Leave to the balance loops; add feed-forward compensation         | open   |
-| 2 | Fast or slow current decay mode for the bridges?                                                                      | Depends on measured current ripple against motor inductance       | open   |
-| 3 | Should the driver's current regulation be relied upon, or a separate measurement taken?                               | Rely on the driver; add sensing for telemetry and stall detection | open   |
+| # | Question                                                                                                              | Options                                                           | Status                                                                                                  |
+|---|-----------------------------------------------------------------------------------------------------------------------|-------------------------------------------------------------------|---------------------------------------------------------------------------------------------------------|
+| 1 | Should effort compensate for measured battery voltage so torque per unit effort stays constant as the battery drains? | Leave to the balance loops; add feed-forward compensation         | open                                                                                                    |
+| 2 | Fast or slow current decay mode for the bridges?                                                                      | Depends on measured current ripple against motor inductance       | decided — slow by default for linearity through zero effort; fast stays selectable for bench comparison |
+| 3 | Should the driver's current regulation be relied upon, or a separate measurement taken?                               | Rely on the driver; add sensing for telemetry and stall detection | open                                                                                                    |

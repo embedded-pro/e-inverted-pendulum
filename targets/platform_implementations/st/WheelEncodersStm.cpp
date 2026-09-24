@@ -2,19 +2,28 @@
 
 namespace application
 {
-    hal::SynchronousQuadratureEncoderStm::Config WheelEncodersStm::EncoderConfig(bool mirrored)
+    hal::SynchronousQuadratureEncoderLpTimStm::Config WheelEncodersStm::LeftEncoderConfig()
+    {
+        hal::SynchronousQuadratureEncoderLpTimStm::Config config;
+
+        config.decodeMode = hal::SynchronousQuadratureEncoderLpTimStm::Config::DecodeMode::x4OnBothEdges;
+
+        return config;
+    }
+
+    hal::SynchronousQuadratureEncoderStm::Config WheelEncodersStm::RightEncoderConfig()
     {
         hal::SynchronousQuadratureEncoderStm::Config config;
 
         config.decodeMode = hal::SynchronousQuadratureEncoderStm::Config::DecodeMode::x4OnBothPhases;
-        config.invertPhaseA = mirrored;
+        config.invertPhaseA = true;
 
         return config;
     }
 
     WheelEncodersStm::WheelEncodersStm()
-        : left(1, leftPhaseA, leftPhaseB, leftIndex, EncoderConfig(false))
-        , right(2, rightPhaseA, rightPhaseB, rightIndex, EncoderConfig(true))
+        : left(1, leftPhaseA, leftPhaseB, leftIndex, LeftEncoderConfig())
+        , right(2, rightPhaseA, rightPhaseB, rightIndex, RightEncoderConfig())
     {}
 
     hal::SynchronousQuadratureEncoder& WheelEncodersStm::Left()

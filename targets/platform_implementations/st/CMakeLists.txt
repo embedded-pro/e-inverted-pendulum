@@ -33,8 +33,6 @@ target_compile_definitions(inverted_pendulum_bot.platform_st PUBLIC
 target_sources(inverted_pendulum_bot.platform_st PRIVATE
     InertialSensorStm.hpp
     InertialSensorStm.cpp
-    MotorBridgeStm.hpp
-    MotorBridgeStm.cpp
     MotorDriverStm.hpp
     MotorDriverStm.cpp
     WheelEncodersStm.hpp

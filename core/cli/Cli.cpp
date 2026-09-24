@@ -25,6 +25,27 @@ namespace application
 
             return value;
         }
+
+        const char* NameOf(motion::DriverState state)
+        {
+            switch (state)
+            {
+                case motion::DriverState::configuring:
+                    return "configuring";
+                case motion::DriverState::ready:
+                    return "ready";
+                default:
+                    return "failed";
+            }
+        }
+
+        const char* NameOf(motion::FaultCause cause)
+        {
+            if (cause == motion::FaultCause::driverFault)
+                return "driver";
+
+            return "none";
+        }
     }
 
     Cli::Cli(platform::Platform& platform, motion::MotionActuation& motionActuation, odometry::WheelOdometry& wheelOdometry, sensing::InertialSensing& inertialSensing)
@@ -82,6 +103,16 @@ namespace application
                   {
                       Calibrate(params);
                   } },
+              { { "clear", "x", "clear a latched driver fault" },
+                  [this](const infra::BoundedConstString& params)
+                  {
+                      ClearFault(params);
+                  } },
+              { { "driver", "v", "print the motor driver state and latched fault" },
+                  [this](const infra::BoundedConstString& params)
+                  {
+                      DriverStatus(params);
+                  } },
           } }
     {}
 
@@ -102,6 +133,12 @@ namespace application
 
     void Cli::CliCommands::Drive(const infra::BoundedConstString& params)
     {
+        if (motionActuation.State() != motion::DriverState::ready)
+        {
+            tracer.Trace() << "refused: motor driver not ready";
+            return;
+        }
+
         if (motionActuation.Fault() != motion::FaultCause::none)
         {
             tracer.Trace() << "refused: driver fault latched, clear it first";
@@ -164,5 +201,16 @@ namespace application
     {
         inertialSensing.StartCalibration();
         tracer.Trace() << "calibrating - hold the robot still";
+    }
+
+    void Cli::CliCommands::ClearFault(const infra::BoundedConstString&)
+    {
+        motionActuation.ClearFault();
+        tracer.Trace() << "fault cleared";
+    }
+
+    void Cli::CliCommands::DriverStatus(const infra::BoundedConstString&)
+    {
+        tracer.Trace() << "driver " << NameOf(motionActuation.State()) << " fault " << NameOf(motionActuation.Fault());
     }
 }

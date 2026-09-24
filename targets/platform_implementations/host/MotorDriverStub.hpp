@@ -1,7 +1,8 @@
 #pragma once
 
 #include "core/platform_abstraction/MotorDriver.hpp"
-#include "targets/platform_implementations/host/MotorBridgeStub.hpp"
+#include "core/platform_abstraction/UnusedAnalogToDigitalPin.hpp"
+#include "targets/platform_implementations/host/Drv8711Emulator.hpp"
 
 namespace application
 {
@@ -9,14 +10,18 @@ namespace application
         : public platform::MotorDriver
     {
     public:
-        platform::MotorBridge& Left() override
+        void SetBaseFrequency(hal::Hertz) override
+        {}
+
+        void Drive(const platform::BridgeInputs& left, const platform::BridgeInputs& right) override
         {
-            return left;
+            lastLeft = left;
+            lastRight = right;
         }
 
-        platform::MotorBridge& Right() override
+        drivers::DirectPwmStepperMotorDrv8711Decorator& Controller() override
         {
-            return right;
+            return controller;
         }
 
         void EnableFaultNotification(const infra::Function<void()>& onFault) override
@@ -29,9 +34,22 @@ namespace application
             onFault = nullptr;
         }
 
+        const platform::BridgeInputs& LastLeft() const
+        {
+            return lastLeft;
+        }
+
+        const platform::BridgeInputs& LastRight() const
+        {
+            return lastRight;
+        }
+
     private:
-        MotorBridgeStub left;
-        MotorBridgeStub right;
+        Drv8711Emulator registers;
+        platform::UnusedAnalogToDigitalPin backEmf;
+        drivers::DirectPwmStepperMotorDrv8711Decorator controller{ registers, hal::dummyPin, hal::dummyPin, backEmf };
+        platform::BridgeInputs lastLeft{};
+        platform::BridgeInputs lastRight{};
         infra::Function<void()> onFault;
     };
 }

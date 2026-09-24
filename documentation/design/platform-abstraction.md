@@ -2,9 +2,9 @@
 title: "Platform Abstraction Design"
 type: design
 status: draft
-version: 0.1.0
+version: 0.2.0
 component: "platform-abstraction"
-date: 2026-09-16
+date: 2026-09-24
 ---
 
 | Field     | Value                       |
@@ -12,9 +12,9 @@ date: 2026-09-16
 | Title     | Platform Abstraction Design |
 | Type      | design                      |
 | Status    | draft                       |
-| Version   | 0.1.0                       |
+| Version   | 0.2.0                       |
 | Component | platform-abstraction        |
-| Date      | 2026-09-16                  |
+| Date      | 2026-09-24                  |
 
 > The seam that lets a balancing robot be developed, tested and debugged without a
 > balancing robot. Every peripheral the application needs appears here as a role, and
@@ -99,30 +99,42 @@ can be handed a test double instead.
 
 ### Part E — The timer budget is an architectural constraint
 
-The selected part has exactly two timer instances with an encoder mode, and both wheels need
-one. Everything else that wants a timer must therefore fit around them, and on this board
-that is what decides how the motors are driven: sign-magnitude on two single-channel timers
-rather than two duty cycles per motor on a four-channel one.
+The selected part has two general-purpose timers with an encoder mode, one low-power timer with
+an encoder mode, and one timer with four independent output channels and a break input. The
+motor driver's four bridge inputs want that four-channel timer, so that both motors switch in
+phase and a single break input releases every input in hardware. That leaves the second
+general-purpose timer and the low-power timer for the wheels.
 
-| Timer | Use                                |
-|-------|------------------------------------|
-| TIM1  | Left wheel encoder, x4 quadrature  |
-| TIM2  | Right wheel encoder, x4 quadrature |
-| TIM16 | Left motor PWM                     |
-| TIM17 | Right motor PWM                    |
+| Timer  | Use                                                                     |
+|--------|-------------------------------------------------------------------------|
+| TIM1   | Motor driver bridge inputs, four channels, break input on the fault net |
+| TIM2   | Right wheel encoder, x4 quadrature                                      |
+| LPTIM1 | Left wheel encoder, x4 quadrature                                       |
+| TIM16  | Free                                                                    |
+| TIM17  | Free                                                                    |
+
+The low-power timer's counter is 16 bits, which is ample for the configured encoder
+resolution, and it has no per-phase polarity; the left wheel is the unmirrored one, so it does
+not need any.
 
 The serial buses are just as constrained. This part has two SPIs and no usable I2C — every
-I2C1 pin option collides with the console UART, an encoder phase or a motor output, and I2C3's
-natural pins are the two direction outputs that the fault net must pull low in hardware. So:
+I2C1 pin option collides with the console UART, an encoder phase or a motor output. So:
 
-| Bus  | Use                                                   |
-|------|-------------------------------------------------------|
-| SPI1 | Reserved for the motor driver's configuration channel |
-| SPI2 | Inertial sensor, with data-ready on PA10              |
+| Bus  | Use                                                                                        |
+|------|--------------------------------------------------------------------------------------------|
+| SPI1 | Motor driver configuration and read-back, on PB3/PB4/PB5 with an active-high select on PA4 |
+| SPI2 | Inertial sensor, with data-ready on PC6                                                    |
 
-The reservation matters. The motor driver's configuration and read-back channel is designed but
-not yet built, and it is the only other thing on this board that needs a bus; spending SPI1 on
-the sensor would have left it nowhere to go.
+The reservation matters: the motor driver's configuration channel is the only other thing on
+this board that needs a bus, and spending SPI1 on the sensor would have left it nowhere to go.
+
+| Signal                       | Pins                                 |
+|------------------------------|--------------------------------------|
+| Bridge inputs A1, A2, B1, B2 | PA8, PA9, PA10, PA11 (TIM1 CH1–CH4)  |
+| Driver fault                 | PA6 (TIM1 break) and PC4 (interrupt) |
+| Driver sleep, reset          | PB8, PB9                             |
+| Left encoder A, B, index     | PC0, PC2 (LPTIM1 IN1, IN2), PC5      |
+| Right encoder A, B, index    | PA0, PA1 (TIM2 CH1, CH2), PC3        |
 
 This is a board-level allocation, not part of the abstraction — the roles above say nothing
 about timers or buses, and a board with more of them is free to spend them differently. It is
