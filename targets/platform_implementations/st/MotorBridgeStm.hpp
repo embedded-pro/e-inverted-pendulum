@@ -15,7 +15,7 @@ namespace application
         MotorBridgeStm(uint8_t timerOneBasedIndex, hal::GpioPinStm& pwmPin, hal::GpioPinStm& breakPin, hal::GpioPin& directionPin, const hal::PwmStmBase::Config& config);
 
         void SetBaseFrequency(hal::Hertz baseFrequency) override;
-        void Start(hal::Percent input1, hal::Percent input2) override;
+        void Start(hal::DutyCycle input1, hal::DutyCycle input2) override;
         void Stop() override;
 
     private:

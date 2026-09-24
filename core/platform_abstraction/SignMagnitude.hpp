@@ -7,8 +7,8 @@ namespace platform
     struct SignMagnitude
     {
         bool secondInputHigh;
-        hal::Percent dutyCycle;
+        hal::DutyCycle dutyCycle;
     };
 
-    SignMagnitude AsSignMagnitude(hal::Percent input1, hal::Percent input2);
+    SignMagnitude AsSignMagnitude(hal::DutyCycle input1, hal::DutyCycle input2);
 }

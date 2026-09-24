@@ -5,18 +5,18 @@ namespace platform
 {
     namespace
     {
-        hal::Percent Off()
+        hal::DutyCycle Off()
         {
-            return hal::Percent{ 0 };
+            return hal::DutyCycle::FromPercent(0);
         }
 
-        hal::Percent Full()
+        hal::DutyCycle Full()
         {
-            return hal::Percent{ 100 };
+            return hal::DutyCycle::FromPercent(100);
         }
     }
 
-    SignMagnitude AsSignMagnitude(hal::Percent input1, hal::Percent input2)
+    SignMagnitude AsSignMagnitude(hal::DutyCycle input1, hal::DutyCycle input2)
     {
         really_assert(input1 == Off() || input2 == Off() || (input1 == Full() && input2 == Full()));
 
@@ -26,6 +26,6 @@ namespace platform
         if (input2 == Off())
             return { false, input1 };
 
-        return { true, Full() - input2 };
+        return { true, hal::DutyCycle{ Full().Value() - input2.Value() } };
     }
 }

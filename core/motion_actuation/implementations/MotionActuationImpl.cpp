@@ -6,19 +6,19 @@ namespace motion
 {
     namespace
     {
-        hal::Percent Off()
+        hal::DutyCycle Off()
         {
-            return hal::Percent{ 0 };
+            return hal::DutyCycle::FromPercent(0);
         }
 
-        hal::Percent Full()
+        hal::DutyCycle Full()
         {
-            return hal::Percent{ 100 };
+            return hal::DutyCycle::FromPercent(100);
         }
 
-        hal::Percent DutyOf(float magnitude)
+        hal::DutyCycle DutyOf(float magnitude)
         {
-            return hal::Percent{ static_cast<uint8_t>(std::lround(std::clamp(magnitude, 0.0f, 1.0f) * 100.0f)) };
+            return hal::DutyCycle{ static_cast<uint32_t>(std::lround(std::clamp(magnitude, 0.0f, 1.0f) * static_cast<float>(hal::DutyCycle::fullScale))) };
         }
     }
 

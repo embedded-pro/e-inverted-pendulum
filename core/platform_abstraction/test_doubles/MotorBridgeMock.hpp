@@ -12,7 +12,7 @@ namespace platform
         virtual ~MotorBridgeMock() = default;
 
         MOCK_METHOD(void, SetBaseFrequency, (hal::Hertz baseFrequency), (override));
-        MOCK_METHOD(void, Start, (hal::Percent input1, hal::Percent input2), (override));
+        MOCK_METHOD(void, Start, (hal::DutyCycle input1, hal::DutyCycle input2), (override));
         MOCK_METHOD(void, Stop, (), (override));
     };
 }

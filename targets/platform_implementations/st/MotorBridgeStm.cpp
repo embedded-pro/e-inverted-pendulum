@@ -14,13 +14,13 @@ namespace application
         pwm.SetBaseFrequency(baseFrequency);
     }
 
-    void MotorBridgeStm::Start(hal::Percent input1, hal::Percent input2)
+    void MotorBridgeStm::Start(hal::DutyCycle input1, hal::DutyCycle input2)
     {
         const auto command = platform::AsSignMagnitude(input1, input2);
 
         if (command.secondInputHigh != directionHigh)
         {
-            pwm.Start(hal::Percent{ 0 });
+            pwm.Start(hal::DutyCycle::FromPercent(0));
             direction.Set(command.secondInputHigh);
             directionHigh = command.secondInputHigh;
         }
@@ -30,6 +30,6 @@ namespace application
 
     void MotorBridgeStm::Stop()
     {
-        Start(hal::Percent{ 0 }, hal::Percent{ 0 });
+        Start(hal::DutyCycle::FromPercent(0), hal::DutyCycle::FromPercent(0));
     }
 }

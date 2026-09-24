@@ -11,7 +11,7 @@ namespace application
         void SetBaseFrequency(hal::Hertz) override
         {}
 
-        void Start(hal::Percent, hal::Percent) override
+        void Start(hal::DutyCycle, hal::DutyCycle) override
         {}
 
         void Stop() override
