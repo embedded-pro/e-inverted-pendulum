@@ -18,6 +18,14 @@ namespace balance
         {
             return Effort{ std::clamp(effort.left, -1.0f, 1.0f), std::clamp(effort.right, -1.0f, 1.0f) };
         }
+
+        float TowardsZero(float value, float step)
+        {
+            if (std::fabs(value) <= step)
+                return 0.0f;
+
+            return value > 0.0f ? value - step : value + step;
+        }
     }
 
     BalanceControlImpl::Config::Config() = default;
@@ -70,7 +78,7 @@ namespace balance
     {
         const auto descriptors = Active().Parameters();
 
-        if (engaged || index >= descriptors.size() || value < descriptors[index].minimum || value > descriptors[index].maximum)
+        if (engaged || index >= descriptors.size() || !(value >= descriptors[index].minimum && value <= descriptors[index].maximum))
             return false;
 
         Active().SetParameter(index, value);
@@ -79,17 +87,28 @@ namespace balance
 
     bool BalanceControlImpl::Move(const Setpoints& commanded)
     {
-        if (!engaged || std::fabs(commanded.velocity) > config.maximumVelocity || std::fabs(commanded.yawRate) > config.maximumYawRate)
+        if (!engaged || !(std::fabs(commanded.velocity) <= config.maximumVelocity) || !(std::fabs(commanded.yawRate) <= config.maximumYawRate))
             return false;
 
         setpoints = commanded;
         commandedAt = infra::Now();
+        cancelled = false;
         return true;
+    }
+
+    void BalanceControlImpl::CancelMotion()
+    {
+        cancelled = true;
     }
 
     bool BalanceControlImpl::Engaged() const
     {
         return engaged;
+    }
+
+    Effort BalanceControlImpl::AppliedEffort() const
+    {
+        return applied;
     }
 
     void BalanceControlImpl::Balance(const estimation::Estimate& estimate, infra::Duration interval)
@@ -99,12 +118,13 @@ namespace balance
 
         if (!estimate.valid)
         {
+            applied = Effort{};
             actuation.Apply(0.0f, 0.0f);
             return;
         }
 
         const auto requested = Active().Balance(estimate, Seconds(interval));
-        const auto applied = Saturate(requested);
+        applied = Saturate(requested);
 
         if (applied != requested)
             Active().Saturated(applied);
@@ -114,13 +134,18 @@ namespace balance
 
     void BalanceControlImpl::Steer(infra::Duration interval)
     {
-        if (engaged)
-            Active().Steer(CurrentSetpoints(), odometry.Chassis(), Seconds(interval));
+        if (!engaged)
+            return;
+
+        const auto intervalSeconds = Seconds(interval);
+        DecayUnlessCommanded(intervalSeconds);
+        Active().Steer(setpoints, odometry.Chassis(), intervalSeconds);
     }
 
     void BalanceControlImpl::Engage()
     {
         setpoints = Setpoints{};
+        cancelled = true;
         Active().Reset();
         engaged = true;
     }
@@ -129,6 +154,8 @@ namespace balance
     {
         engaged = false;
         setpoints = Setpoints{};
+        cancelled = true;
+        applied = Effort{};
     }
 
     ControlStrategy& BalanceControlImpl::Active() const
@@ -136,11 +163,12 @@ namespace balance
         return *strategies[active];
     }
 
-    Setpoints BalanceControlImpl::CurrentSetpoints() const
+    void BalanceControlImpl::DecayUnlessCommanded(float intervalSeconds)
     {
-        if (infra::Now() - commandedAt > config.setpointHold)
-            return Setpoints{};
+        if (!cancelled && infra::Now() - commandedAt <= config.commandTimeout)
+            return;
 
-        return setpoints;
+        setpoints.velocity = TowardsZero(setpoints.velocity, config.velocityDeceleration * intervalSeconds);
+        setpoints.yawRate = TowardsZero(setpoints.yawRate, config.yawDeceleration * intervalSeconds);
     }
 }

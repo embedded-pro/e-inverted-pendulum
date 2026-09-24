@@ -148,7 +148,9 @@ namespace
         MOCK_METHOD(float, Parameter, (std::size_t index), (const, override));
         MOCK_METHOD(bool, SetParameter, (std::size_t index, float value), (override));
         MOCK_METHOD(bool, Move, (const balance::Setpoints& setpoints), (override));
+        MOCK_METHOD(void, CancelMotion, (), (override));
         MOCK_METHOD(bool, Engaged, (), (const, override));
+        MOCK_METHOD(balance::Effort, AppliedEffort, (), (const, override));
     };
 
     constexpr std::array<balance::ParameterDescriptor, 2> descriptors{ {

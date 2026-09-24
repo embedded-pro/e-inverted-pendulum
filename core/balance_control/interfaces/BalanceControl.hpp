@@ -22,7 +22,9 @@ namespace balance
         virtual bool SetParameter(std::size_t index, float value) = 0;
 
         virtual bool Move(const Setpoints& setpoints) = 0;
+        virtual void CancelMotion() = 0;
         virtual bool Engaged() const = 0;
+        virtual Effort AppliedEffort() const = 0;
 
     protected:
         ~BalanceControl() = default;

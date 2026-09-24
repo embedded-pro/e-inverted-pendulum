@@ -4,6 +4,8 @@
 #include "gtest/gtest.h"
 #include <array>
 #include <chrono>
+#include <cmath>
+#include <limits>
 
 namespace
 {
@@ -49,6 +51,11 @@ namespace
         MOCK_METHOD(odometry::ChassisMotion, Chassis, (), (const, override));
     };
 
+    MATCHER_P2(SetpointsNear, velocity, yawRate, "")
+    {
+        return std::fabs(arg.velocity - velocity) < 1e-5f && std::fabs(arg.yawRate - yawRate) < 1e-5f;
+    }
+
     MATCHER_P2(ChassisIs, velocity, yawRate, "")
     {
         return arg.forwardVelocity == velocity && arg.yawRate == yawRate;
@@ -70,6 +77,12 @@ namespace
         {
             EXPECT_CALL(first, Reset());
             control.Engage();
+        }
+
+        void ExpectSteer(float velocity, float yawRate)
+        {
+            EXPECT_CALL(odometry, Chassis()).WillOnce(testing::Return(odometry::ChassisMotion{}));
+            EXPECT_CALL(first, Steer(SetpointsNear(velocity, yawRate), testing::_, testing::_));
         }
 
         testing::StrictMock<ControlStrategyMock> first;
@@ -145,19 +158,92 @@ TEST_F(BalanceControlImplTest, steering_passes_the_setpoints_and_measured_chassi
     control.Steer(20ms);
 }
 
-TEST_F(BalanceControlImplTest, setpoints_fall_back_to_zero_after_a_second_without_a_command)
+TEST_F(BalanceControlImplTest, a_command_holds_for_the_command_timeout)
+{
+    Engage();
+    EXPECT_TRUE(control.Move(balance::Setpoints{ 0.5f, 0.8f }));
+
+    ForwardTime(500ms);
+    ExpectSteer(0.5f, 0.8f);
+    control.Steer(20ms);
+}
+
+TEST_F(BalanceControlImplTest, after_the_timeout_setpoints_decay_at_a_fixed_deceleration)
+{
+    Engage();
+    EXPECT_TRUE(control.Move(balance::Setpoints{ 0.5f, -0.8f }));
+    ForwardTime(501ms);
+
+    ExpectSteer(0.49f, -0.768f);
+    control.Steer(20ms);
+
+    ExpectSteer(0.47f, -0.704f);
+    control.Steer(40ms);
+}
+
+TEST_F(BalanceControlImplTest, decay_stops_at_zero)
+{
+    Engage();
+    EXPECT_TRUE(control.Move(balance::Setpoints{ -0.005f, 0.01f }));
+    ForwardTime(501ms);
+
+    ExpectSteer(0.0f, 0.0f);
+    control.Steer(20ms);
+}
+
+TEST_F(BalanceControlImplTest, cancelling_motion_starts_the_decay_at_once)
 {
     Engage();
     EXPECT_TRUE(control.Move(balance::Setpoints{ 0.5f, 0.0f }));
 
-    ForwardTime(1000ms);
-    EXPECT_CALL(odometry, Chassis()).WillRepeatedly(testing::Return(odometry::ChassisMotion{}));
-    EXPECT_CALL(first, Steer(balance::Setpoints{ 0.5f, 0.0f }, testing::_, testing::_));
+    control.CancelMotion();
+
+    ExpectSteer(0.49f, 0.0f);
+    control.Steer(20ms);
+}
+
+TEST_F(BalanceControlImplTest, a_new_command_stops_the_decay)
+{
+    Engage();
+    EXPECT_TRUE(control.Move(balance::Setpoints{ 0.5f, 0.0f }));
+    control.CancelMotion();
+    ExpectSteer(0.49f, 0.0f);
     control.Steer(20ms);
 
-    ForwardTime(1ms);
-    EXPECT_CALL(first, Steer(balance::Setpoints{}, testing::_, testing::_));
+    EXPECT_TRUE(control.Move(balance::Setpoints{ 0.3f, 0.0f }));
+
+    ExpectSteer(0.3f, 0.0f);
     control.Steer(20ms);
+}
+
+TEST_F(BalanceControlImplTest, the_applied_effort_is_reported)
+{
+    EXPECT_EQ((balance::Effort{}), control.AppliedEffort());
+    Engage();
+
+    EXPECT_CALL(first, Balance(testing::_, testing::_)).WillOnce(testing::Return(balance::Effort{ 1.5f, -0.3f }));
+    EXPECT_CALL(first, Saturated(testing::_));
+    EXPECT_CALL(actuation, Apply(testing::_, testing::_));
+    control.Balance(upright, 2ms);
+
+    EXPECT_EQ((balance::Effort{ 1.0f, -0.3f }), control.AppliedEffort());
+}
+
+TEST_F(BalanceControlImplTest, no_effort_is_reported_for_an_invalid_estimate_or_after_disengaging)
+{
+    Engage();
+    EXPECT_CALL(first, Balance(testing::_, testing::_)).WillOnce(testing::Return(balance::Effort{ 0.5f, 0.5f }));
+    EXPECT_CALL(actuation, Apply(testing::_, testing::_)).Times(2);
+    control.Balance(upright, 2ms);
+
+    control.Balance(estimation::Estimate{}, 2ms);
+    EXPECT_EQ((balance::Effort{}), control.AppliedEffort());
+
+    EXPECT_CALL(first, Balance(testing::_, testing::_)).WillOnce(testing::Return(balance::Effort{ 0.5f, 0.5f }));
+    EXPECT_CALL(actuation, Apply(testing::_, testing::_));
+    control.Balance(upright, 2ms);
+    control.Disengage();
+    EXPECT_EQ((balance::Effort{}), control.AppliedEffort());
 }
 
 TEST_F(BalanceControlImplTest, move_is_refused_while_disengaged)
@@ -241,4 +327,19 @@ TEST_F(BalanceControlImplTest, parameter_writes_are_refused_while_engaged)
     EXPECT_CALL(first, Parameters()).WillOnce(testing::Return(infra::MakeRange(descriptors)));
 
     EXPECT_FALSE(control.SetParameter(0, 0.5f));
+}
+
+TEST_F(BalanceControlImplTest, a_move_that_is_not_a_number_is_refused)
+{
+    Engage();
+
+    EXPECT_FALSE(control.Move(balance::Setpoints{ std::numeric_limits<float>::quiet_NaN(), 0.0f }));
+    EXPECT_FALSE(control.Move(balance::Setpoints{ 0.0f, std::numeric_limits<float>::infinity() }));
+}
+
+TEST_F(BalanceControlImplTest, a_parameter_that_is_not_a_number_is_rejected)
+{
+    EXPECT_CALL(first, Parameters()).WillOnce(testing::Return(infra::MakeRange(descriptors)));
+
+    EXPECT_FALSE(control.SetParameter(0, std::numeric_limits<float>::quiet_NaN()));
 }

@@ -23,6 +23,7 @@ namespace application
         platform::MotorDriver& Motors() override;
         platform::WheelEncoders& Encoders() override;
         platform::InertialSensor& Inertial() override;
+        void StartBluetooth(const infra::Function<void(platform::Bluetooth& bluetooth)>& onReady) override;
         void Run() override;
 
     private:

@@ -11,9 +11,11 @@ target_link_libraries(inverted_pendulum_bot.platform_abstraction PUBLIC
     infra.timer
     hal.synchronous_interfaces
     services.tracer
+    services.ble
 )
 
 target_sources(inverted_pendulum_bot.platform_abstraction PRIVATE
+    Bluetooth.hpp
     InertialFrame.hpp
     InertialFrame.cpp
     InertialSensor.hpp

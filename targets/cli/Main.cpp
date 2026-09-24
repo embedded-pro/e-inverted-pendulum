@@ -1,5 +1,6 @@
 #include PLATFORM_IMPL_HEADER
 #include "core/attitude_estimation/implementations/AttitudeEstimationImpl.hpp"
+#include "core/ble_link/BleLink.hpp"
 #include "core/balance_control/implementations/BalanceControlImpl.hpp"
 #include "core/balance_control/implementations/CascadedPidStrategy.hpp"
 #include "core/balance_control/implementations/LqrStrategy.hpp"
@@ -9,8 +10,10 @@
 #include "core/motion_actuation/implementations/Drv8711DriverConfiguration.hpp"
 #include "core/motion_actuation/implementations/MotionActuationImpl.hpp"
 #include "core/safety_supervisor/implementations/SafetySupervisorImpl.hpp"
+#include "core/telemetry/implementations/TelemetryRecorder.hpp"
 #include "core/wheel_odometry/implementations/WheelOdometryImpl.hpp"
 #include <array>
+#include <optional>
 
 int main()
 {
@@ -25,8 +28,15 @@ int main()
     static std::array<balance::ControlStrategy*, 2> strategies{ &cascadedPid, &lqr };
     static balance::BalanceControlImpl balanceControl{ infra::MakeRange(strategies), motionActuation, wheelOdometry };
     static safety::SafetySupervisorImpl supervisor{ motionActuation, inertialSensing, balanceControl };
-    static control::ControlLoopImpl controlLoop{ inertialSensing, attitudeEstimation, supervisor, supervisor };
+    static telemetry::TelemetryRecorder telemetryRecorder{ supervisor, balanceControl, wheelOdometry, supervisor };
+    static control::ControlLoopImpl controlLoop{ inertialSensing, attitudeEstimation, telemetryRecorder, supervisor };
     static application::Cli cli{ platform, motionActuation, wheelOdometry, inertialSensing, attitudeEstimation, controlLoop, supervisor, balanceControl };
+
+    static std::optional<ble::BleLink> bleLink;
+    platform.StartBluetooth([](platform::Bluetooth& bluetooth)
+        {
+            bleLink.emplace(bluetooth, "inverted-pendulum", supervisor, balanceControl, telemetryRecorder);
+        });
 
     platform.Run();
 
