@@ -16,7 +16,6 @@ target_link_libraries(inverted_pendulum_bot.control_loop.implementations PUBLIC
 target_sources(inverted_pendulum_bot.control_loop.implementations PRIVATE
     ControlLoopImpl.hpp
     ControlLoopImpl.cpp
-    IdleStages.hpp
 )
 
 add_subdirectory(test)

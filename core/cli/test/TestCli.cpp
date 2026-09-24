@@ -1,4 +1,5 @@
 #include "core/attitude_estimation/interfaces/AttitudeEstimation.hpp"
+#include "core/balance_control/interfaces/BalanceControl.hpp"
 #include "core/cli/Cli.hpp"
 #include "core/control_loop/interfaces/ControlLoop.hpp"
 #include "core/inertial_sensing/interfaces/InertialSensing.hpp"
@@ -11,6 +12,7 @@
 #include "infra/timer/test_helper/ClockFixture.hpp"
 #include "services/tracer/Tracer.hpp"
 #include "gmock/gmock.h"
+#include <array>
 #include <chrono>
 #include <string>
 
@@ -132,6 +134,28 @@ namespace
         MOCK_METHOD(bool, DrivePermitted, (), (const, override));
     };
 
+    class BalanceControlMock
+        : public balance::BalanceControl
+    {
+    public:
+        virtual ~BalanceControlMock() = default;
+
+        MOCK_METHOD(std::size_t, StrategyCount, (), (const, override));
+        MOCK_METHOD(const char*, StrategyName, (std::size_t index), (const, override));
+        MOCK_METHOD(std::size_t, ActiveStrategy, (), (const, override));
+        MOCK_METHOD(bool, Select, (std::size_t index), (override));
+        MOCK_METHOD(infra::MemoryRange<const balance::ParameterDescriptor>, Parameters, (), (const, override));
+        MOCK_METHOD(float, Parameter, (std::size_t index), (const, override));
+        MOCK_METHOD(bool, SetParameter, (std::size_t index, float value), (override));
+        MOCK_METHOD(bool, Move, (const balance::Setpoints& setpoints), (override));
+        MOCK_METHOD(bool, Engaged, (), (const, override));
+    };
+
+    constexpr std::array<balance::ParameterDescriptor, 2> descriptors{ {
+        { "pitch.kp", 0.0f, 50.0f },
+        { "pitch.ki", 0.0f, 100.0f },
+    } };
+
     class CliTest
         : public testing::Test
         , public infra::ClockFixture
@@ -176,12 +200,13 @@ namespace
         testing::StrictMock<AttitudeEstimationMock> attitudeEstimation;
         testing::StrictMock<ControlLoopMock> controlLoop;
         testing::StrictMock<SafetySupervisorMock> supervisor;
+        testing::StrictMock<BalanceControlMock> balanceControl;
     };
 }
 
 TEST_F(CliTest, greets_and_shows_a_prompt_on_construction)
 {
-    application::Cli cli{ platform, motionActuation, wheelOdometry, inertialSensing, attitudeEstimation, controlLoop, supervisor };
+    application::Cli cli{ platform, motionActuation, wheelOdometry, inertialSensing, attitudeEstimation, controlLoop, supervisor, balanceControl };
 
     EXPECT_THAT(Output(), testing::HasSubstr("ready"));
     EXPECT_THAT(Output(), testing::HasSubstr("arm"));
@@ -190,7 +215,7 @@ TEST_F(CliTest, greets_and_shows_a_prompt_on_construction)
 
 TEST_F(CliTest, ping_replies_pong)
 {
-    application::Cli cli{ platform, motionActuation, wheelOdometry, inertialSensing, attitudeEstimation, controlLoop, supervisor };
+    application::Cli cli{ platform, motionActuation, wheelOdometry, inertialSensing, attitudeEstimation, controlLoop, supervisor, balanceControl };
 
     Send("ping");
 
@@ -199,50 +224,16 @@ TEST_F(CliTest, ping_replies_pong)
 
 TEST_F(CliTest, id_prints_the_board_identifier)
 {
-    application::Cli cli{ platform, motionActuation, wheelOdometry, inertialSensing, attitudeEstimation, controlLoop, supervisor };
+    application::Cli cli{ platform, motionActuation, wheelOdometry, inertialSensing, attitudeEstimation, controlLoop, supervisor, balanceControl };
 
     Send("id");
 
     EXPECT_THAT(Output(), testing::HasSubstr("inverted-pendulum-bot cli"));
 }
 
-TEST_F(CliTest, drive_applies_both_efforts)
-{
-    application::Cli cli{ platform, motionActuation, wheelOdometry, inertialSensing, attitudeEstimation, controlLoop, supervisor };
-
-    EXPECT_CALL(supervisor, DrivePermitted()).WillOnce(testing::Return(true));
-    EXPECT_CALL(motionActuation, Apply(testing::FloatEq(0.3f), testing::FloatEq(-0.7f)));
-
-    Send("drive 0.3 -0.7");
-
-    EXPECT_THAT(Output(), testing::HasSubstr("driving"));
-}
-
-TEST_F(CliTest, drive_without_a_second_argument_prints_usage)
-{
-    application::Cli cli{ platform, motionActuation, wheelOdometry, inertialSensing, attitudeEstimation, controlLoop, supervisor };
-
-    EXPECT_CALL(supervisor, DrivePermitted()).WillOnce(testing::Return(true));
-
-    Send("drive 0.3");
-
-    EXPECT_THAT(Output(), testing::HasSubstr("usage: drive"));
-}
-
-TEST_F(CliTest, drive_is_refused_unless_armed)
-{
-    application::Cli cli{ platform, motionActuation, wheelOdometry, inertialSensing, attitudeEstimation, controlLoop, supervisor };
-
-    EXPECT_CALL(supervisor, DrivePermitted()).WillOnce(testing::Return(false));
-
-    Send("drive 0.3 -0.7");
-
-    EXPECT_THAT(Output(), testing::HasSubstr("refused: not armed"));
-}
-
 TEST_F(CliTest, tristate_releases_the_bridges)
 {
-    application::Cli cli{ platform, motionActuation, wheelOdometry, inertialSensing, attitudeEstimation, controlLoop, supervisor };
+    application::Cli cli{ platform, motionActuation, wheelOdometry, inertialSensing, attitudeEstimation, controlLoop, supervisor, balanceControl };
 
     EXPECT_CALL(motionActuation, Disable(motion::DisableState::tristate));
 
@@ -253,7 +244,7 @@ TEST_F(CliTest, tristate_releases_the_bridges)
 
 TEST_F(CliTest, brake_shorts_the_motors)
 {
-    application::Cli cli{ platform, motionActuation, wheelOdometry, inertialSensing, attitudeEstimation, controlLoop, supervisor };
+    application::Cli cli{ platform, motionActuation, wheelOdometry, inertialSensing, attitudeEstimation, controlLoop, supervisor, balanceControl };
 
     EXPECT_CALL(motionActuation, Disable(motion::DisableState::brake));
 
@@ -262,64 +253,9 @@ TEST_F(CliTest, brake_shorts_the_motors)
     EXPECT_THAT(Output(), testing::HasSubstr("braking"));
 }
 
-TEST_F(CliTest, drive_with_a_missing_right_argument_is_rejected)
-{
-    application::Cli cli{ platform, motionActuation, wheelOdometry, inertialSensing, attitudeEstimation, controlLoop, supervisor };
-
-    EXPECT_CALL(supervisor, DrivePermitted()).WillOnce(testing::Return(true));
-
-    Send("drive 0.3 ");
-
-    EXPECT_THAT(Output(), testing::HasSubstr("usage: drive"));
-}
-
-TEST_F(CliTest, drive_with_a_non_numeric_argument_is_rejected)
-{
-    application::Cli cli{ platform, motionActuation, wheelOdometry, inertialSensing, attitudeEstimation, controlLoop, supervisor };
-
-    EXPECT_CALL(supervisor, DrivePermitted()).WillOnce(testing::Return(true));
-
-    Send("drive abc def");
-
-    EXPECT_THAT(Output(), testing::HasSubstr("usage: drive"));
-}
-
-TEST_F(CliTest, drive_with_a_trailing_third_argument_is_rejected)
-{
-    application::Cli cli{ platform, motionActuation, wheelOdometry, inertialSensing, attitudeEstimation, controlLoop, supervisor };
-
-    EXPECT_CALL(supervisor, DrivePermitted()).WillOnce(testing::Return(true));
-
-    Send("drive 0.3 0.7 0.9");
-
-    EXPECT_THAT(Output(), testing::HasSubstr("usage: drive"));
-}
-
-TEST_F(CliTest, drive_with_a_partially_numeric_argument_is_rejected)
-{
-    application::Cli cli{ platform, motionActuation, wheelOdometry, inertialSensing, attitudeEstimation, controlLoop, supervisor };
-
-    EXPECT_CALL(supervisor, DrivePermitted()).WillOnce(testing::Return(true));
-
-    Send("drive 0.3 0.7x");
-
-    EXPECT_THAT(Output(), testing::HasSubstr("usage: drive"));
-}
-
-TEST_F(CliTest, drive_with_an_over_long_argument_is_rejected)
-{
-    application::Cli cli{ platform, motionActuation, wheelOdometry, inertialSensing, attitudeEstimation, controlLoop, supervisor };
-
-    EXPECT_CALL(supervisor, DrivePermitted()).WillOnce(testing::Return(true));
-
-    Send("drive 0.3 0.70000000000000");
-
-    EXPECT_THAT(Output(), testing::HasSubstr("usage: drive"));
-}
-
 TEST_F(CliTest, odom_reports_both_wheels_and_the_chassis)
 {
-    application::Cli cli{ platform, motionActuation, wheelOdometry, inertialSensing, attitudeEstimation, controlLoop, supervisor };
+    application::Cli cli{ platform, motionActuation, wheelOdometry, inertialSensing, attitudeEstimation, controlLoop, supervisor, balanceControl };
 
     EXPECT_CALL(wheelOdometry, Left()).WillOnce(testing::Return(odometry::WheelMotion{ 120, 3.5f }));
     EXPECT_CALL(wheelOdometry, Right()).WillOnce(testing::Return(odometry::WheelMotion{ -40, -1.25f }));
@@ -334,7 +270,7 @@ TEST_F(CliTest, odom_reports_both_wheels_and_the_chassis)
 
 TEST_F(CliTest, imu_reports_the_latest_sample_and_its_validity)
 {
-    application::Cli cli{ platform, motionActuation, wheelOdometry, inertialSensing, attitudeEstimation, controlLoop, supervisor };
+    application::Cli cli{ platform, motionActuation, wheelOdometry, inertialSensing, attitudeEstimation, controlLoop, supervisor, balanceControl };
 
     sensing::Measurement measurement;
     measurement.angularRate = { 0.5f, -0.25f, 0.125f };
@@ -353,7 +289,7 @@ TEST_F(CliTest, imu_reports_the_latest_sample_and_its_validity)
 
 TEST_F(CliTest, imu_reports_an_invalid_sample_as_such)
 {
-    application::Cli cli{ platform, motionActuation, wheelOdometry, inertialSensing, attitudeEstimation, controlLoop, supervisor };
+    application::Cli cli{ platform, motionActuation, wheelOdometry, inertialSensing, attitudeEstimation, controlLoop, supervisor, balanceControl };
 
     sensing::Measurement stale;
     stale.cause = sensing::InvalidCause::stale;
@@ -367,7 +303,7 @@ TEST_F(CliTest, imu_reports_an_invalid_sample_as_such)
 
 TEST_F(CliTest, calibrate_asks_the_supervisor_to_recalibrate)
 {
-    application::Cli cli{ platform, motionActuation, wheelOdometry, inertialSensing, attitudeEstimation, controlLoop, supervisor };
+    application::Cli cli{ platform, motionActuation, wheelOdometry, inertialSensing, attitudeEstimation, controlLoop, supervisor, balanceControl };
 
     EXPECT_CALL(supervisor, Calibrate()).WillOnce(testing::Return(true));
 
@@ -378,7 +314,7 @@ TEST_F(CliTest, calibrate_asks_the_supervisor_to_recalibrate)
 
 TEST_F(CliTest, calibrate_outside_idle_is_refused)
 {
-    application::Cli cli{ platform, motionActuation, wheelOdometry, inertialSensing, attitudeEstimation, controlLoop, supervisor };
+    application::Cli cli{ platform, motionActuation, wheelOdometry, inertialSensing, attitudeEstimation, controlLoop, supervisor, balanceControl };
 
     EXPECT_CALL(supervisor, Calibrate()).WillOnce(testing::Return(false));
 
@@ -389,7 +325,7 @@ TEST_F(CliTest, calibrate_outside_idle_is_refused)
 
 TEST_F(CliTest, clear_releases_the_latched_fault)
 {
-    application::Cli cli{ platform, motionActuation, wheelOdometry, inertialSensing, attitudeEstimation, controlLoop, supervisor };
+    application::Cli cli{ platform, motionActuation, wheelOdometry, inertialSensing, attitudeEstimation, controlLoop, supervisor, balanceControl };
 
     EXPECT_CALL(supervisor, ClearFault()).WillOnce(testing::Return(true));
 
@@ -400,7 +336,7 @@ TEST_F(CliTest, clear_releases_the_latched_fault)
 
 TEST_F(CliTest, clear_without_a_fault_is_refused)
 {
-    application::Cli cli{ platform, motionActuation, wheelOdometry, inertialSensing, attitudeEstimation, controlLoop, supervisor };
+    application::Cli cli{ platform, motionActuation, wheelOdometry, inertialSensing, attitudeEstimation, controlLoop, supervisor, balanceControl };
 
     EXPECT_CALL(supervisor, ClearFault()).WillOnce(testing::Return(false));
 
@@ -411,7 +347,7 @@ TEST_F(CliTest, clear_without_a_fault_is_refused)
 
 TEST_F(CliTest, driver_reports_state_and_latched_fault)
 {
-    application::Cli cli{ platform, motionActuation, wheelOdometry, inertialSensing, attitudeEstimation, controlLoop, supervisor };
+    application::Cli cli{ platform, motionActuation, wheelOdometry, inertialSensing, attitudeEstimation, controlLoop, supervisor, balanceControl };
 
     EXPECT_CALL(motionActuation, State()).WillOnce(testing::Return(motion::DriverState::failed));
     EXPECT_CALL(motionActuation, Fault()).WillOnce(testing::Return(motion::FaultCause::driverFault));
@@ -423,7 +359,7 @@ TEST_F(CliTest, driver_reports_state_and_latched_fault)
 
 TEST_F(CliTest, attitude_reports_the_estimate_and_the_selected_filter)
 {
-    application::Cli cli{ platform, motionActuation, wheelOdometry, inertialSensing, attitudeEstimation, controlLoop, supervisor };
+    application::Cli cli{ platform, motionActuation, wheelOdometry, inertialSensing, attitudeEstimation, controlLoop, supervisor, balanceControl };
 
     EXPECT_CALL(attitudeEstimation, Latest()).WillOnce(testing::Return(estimation::Estimate{ 0.25f, -0.5f, false, estimation::InvalidCause::converging }));
     EXPECT_CALL(attitudeEstimation, Selected()).WillOnce(testing::Return(estimation::Filter::kalman));
@@ -437,7 +373,7 @@ TEST_F(CliTest, attitude_reports_the_estimate_and_the_selected_filter)
 
 TEST_F(CliTest, filter_without_argument_reports_the_selected_filter)
 {
-    application::Cli cli{ platform, motionActuation, wheelOdometry, inertialSensing, attitudeEstimation, controlLoop, supervisor };
+    application::Cli cli{ platform, motionActuation, wheelOdometry, inertialSensing, attitudeEstimation, controlLoop, supervisor, balanceControl };
 
     EXPECT_CALL(attitudeEstimation, Selected()).WillOnce(testing::Return(estimation::Filter::complementary));
 
@@ -448,7 +384,7 @@ TEST_F(CliTest, filter_without_argument_reports_the_selected_filter)
 
 TEST_F(CliTest, filter_selects_kalman)
 {
-    application::Cli cli{ platform, motionActuation, wheelOdometry, inertialSensing, attitudeEstimation, controlLoop, supervisor };
+    application::Cli cli{ platform, motionActuation, wheelOdometry, inertialSensing, attitudeEstimation, controlLoop, supervisor, balanceControl };
 
     EXPECT_CALL(attitudeEstimation, Select(estimation::Filter::kalman));
 
@@ -459,7 +395,7 @@ TEST_F(CliTest, filter_selects_kalman)
 
 TEST_F(CliTest, filter_selects_complementary)
 {
-    application::Cli cli{ platform, motionActuation, wheelOdometry, inertialSensing, attitudeEstimation, controlLoop, supervisor };
+    application::Cli cli{ platform, motionActuation, wheelOdometry, inertialSensing, attitudeEstimation, controlLoop, supervisor, balanceControl };
 
     EXPECT_CALL(attitudeEstimation, Select(estimation::Filter::complementary));
 
@@ -470,7 +406,7 @@ TEST_F(CliTest, filter_selects_complementary)
 
 TEST_F(CliTest, filter_rejects_an_unknown_name)
 {
-    application::Cli cli{ platform, motionActuation, wheelOdometry, inertialSensing, attitudeEstimation, controlLoop, supervisor };
+    application::Cli cli{ platform, motionActuation, wheelOdometry, inertialSensing, attitudeEstimation, controlLoop, supervisor, balanceControl };
 
     Send("filter median");
 
@@ -479,7 +415,7 @@ TEST_F(CliTest, filter_rejects_an_unknown_name)
 
 TEST_F(CliTest, loop_reports_timing_statistics)
 {
-    application::Cli cli{ platform, motionActuation, wheelOdometry, inertialSensing, attitudeEstimation, controlLoop, supervisor };
+    application::Cli cli{ platform, motionActuation, wheelOdometry, inertialSensing, attitudeEstimation, controlLoop, supervisor, balanceControl };
 
     EXPECT_CALL(controlLoop, Statistics()).WillOnce(testing::Return(control::TimingStatistics{ 500, std::chrono::microseconds{ 120 }, 3 }));
 
@@ -490,7 +426,7 @@ TEST_F(CliTest, loop_reports_timing_statistics)
 
 TEST_F(CliTest, loop_reset_clears_timing_statistics)
 {
-    application::Cli cli{ platform, motionActuation, wheelOdometry, inertialSensing, attitudeEstimation, controlLoop, supervisor };
+    application::Cli cli{ platform, motionActuation, wheelOdometry, inertialSensing, attitudeEstimation, controlLoop, supervisor, balanceControl };
 
     EXPECT_CALL(controlLoop, ResetStatistics());
 
@@ -501,7 +437,7 @@ TEST_F(CliTest, loop_reset_clears_timing_statistics)
 
 TEST_F(CliTest, arm_reports_an_accepted_request)
 {
-    application::Cli cli{ platform, motionActuation, wheelOdometry, inertialSensing, attitudeEstimation, controlLoop, supervisor };
+    application::Cli cli{ platform, motionActuation, wheelOdometry, inertialSensing, attitudeEstimation, controlLoop, supervisor, balanceControl };
 
     EXPECT_CALL(supervisor, Arm()).WillOnce(testing::Return(true));
 
@@ -512,7 +448,7 @@ TEST_F(CliTest, arm_reports_an_accepted_request)
 
 TEST_F(CliTest, arm_reports_a_refused_request)
 {
-    application::Cli cli{ platform, motionActuation, wheelOdometry, inertialSensing, attitudeEstimation, controlLoop, supervisor };
+    application::Cli cli{ platform, motionActuation, wheelOdometry, inertialSensing, attitudeEstimation, controlLoop, supervisor, balanceControl };
 
     EXPECT_CALL(supervisor, Arm()).WillOnce(testing::Return(false));
 
@@ -523,7 +459,7 @@ TEST_F(CliTest, arm_reports_a_refused_request)
 
 TEST_F(CliTest, disarm_reports_an_accepted_request)
 {
-    application::Cli cli{ platform, motionActuation, wheelOdometry, inertialSensing, attitudeEstimation, controlLoop, supervisor };
+    application::Cli cli{ platform, motionActuation, wheelOdometry, inertialSensing, attitudeEstimation, controlLoop, supervisor, balanceControl };
 
     EXPECT_CALL(supervisor, Disarm()).WillOnce(testing::Return(true));
 
@@ -534,7 +470,7 @@ TEST_F(CliTest, disarm_reports_an_accepted_request)
 
 TEST_F(CliTest, disarm_while_not_armed_is_refused)
 {
-    application::Cli cli{ platform, motionActuation, wheelOdometry, inertialSensing, attitudeEstimation, controlLoop, supervisor };
+    application::Cli cli{ platform, motionActuation, wheelOdometry, inertialSensing, attitudeEstimation, controlLoop, supervisor, balanceControl };
 
     EXPECT_CALL(supervisor, Disarm()).WillOnce(testing::Return(false));
 
@@ -545,7 +481,7 @@ TEST_F(CliTest, disarm_while_not_armed_is_refused)
 
 TEST_F(CliTest, mode_reports_the_mode_and_latched_fault)
 {
-    application::Cli cli{ platform, motionActuation, wheelOdometry, inertialSensing, attitudeEstimation, controlLoop, supervisor };
+    application::Cli cli{ platform, motionActuation, wheelOdometry, inertialSensing, attitudeEstimation, controlLoop, supervisor, balanceControl };
 
     EXPECT_CALL(supervisor, Current()).WillOnce(testing::Return(safety::Mode::fault));
     EXPECT_CALL(supervisor, LatchedCause()).WillOnce(testing::Return(safety::FaultCause::loopStalled));
@@ -553,4 +489,137 @@ TEST_F(CliTest, mode_reports_the_mode_and_latched_fault)
     Send("mode");
 
     EXPECT_THAT(Output(), testing::HasSubstr("mode fault fault loop"));
+}
+
+TEST_F(CliTest, move_commands_velocity_and_yaw_rate)
+{
+    application::Cli cli{ platform, motionActuation, wheelOdometry, inertialSensing, attitudeEstimation, controlLoop, supervisor, balanceControl };
+
+    EXPECT_CALL(balanceControl, Move(balance::Setpoints{ 0.2f, -0.5f })).WillOnce(testing::Return(true));
+
+    Send("move 0.2 -0.5");
+
+    EXPECT_THAT(Output(), testing::HasSubstr("moving"));
+}
+
+TEST_F(CliTest, a_refused_move_is_reported)
+{
+    application::Cli cli{ platform, motionActuation, wheelOdometry, inertialSensing, attitudeEstimation, controlLoop, supervisor, balanceControl };
+
+    EXPECT_CALL(balanceControl, Move(testing::_)).WillOnce(testing::Return(false));
+
+    Send("move 0.2 0.0");
+
+    EXPECT_THAT(Output(), testing::HasSubstr("refused: move needs armed"));
+}
+
+TEST_F(CliTest, move_without_two_decimals_prints_usage)
+{
+    application::Cli cli{ platform, motionActuation, wheelOdometry, inertialSensing, attitudeEstimation, controlLoop, supervisor, balanceControl };
+
+    Send("move 0.2");
+    Send("move 1 0.0");
+
+    EXPECT_THAT(Output(), testing::HasSubstr("usage: move"));
+}
+
+TEST_F(CliTest, strategy_lists_the_strategies_and_marks_the_active_one)
+{
+    application::Cli cli{ platform, motionActuation, wheelOdometry, inertialSensing, attitudeEstimation, controlLoop, supervisor, balanceControl };
+
+    EXPECT_CALL(balanceControl, StrategyCount()).WillRepeatedly(testing::Return(2));
+    EXPECT_CALL(balanceControl, StrategyName(0)).WillRepeatedly(testing::Return("pid"));
+    EXPECT_CALL(balanceControl, StrategyName(1)).WillRepeatedly(testing::Return("lqr"));
+    EXPECT_CALL(balanceControl, ActiveStrategy()).WillRepeatedly(testing::Return(0));
+
+    Send("strategy");
+
+    EXPECT_THAT(Output(), testing::HasSubstr("strategy pid (active)"));
+    EXPECT_THAT(Output(), testing::HasSubstr("strategy lqr"));
+}
+
+TEST_F(CliTest, strategy_selects_by_name)
+{
+    application::Cli cli{ platform, motionActuation, wheelOdometry, inertialSensing, attitudeEstimation, controlLoop, supervisor, balanceControl };
+
+    EXPECT_CALL(balanceControl, StrategyCount()).WillRepeatedly(testing::Return(2));
+    EXPECT_CALL(balanceControl, StrategyName(0)).WillRepeatedly(testing::Return("pid"));
+    EXPECT_CALL(balanceControl, StrategyName(1)).WillRepeatedly(testing::Return("lqr"));
+    EXPECT_CALL(balanceControl, Select(1)).WillOnce(testing::Return(true));
+
+    Send("strategy lqr");
+
+    EXPECT_THAT(Output(), testing::HasSubstr("strategy lqr selected"));
+}
+
+TEST_F(CliTest, a_refused_strategy_change_is_reported)
+{
+    application::Cli cli{ platform, motionActuation, wheelOdometry, inertialSensing, attitudeEstimation, controlLoop, supervisor, balanceControl };
+
+    EXPECT_CALL(balanceControl, StrategyCount()).WillRepeatedly(testing::Return(1));
+    EXPECT_CALL(balanceControl, StrategyName(0)).WillRepeatedly(testing::Return("pid"));
+    EXPECT_CALL(balanceControl, Select(0)).WillOnce(testing::Return(false));
+
+    Send("strategy pid");
+
+    EXPECT_THAT(Output(), testing::HasSubstr("refused: strategy changes need disarmed"));
+}
+
+TEST_F(CliTest, an_unknown_strategy_prints_usage)
+{
+    application::Cli cli{ platform, motionActuation, wheelOdometry, inertialSensing, attitudeEstimation, controlLoop, supervisor, balanceControl };
+
+    EXPECT_CALL(balanceControl, StrategyCount()).WillRepeatedly(testing::Return(1));
+    EXPECT_CALL(balanceControl, StrategyName(0)).WillRepeatedly(testing::Return("pid"));
+
+    Send("strategy mpc");
+
+    EXPECT_THAT(Output(), testing::HasSubstr("usage: strategy"));
+}
+
+TEST_F(CliTest, param_lists_the_active_strategy_parameters)
+{
+    application::Cli cli{ platform, motionActuation, wheelOdometry, inertialSensing, attitudeEstimation, controlLoop, supervisor, balanceControl };
+
+    EXPECT_CALL(balanceControl, Parameters()).WillRepeatedly(testing::Return(infra::MakeRange(descriptors)));
+    EXPECT_CALL(balanceControl, Parameter(0)).WillOnce(testing::Return(2.0f));
+    EXPECT_CALL(balanceControl, Parameter(1)).WillOnce(testing::Return(0.0f));
+
+    Send("param");
+
+    EXPECT_THAT(Output(), testing::HasSubstr("0 pitch.kp 2"));
+    EXPECT_THAT(Output(), testing::HasSubstr("1 pitch.ki 0"));
+}
+
+TEST_F(CliTest, param_writes_a_parameter_by_index)
+{
+    application::Cli cli{ platform, motionActuation, wheelOdometry, inertialSensing, attitudeEstimation, controlLoop, supervisor, balanceControl };
+
+    EXPECT_CALL(balanceControl, SetParameter(1, testing::FloatEq(0.5f))).WillOnce(testing::Return(true));
+    EXPECT_CALL(balanceControl, Parameters()).WillOnce(testing::Return(infra::MakeRange(descriptors)));
+
+    Send("param 1 0.5");
+
+    EXPECT_THAT(Output(), testing::HasSubstr("pitch.ki = 0.5"));
+}
+
+TEST_F(CliTest, a_refused_parameter_write_is_reported)
+{
+    application::Cli cli{ platform, motionActuation, wheelOdometry, inertialSensing, attitudeEstimation, controlLoop, supervisor, balanceControl };
+
+    EXPECT_CALL(balanceControl, SetParameter(7, testing::_)).WillOnce(testing::Return(false));
+
+    Send("param 7 0.5");
+
+    EXPECT_THAT(Output(), testing::HasSubstr("refused: parameter writes need disarmed"));
+}
+
+TEST_F(CliTest, param_with_a_malformed_index_or_value_prints_usage)
+{
+    application::Cli cli{ platform, motionActuation, wheelOdometry, inertialSensing, attitudeEstimation, controlLoop, supervisor, balanceControl };
+
+    Send("param x 0.5");
+    Send("param 1 5");
+
+    EXPECT_THAT(Output(), testing::HasSubstr("usage: param"));
 }

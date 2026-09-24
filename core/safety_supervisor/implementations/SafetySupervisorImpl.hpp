@@ -12,6 +12,7 @@ namespace safety
     class SafetySupervisorImpl final
         : public SafetySupervisor
         , public control::BalanceStage
+        , public control::OuterStage
     {
     public:
         struct Config
@@ -25,7 +26,7 @@ namespace safety
             std::chrono::milliseconds selfTestDeadline{ 1000 };
         };
 
-        SafetySupervisorImpl(motion::MotionActuation& actuation, sensing::InertialSensing& sensing, control::BalanceStage& strategy, const Config& config = Config());
+        SafetySupervisorImpl(motion::MotionActuation& actuation, sensing::InertialSensing& sensing, control::SupervisedControl& control, const Config& config = Config());
 
         bool Arm() override;
         bool Disarm() override;
@@ -37,7 +38,7 @@ namespace safety
         bool DrivePermitted() const override;
 
         void Balance(const estimation::Estimate& estimate, infra::Duration interval) override;
-        void Reset() override;
+        void Steer(infra::Duration interval) override;
 
     private:
         void Supervise();
@@ -49,11 +50,12 @@ namespace safety
         bool DriverHealthy() const;
         bool Upright() const;
         void StartCalibration();
+        void LeaveArmed();
         void EnterFault(FaultCause cause);
 
         motion::MotionActuation& actuation;
         sensing::InertialSensing& sensing;
-        control::BalanceStage& strategy;
+        control::SupervisedControl& control;
         Config config;
 
         Mode mode{ Mode::init };

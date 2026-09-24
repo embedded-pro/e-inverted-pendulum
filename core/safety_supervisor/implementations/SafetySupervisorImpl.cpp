@@ -6,10 +6,10 @@ namespace safety
 {
     SafetySupervisorImpl::Config::Config() = default;
 
-    SafetySupervisorImpl::SafetySupervisorImpl(motion::MotionActuation& actuation, sensing::InertialSensing& sensing, control::BalanceStage& strategy, const Config& config)
+    SafetySupervisorImpl::SafetySupervisorImpl(motion::MotionActuation& actuation, sensing::InertialSensing& sensing, control::SupervisedControl& control, const Config& config)
         : actuation(actuation)
         , sensing(sensing)
-        , strategy(strategy)
+        , control(control)
         , config(config)
         , missedServices(config.missedServiceLimit)
         , started(infra::Now())
@@ -28,7 +28,7 @@ namespace safety
         if (mode != Mode::idle || !latest.valid || !Upright() || !LoopServiced() || !DriverHealthy())
             return false;
 
-        strategy.Reset();
+        control.Engage();
         mode = Mode::armed;
         return true;
     }
@@ -38,7 +38,7 @@ namespace safety
         if (mode != Mode::armed)
             return false;
 
-        actuation.Disable(motion::DisableState::tristate);
+        LeaveArmed();
         mode = Mode::idle;
         return true;
     }
@@ -93,11 +93,14 @@ namespace safety
         else if (actuation.Fault() != motion::FaultCause::none)
             EnterFault(FaultCause::driverFault);
         else
-            strategy.Balance(estimate, interval);
+            control.Balance(estimate, interval);
     }
 
-    void SafetySupervisorImpl::Reset()
-    {}
+    void SafetySupervisorImpl::Steer(infra::Duration interval)
+    {
+        if (mode == Mode::armed)
+            control.Steer(interval);
+    }
 
     void SafetySupervisorImpl::Supervise()
     {
@@ -184,9 +187,19 @@ namespace safety
         mode = Mode::calibrating;
     }
 
-    void SafetySupervisorImpl::EnterFault(FaultCause faultCause)
+    void SafetySupervisorImpl::LeaveArmed()
     {
         actuation.Disable(motion::DisableState::tristate);
+        control.Disengage();
+    }
+
+    void SafetySupervisorImpl::EnterFault(FaultCause faultCause)
+    {
+        if (mode == Mode::armed)
+            LeaveArmed();
+        else
+            actuation.Disable(motion::DisableState::tristate);
+
         cause = faultCause;
         mode = Mode::fault;
     }

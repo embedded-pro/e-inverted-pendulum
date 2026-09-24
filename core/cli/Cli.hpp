@@ -1,6 +1,7 @@
 #pragma once
 
 #include "core/attitude_estimation/interfaces/AttitudeEstimation.hpp"
+#include "core/balance_control/interfaces/BalanceControl.hpp"
 #include "core/control_loop/interfaces/ControlLoop.hpp"
 #include "core/inertial_sensing/interfaces/InertialSensing.hpp"
 #include "core/motion_actuation/interfaces/MotionActuation.hpp"
@@ -16,21 +17,20 @@ namespace application
     class Cli
     {
     public:
-        Cli(platform::Platform& platform, motion::MotionActuation& motionActuation, odometry::WheelOdometry& wheelOdometry, sensing::InertialSensing& inertialSensing, estimation::AttitudeEstimation& attitudeEstimation, control::ControlLoop& controlLoop, safety::SafetySupervisor& supervisor);
+        Cli(platform::Platform& platform, motion::MotionActuation& motionActuation, odometry::WheelOdometry& wheelOdometry, sensing::InertialSensing& inertialSensing, estimation::AttitudeEstimation& attitudeEstimation, control::ControlLoop& controlLoop, safety::SafetySupervisor& supervisor, balance::BalanceControl& balanceControl);
 
     private:
         class CliCommands final
             : public services::TerminalCommands
         {
         public:
-            CliCommands(services::TerminalWithCommands& terminal, services::Tracer& tracer, motion::MotionActuation& motionActuation, odometry::WheelOdometry& wheelOdometry, sensing::InertialSensing& inertialSensing, estimation::AttitudeEstimation& attitudeEstimation, control::ControlLoop& controlLoop, safety::SafetySupervisor& supervisor);
+            CliCommands(services::TerminalWithCommands& terminal, services::Tracer& tracer, motion::MotionActuation& motionActuation, odometry::WheelOdometry& wheelOdometry, sensing::InertialSensing& inertialSensing, estimation::AttitudeEstimation& attitudeEstimation, control::ControlLoop& controlLoop, safety::SafetySupervisor& supervisor, balance::BalanceControl& balanceControl);
 
             infra::MemoryRange<const Command> Commands() override;
 
         private:
             void Ping(const infra::BoundedConstString& params);
             void Identify(const infra::BoundedConstString& params);
-            void Drive(const infra::BoundedConstString& params);
             void ReleaseBridges(const infra::BoundedConstString& params);
             void Brake(const infra::BoundedConstString& params);
             void Odometry(const infra::BoundedConstString& params);
@@ -44,6 +44,10 @@ namespace application
             void Arm(const infra::BoundedConstString& params);
             void Disarm(const infra::BoundedConstString& params);
             void ReportMode(const infra::BoundedConstString& params);
+            void Move(const infra::BoundedConstString& params);
+            void Strategy(const infra::BoundedConstString& params);
+            void Param(const infra::BoundedConstString& params);
+            void ListParameters();
 
             services::Tracer& tracer;
             motion::MotionActuation& motionActuation;
@@ -52,8 +56,9 @@ namespace application
             estimation::AttitudeEstimation& attitudeEstimation;
             control::ControlLoop& controlLoop;
             safety::SafetySupervisor& supervisor;
+            balance::BalanceControl& balanceControl;
 
-            std::array<Command, 16> commands;
+            std::array<Command, 18> commands;
         };
 
         services::DebugLed debugLed;

@@ -2,7 +2,7 @@
 title: "Control Loop Design"
 type: design
 status: draft
-version: 0.2.0
+version: 0.3.0
 component: "control-loop"
 date: 2026-09-24
 ---
@@ -12,7 +12,7 @@ date: 2026-09-24
 | Title     | Control Loop Design |
 | Type      | design              |
 | Status    | draft               |
-| Version   | 0.2.0               |
+| Version   | 0.3.0               |
 | Component | control-loop        |
 | Date      | 2026-09-24          |
 
@@ -32,8 +32,8 @@ date: 2026-09-24
   nominal period, and the number of late iterations.
 
 **Is NOT responsible for:**
-- Deciding whether the balance stage may drive — the safety supervisor sits in front of the balance
-  stage and forwards iterations only while ARMED.
+- Deciding whether the balance and outer stages may run — the safety supervisor sits in front of
+  both and forwards iterations only while ARMED.
 - Computing effort — that is balance control, which this component calls as its balance stage.
 - Deciding what a late iteration means — the safety supervisor owns liveness and faults.
 - Sampling the sensor or timestamping samples — that is inertial sensing.
@@ -81,12 +81,12 @@ because of them.
 
 ### Required
 
-| Interface           | Purpose                             | Contract                                                                                                                          |
-|---------------------|-------------------------------------|-----------------------------------------------------------------------------------------------------------------------------------|
-| Inertial sensing    | Per-sample measurement notification | Every sample is delivered once, in order, with its acquisition time                                                               |
-| Attitude estimation | Estimate from one measurement       | Returns an estimate with explicit validity for every measurement                                                                  |
-| Balance stage       | Balance control iteration and reset | Receives the estimate and the measured interval; bounded execution time; resettable so a new ARMED session starts without history |
-| Outer stage         | Velocity and yaw iteration          | Receives the measured interval; bounded execution time                                                                            |
+| Interface           | Purpose                             | Contract                                                                                                                                                   |
+|---------------------|-------------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| Inertial sensing    | Per-sample measurement notification | Every sample is delivered once, in order, with its acquisition time                                                                                        |
+| Attitude estimation | Estimate from one measurement       | Returns an estimate with explicit validity for every measurement                                                                                           |
+| Balance stage       | Balance control iteration           | Receives the estimate and the measured interval; bounded execution time; engaged on entry to ARMED so a session starts without history, disengaged on exit |
+| Outer stage         | Velocity and yaw iteration          | Receives the measured interval; bounded execution time                                                                                                     |
 
 ---
 

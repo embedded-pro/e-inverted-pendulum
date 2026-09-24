@@ -2,9 +2,9 @@
 title: "Balance Control Design"
 type: design
 status: draft
-version: 0.1.0
+version: 0.2.0
 component: "balance-control"
-date: 2026-09-16
+date: 2026-09-24
 ---
 
 | Field     | Value                  |
@@ -12,9 +12,9 @@ date: 2026-09-16
 | Title     | Balance Control Design |
 | Type      | design                 |
 | Status    | draft                  |
-| Version   | 0.1.0                  |
+| Version   | 0.2.0                  |
 | Component | balance-control        |
-| Date      | 2026-09-16             |
+| Date      | 2026-09-24             |
 
 > **The control law is a runtime choice, not an architectural commitment.** This document
 > designs the seam that makes that true: one strategy interface, several interchangeable
@@ -66,8 +66,32 @@ that setpoint and produces a common-mode effort. A third loop drives yaw rate to
 setpoint and produces a differential effort. The two are summed per wheel.
 
 The nesting is what makes it work: the inner loop must be substantially faster than the
-outer, or the robot chases a pitch target that is still moving. Its parameters are the
+outer, or the robot chases a pitch target that is still moving. The inner loop runs every
+balance iteration; the velocity and yaw loops run at the outer rate. Its parameters are the
 proportional, integral and derivative terms of the three loops.
+
+Each loop is an incremental PID whose output is held within its own limits: the pitch
+setpoint within the lean limit, the differential effort within the differential limit, and the
+common-mode effort within the actuator range. Gains are expressed in continuous units — integral
+per second, derivative in seconds — and are discretised with the measured interval of every run, so
+a stretched iteration does not silently change the tuning. The inner loop takes its derivative
+from the measured pitch rate rather than from the change in pitch error: the gyroscope already
+measures the rate directly, and differentiating the error would kick every time the outer loop
+moves the pitch setpoint.
+
+The initial gains are conservative placeholders to be tuned on the bench.
+
+| Index | Parameter   | Unit                      | Range    | Initial |
+|-------|-------------|---------------------------|----------|---------|
+| 0     | pitch.kp    | effort per radian         | 0 to 50  | 2.0     |
+| 1     | pitch.ki    | effort per radian-second  | 0 to 100 | 0.0     |
+| 2     | pitch.kd    | effort per radian/second  | 0 to 5   | 0.1     |
+| 3     | velocity.kp | radian per metre/second   | 0 to 2   | 0.05    |
+| 4     | velocity.ki | radian per metre          | 0 to 5   | 0.0     |
+| 5     | velocity.kd | radian per metre/second²  | 0 to 1   | 0.0     |
+| 6     | yaw.kp      | effort per radian/second  | 0 to 2   | 0.1     |
+| 7     | yaw.ki      | effort per radian         | 0 to 5   | 0.0     |
+| 8     | yaw.kd      | effort per radian/second² | 0 to 1   | 0.0     |
 
 ### Part C — Full-state feedback (LQR) strategy
 
@@ -81,7 +105,7 @@ layout of named gains.
 ### Part D — Strategy registry and selection
 
 The registry holds the compiled-in strategies, exposes their identifiers, and tracks the
-active one. Selection is refused while ARMED. This is not a convenience restriction: the
+active one. The cascaded PID strategy is the default. Selection is refused while ARMED. This is not a convenience restriction: the
 strategies have different internal state, and swapping mid-flight would apply a
 freshly-reset controller to a robot already in motion. Refusal is silent to the drive — the
 running controller is not disturbed by a rejected request.
@@ -90,10 +114,22 @@ running controller is not disturbed by a rejected request.
 
 Setpoints reach the controller from the operator, but the controller does not trust them
 unconditionally. They are range-checked, decayed to zero on operator silence or link loss,
-and forced to zero whenever the system is not ARMED. Effort is clamped to the actuator
+and forced to zero whenever the system is not ARMED. Until the link exists the operator commands
+them from the terminal; a command is accepted only while ARMED and within range, and holds for one
+second before it falls back to zero. Every engagement and disengagement also clears them, so a
+command from a previous session never carries into the next. Effort is clamped to the actuator
 range on output, and the active strategy is told that it saturated so that any accumulating
 internal term stops growing — otherwise a robot held against a wall builds up a correction
-it discharges violently on release.
+it discharges violently on release. The strategy is handed the effort that was actually applied,
+and restarts its accumulation from that value rather than from what it asked for.
+
+### Part F — Engagement
+
+The supervisor engages balance control on every transition into ARMED and disengages it on every
+transition out. Engaging resets the active strategy and clears the setpoints before the drive is
+permitted; disengaging stops the strategy and clears the setpoints again. Balance control uses the
+same two events to decide when it is configurable, so it never has to ask the supervisor for its
+mode. An invalid estimate reaching an engaged controller produces zero effort.
 
 ---
 
@@ -101,15 +137,16 @@ it discharges violently on release.
 
 ### Provided
 
-| Interface            | Purpose                                                  | Contract                                                                                                          |
-|----------------------|----------------------------------------------------------|-------------------------------------------------------------------------------------------------------------------|
-| Control strategy     | The common interface every law implements                | Consumes estimated state and setpoints, produces per-wheel effort; bounded execution, no allocation, no recursion |
-| Effort command       | Per-wheel signed effort for actuation                    | Within the configured actuator range; zero whenever not ARMED                                                     |
-| Strategy registry    | Enumerate available strategies and report the active one | At least two strategies available; identifiers stable across builds                                               |
-| Strategy selection   | Change the active strategy                               | Accepted only while not ARMED; a rejected request leaves the active strategy and its state untouched              |
-| Parameter descriptor | Describe the active strategy's tunable parameters        | Reports count, order, identity and permitted range; changes when the active strategy changes                      |
-| Parameter access     | Read and write parameters by index                       | Writes accepted only while not ARMED; out-of-range values rejected with the stored value unchanged                |
-| Strategy lifecycle   | Reset the active strategy's internal state               | Called by the supervisor on every transition into ARMED; completes before the drive is permitted                  |
+| Interface            | Purpose                                                  | Contract                                                                                                                    |
+|----------------------|----------------------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------|
+| Control strategy     | The common interface every law implements                | Consumes estimated state and setpoints, produces per-wheel effort; bounded execution, no allocation, no recursion           |
+| Effort command       | Per-wheel signed effort for actuation                    | Within the configured actuator range; zero whenever not ARMED                                                               |
+| Strategy registry    | Enumerate available strategies and report the active one | At least two strategies available; identifiers stable across builds                                                         |
+| Strategy selection   | Change the active strategy                               | Accepted only while not ARMED; a rejected request leaves the active strategy and its state untouched                        |
+| Parameter descriptor | Describe the active strategy's tunable parameters        | Reports count, order, identity and permitted range; changes when the active strategy changes                                |
+| Parameter access     | Read and write parameters by index                       | Writes accepted only while not ARMED; out-of-range values rejected with the stored value unchanged                          |
+| Strategy lifecycle   | Engage and disengage balance control                     | Engaged by the supervisor on every transition into ARMED, before the drive is permitted; disengaged on every transition out |
+| Motion setpoint      | Command forward velocity and yaw rate                    | Accepted only while engaged and within range; falls back to zero after 1 s without a new command                            |
 
 ### Required
 
@@ -118,7 +155,7 @@ it discharges violently on release.
 | Attitude estimate | Pitch and pitch rate with validity      | An invalid estimate must not produce a non-zero effort                  |
 | Chassis motion    | Measured forward velocity and yaw rate  | Updated at the control-loop rate                                        |
 | Motion setpoints  | Commanded forward velocity and yaw rate | Already range-checked and decayed by connectivity; zero when not ARMED  |
-| Drive permission  | Whether the drive may be energised      | Deasserted forces zero effort regardless of strategy output             |
+| Drive permission  | Whether the drive may be energised      | Signalled by engagement; while disengaged no effort is produced         |
 | Timebase          | Loop period for rate-dependent terms    | Nominal period is known; actual jitter stays within the specified bound |
 
 ---
@@ -193,8 +230,7 @@ sequenceDiagram
 
     Op->>Link: Select strategy B
     Link->>Ctrl: Selection request
-    Ctrl->>Sup: Query mode
-    Sup-->>Ctrl: IDLE
+    Note over Ctrl: Disengaged since the last disarm
     Ctrl->>Ctrl: Activate strategy B
     Ctrl-->>Link: Accepted, descriptor changed
     Link-->>Op: New parameter descriptor
@@ -202,8 +238,7 @@ sequenceDiagram
     Note over Op,Sup: Later, while balancing
     Op->>Link: Select strategy A
     Link->>Ctrl: Selection request
-    Ctrl->>Sup: Query mode
-    Sup-->>Ctrl: ARMED
+    Note over Ctrl,Sup: Engaged by the supervisor on arming
     Ctrl-->>Link: Rejected
     Note over Ctrl: Strategy B keeps running, undisturbed
 ```
@@ -249,10 +284,10 @@ graph LR
 
 ## Open Questions
 
-| # | Question                                                                                                         | Options                                                                      | Status |
-|---|------------------------------------------------------------------------------------------------------------------|------------------------------------------------------------------------------|--------|
-| 1 | Which strategy is the factory default?                                                                           | Cascaded PID; LQR                                                            | open   |
-| 2 | Should stored parameters be invalidated when a strategy's descriptor changes between firmware versions?          | Version the descriptor and reject stale values; always fall back to defaults | open   |
-| 3 | Should the outer velocity loop limit the pitch setpoint it may request, independently of effort saturation?      | Rely on effort saturation; add an explicit pitch setpoint clamp              | open   |
-| 4 | Should a third strategy exist for bench testing, commanding zero effort while reporting what it would have done? | Not needed; add an observing strategy                                        | open   |
-| 5 | How is the yaw term handled by a full-state strategy — inside the gain vector or as a separate loop?             | Separate yaw loop for both strategies; per-strategy choice                   | open   |
+| # | Question                                                                                                         | Options                                                                      | Status                       |
+|---|------------------------------------------------------------------------------------------------------------------|------------------------------------------------------------------------------|------------------------------|
+| 1 | Which strategy is the factory default?                                                                           | Cascaded PID; LQR                                                            | decided: cascaded PID        |
+| 2 | Should stored parameters be invalidated when a strategy's descriptor changes between firmware versions?          | Version the descriptor and reject stale values; always fall back to defaults | open                         |
+| 3 | Should the outer velocity loop limit the pitch setpoint it may request, independently of effort saturation?      | Rely on effort saturation; add an explicit pitch setpoint clamp              | decided: clamp at 10 degrees |
+| 4 | Should a third strategy exist for bench testing, commanding zero effort while reporting what it would have done? | Not needed; add an observing strategy                                        | open                         |
+| 5 | How is the yaw term handled by a full-state strategy — inside the gain vector or as a separate loop?             | Separate yaw loop for both strategies; per-strategy choice                   | open                         |

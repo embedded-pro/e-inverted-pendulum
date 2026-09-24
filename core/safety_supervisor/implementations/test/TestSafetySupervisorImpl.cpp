@@ -38,14 +38,16 @@ namespace
         MOCK_METHOD(platform::InertialAxes, GyroscopeBias, (), (const, override));
     };
 
-    class BalanceStageMock
-        : public control::BalanceStage
+    class SupervisedControlMock
+        : public control::SupervisedControl
     {
     public:
-        virtual ~BalanceStageMock() = default;
+        virtual ~SupervisedControlMock() = default;
 
         MOCK_METHOD(void, Balance, (const estimation::Estimate& estimate, infra::Duration interval), (override));
-        MOCK_METHOD(void, Reset, (), (override));
+        MOCK_METHOD(void, Steer, (infra::Duration interval), (override));
+        MOCK_METHOD(void, Engage, (), (override));
+        MOCK_METHOD(void, Disengage, (), (override));
     };
 
     estimation::Estimate EstimateAt(float pitch, bool valid = true)
@@ -94,7 +96,7 @@ namespace
             BringToIdle();
             Service(EstimateAt(0.0f));
 
-            EXPECT_CALL(strategy, Reset());
+            EXPECT_CALL(strategy, Engage());
             ASSERT_TRUE(supervisor->Arm());
         }
 
@@ -106,9 +108,16 @@ namespace
                 });
         }
 
+        void ExpectLeavingArmed()
+        {
+            testing::InSequence leavingArmed;
+            ExpectTristate();
+            EXPECT_CALL(strategy, Disengage());
+        }
+
         testing::StrictMock<MotionActuationMock> actuation;
         testing::StrictMock<InertialSensingMock> sensing;
-        testing::StrictMock<BalanceStageMock> strategy;
+        testing::StrictMock<SupervisedControlMock> strategy;
         std::optional<safety::SafetySupervisorImpl> supervisor;
 
         motion::DriverState driverState{ motion::DriverState::ready };
@@ -205,22 +214,22 @@ TEST_F(SafetySupervisorImplTest, calibrate_is_refused_outside_idle)
     EXPECT_EQ(safety::Mode::armed, supervisor->Current());
 }
 
-TEST_F(SafetySupervisorImplTest, REQ_SAFE_001_arming_near_upright_with_a_valid_estimate_resets_the_strategy_first)
+TEST_F(SafetySupervisorImplTest, REQ_SAFE_001_arming_near_upright_with_a_valid_estimate_engages_control_first)
 {
     BringToIdle();
     Service(EstimateAt(4.0f * degree));
 
-    std::optional<bool> permittedAtReset;
-    EXPECT_CALL(strategy, Reset()).WillOnce([this, &permittedAtReset]()
+    std::optional<bool> permittedAtEngage;
+    EXPECT_CALL(strategy, Engage()).WillOnce([this, &permittedAtEngage]()
         {
-            permittedAtReset = supervisor->DrivePermitted();
+            permittedAtEngage = supervisor->DrivePermitted();
         });
 
     EXPECT_TRUE(supervisor->Arm());
 
     EXPECT_EQ(safety::Mode::armed, supervisor->Current());
     EXPECT_TRUE(supervisor->DrivePermitted());
-    EXPECT_EQ(std::optional<bool>{ false }, permittedAtReset);
+    EXPECT_EQ(std::optional<bool>{ false }, permittedAtEngage);
 }
 
 TEST_F(SafetySupervisorImplTest, REQ_SAFE_001_arming_is_refused_when_tilted)
@@ -271,7 +280,7 @@ TEST_F(SafetySupervisorImplTest, balance_iterations_reach_the_strategy_only_whil
     BringToIdle();
     supervisor->Balance(EstimateAt(0.0f), 2ms);
 
-    EXPECT_CALL(strategy, Reset());
+    EXPECT_CALL(strategy, Engage());
     ASSERT_TRUE(supervisor->Arm());
 
     EXPECT_CALL(strategy, Balance(testing::Field(&estimation::Estimate::pitch, 0.1f), infra::Duration{ 2ms }));
@@ -292,7 +301,7 @@ TEST_F(SafetySupervisorImplTest, REQ_SAFE_002_REQ_SAFE_003_a_fall_tristates_befo
 {
     BringToArmed();
 
-    ExpectTristate();
+    ExpectLeavingArmed();
     supervisor->Balance(EstimateAt(-36.0f * degree), 2ms);
 
     EXPECT_EQ(std::optional<safety::Mode>{ safety::Mode::armed }, modeWhenDisabled);
@@ -305,7 +314,7 @@ TEST_F(SafetySupervisorImplTest, REQ_SAFE_007_an_invalid_estimate_while_armed_is
 {
     BringToArmed();
 
-    ExpectTristate();
+    ExpectLeavingArmed();
     supervisor->Balance(EstimateAt(0.0f, false), 2ms);
 
     EXPECT_EQ(safety::FaultCause::estimateInvalid, supervisor->LatchedCause());
@@ -316,7 +325,7 @@ TEST_F(SafetySupervisorImplTest, REQ_SAFE_006_a_driver_fault_while_armed_is_caug
     BringToArmed();
     driverFault = motion::FaultCause::driverFault;
 
-    ExpectTristate();
+    ExpectLeavingArmed();
     supervisor->Balance(EstimateAt(0.0f), 2ms);
 
     EXPECT_EQ(safety::FaultCause::driverFault, supervisor->LatchedCause());
@@ -348,7 +357,7 @@ TEST_F(SafetySupervisorImplTest, REQ_SAFE_008_three_missed_periods_are_a_stalled
     BringToArmed();
     ForwardTime(4ms);
 
-    ExpectTristate();
+    ExpectLeavingArmed();
     ForwardTime(2ms);
 
     EXPECT_EQ(safety::Mode::fault, supervisor->Current());
@@ -369,7 +378,7 @@ TEST_F(SafetySupervisorImplTest, REQ_SAFE_008_a_serviced_loop_is_never_stalled)
 TEST_F(SafetySupervisorImplTest, REQ_SAFE_004_a_fault_stays_latched_after_returning_upright)
 {
     BringToArmed();
-    ExpectTristate();
+    ExpectLeavingArmed();
     supervisor->Balance(EstimateAt(40.0f * degree), 2ms);
 
     Service(EstimateAt(0.0f));
@@ -383,7 +392,7 @@ TEST_F(SafetySupervisorImplTest, REQ_SAFE_004_a_fault_stays_latched_after_return
 TEST_F(SafetySupervisorImplTest, REQ_SAFE_005_clearing_a_fault_enters_idle_and_arming_needs_a_new_command)
 {
     BringToArmed();
-    ExpectTristate();
+    ExpectLeavingArmed();
     supervisor->Balance(EstimateAt(40.0f * degree), 2ms);
 
     EXPECT_CALL(actuation, ClearFault());
@@ -396,7 +405,7 @@ TEST_F(SafetySupervisorImplTest, REQ_SAFE_005_clearing_a_fault_enters_idle_and_a
     Service(EstimateAt(0.0f));
     EXPECT_EQ(safety::Mode::idle, supervisor->Current());
 
-    EXPECT_CALL(strategy, Reset());
+    EXPECT_CALL(strategy, Engage());
     EXPECT_TRUE(supervisor->Arm());
 }
 
@@ -404,7 +413,7 @@ TEST_F(SafetySupervisorImplTest, REQ_SAFE_003_disarm_tristates_before_leaving_ar
 {
     BringToArmed();
 
-    ExpectTristate();
+    ExpectLeavingArmed();
     EXPECT_TRUE(supervisor->Disarm());
 
     EXPECT_EQ(std::optional<safety::Mode>{ safety::Mode::armed }, modeWhenDisabled);
@@ -421,4 +430,17 @@ TEST_F(SafetySupervisorImplTest, rejected_requests_change_nothing)
 
     EXPECT_EQ(safety::Mode::idle, supervisor->Current());
     EXPECT_EQ(safety::FaultCause::none, supervisor->LatchedCause());
+}
+
+TEST_F(SafetySupervisorImplTest, outer_iterations_reach_control_only_while_armed)
+{
+    BringToIdle();
+    supervisor->Steer(20ms);
+
+    Service(EstimateAt(0.0f));
+    EXPECT_CALL(strategy, Engage());
+    ASSERT_TRUE(supervisor->Arm());
+
+    EXPECT_CALL(strategy, Steer(infra::Duration{ 20ms }));
+    supervisor->Steer(20ms);
 }
