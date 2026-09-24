@@ -13,6 +13,7 @@ namespace control
         BalanceStage& operator=(const BalanceStage& other) = delete;
 
         virtual void Balance(const estimation::Estimate& estimate, infra::Duration interval) = 0;
+        virtual void Reset() = 0;
 
     protected:
         ~BalanceStage() = default;

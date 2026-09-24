@@ -6,6 +6,7 @@
 #include "core/inertial_sensing/implementations/InertialSensingImpl.hpp"
 #include "core/motion_actuation/implementations/Drv8711DriverConfiguration.hpp"
 #include "core/motion_actuation/implementations/MotionActuationImpl.hpp"
+#include "core/safety_supervisor/implementations/SafetySupervisorImpl.hpp"
 #include "core/wheel_odometry/implementations/WheelOdometryImpl.hpp"
 
 int main()
@@ -17,8 +18,9 @@ int main()
     static sensing::InertialSensingImpl inertialSensing{ platform.Inertial() };
     static estimation::AttitudeEstimationImpl attitudeEstimation;
     static control::IdleStages idleStages;
-    static control::ControlLoopImpl controlLoop{ inertialSensing, attitudeEstimation, idleStages, idleStages };
-    static application::Cli cli{ platform, motionActuation, wheelOdometry, inertialSensing, attitudeEstimation, controlLoop };
+    static safety::SafetySupervisorImpl supervisor{ motionActuation, inertialSensing, idleStages };
+    static control::ControlLoopImpl controlLoop{ inertialSensing, attitudeEstimation, supervisor, idleStages };
+    static application::Cli cli{ platform, motionActuation, wheelOdometry, inertialSensing, attitudeEstimation, controlLoop, supervisor };
 
     platform.Run();
 

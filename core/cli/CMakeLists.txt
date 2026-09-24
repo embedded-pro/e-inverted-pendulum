@@ -11,6 +11,7 @@ target_link_libraries(inverted_pendulum_bot.cli PUBLIC
     inverted_pendulum_bot.inertial_sensing.interfaces
     inverted_pendulum_bot.attitude_estimation.interfaces
     inverted_pendulum_bot.control_loop.interfaces
+    inverted_pendulum_bot.safety_supervisor.interfaces
     inverted_pendulum_bot.platform_abstraction
     services.util
     services.peripheral

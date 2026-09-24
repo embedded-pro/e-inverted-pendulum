@@ -12,6 +12,9 @@ namespace control
         void Balance(const estimation::Estimate&, infra::Duration) override
         {}
 
+        void Reset() override
+        {}
+
         void Steer(infra::Duration) override
         {}
     };

@@ -5,6 +5,7 @@
 #include "core/inertial_sensing/interfaces/InertialSensing.hpp"
 #include "core/motion_actuation/interfaces/MotionActuation.hpp"
 #include "core/platform_abstraction/Platform.hpp"
+#include "core/safety_supervisor/interfaces/SafetySupervisor.hpp"
 #include "core/wheel_odometry/interfaces/WheelOdometry.hpp"
 #include "services/peripheral/DebugLed.hpp"
 #include "services/util/Terminal.hpp"
@@ -15,14 +16,14 @@ namespace application
     class Cli
     {
     public:
-        Cli(platform::Platform& platform, motion::MotionActuation& motionActuation, odometry::WheelOdometry& wheelOdometry, sensing::InertialSensing& inertialSensing, estimation::AttitudeEstimation& attitudeEstimation, control::ControlLoop& controlLoop);
+        Cli(platform::Platform& platform, motion::MotionActuation& motionActuation, odometry::WheelOdometry& wheelOdometry, sensing::InertialSensing& inertialSensing, estimation::AttitudeEstimation& attitudeEstimation, control::ControlLoop& controlLoop, safety::SafetySupervisor& supervisor);
 
     private:
         class CliCommands final
             : public services::TerminalCommands
         {
         public:
-            CliCommands(services::TerminalWithCommands& terminal, services::Tracer& tracer, motion::MotionActuation& motionActuation, odometry::WheelOdometry& wheelOdometry, sensing::InertialSensing& inertialSensing, estimation::AttitudeEstimation& attitudeEstimation, control::ControlLoop& controlLoop);
+            CliCommands(services::TerminalWithCommands& terminal, services::Tracer& tracer, motion::MotionActuation& motionActuation, odometry::WheelOdometry& wheelOdometry, sensing::InertialSensing& inertialSensing, estimation::AttitudeEstimation& attitudeEstimation, control::ControlLoop& controlLoop, safety::SafetySupervisor& supervisor);
 
             infra::MemoryRange<const Command> Commands() override;
 
@@ -40,6 +41,9 @@ namespace application
             void Attitude(const infra::BoundedConstString& params);
             void SelectFilter(const infra::BoundedConstString& params);
             void LoopTiming(const infra::BoundedConstString& params);
+            void Arm(const infra::BoundedConstString& params);
+            void Disarm(const infra::BoundedConstString& params);
+            void ReportMode(const infra::BoundedConstString& params);
 
             services::Tracer& tracer;
             motion::MotionActuation& motionActuation;
@@ -47,8 +51,9 @@ namespace application
             sensing::InertialSensing& inertialSensing;
             estimation::AttitudeEstimation& attitudeEstimation;
             control::ControlLoop& controlLoop;
+            safety::SafetySupervisor& supervisor;
 
-            std::array<Command, 13> commands;
+            std::array<Command, 16> commands;
         };
 
         services::DebugLed debugLed;

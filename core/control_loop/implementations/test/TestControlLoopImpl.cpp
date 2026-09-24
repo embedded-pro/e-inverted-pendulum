@@ -40,6 +40,7 @@ namespace
         virtual ~BalanceStageMock() = default;
 
         MOCK_METHOD(void, Balance, (const estimation::Estimate& estimate, infra::Duration interval), (override));
+        MOCK_METHOD(void, Reset, (), (override));
     };
 
     class OuterStageMock
