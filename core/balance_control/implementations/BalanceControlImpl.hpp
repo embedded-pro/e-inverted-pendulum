@@ -20,7 +20,9 @@ namespace balance
 
             float maximumVelocity{ 1.0f };
             float maximumYawRate{ 1.6f };
-            std::chrono::milliseconds setpointHold{ 1000 };
+            std::chrono::milliseconds commandTimeout{ 500 };
+            float velocityDeceleration{ 0.5f };
+            float yawDeceleration{ 1.6f };
         };
 
         BalanceControlImpl(infra::MemoryRange<ControlStrategy* const> strategies, motion::MotionActuation& actuation, odometry::WheelOdometry& odometry, const Config& config = Config());
@@ -35,7 +37,9 @@ namespace balance
         bool SetParameter(std::size_t index, float value) override;
 
         bool Move(const Setpoints& setpoints) override;
+        void CancelMotion() override;
         bool Engaged() const override;
+        Effort AppliedEffort() const override;
 
         void Balance(const estimation::Estimate& estimate, infra::Duration interval) override;
         void Steer(infra::Duration interval) override;
@@ -44,7 +48,7 @@ namespace balance
 
     private:
         ControlStrategy& Active() const;
-        Setpoints CurrentSetpoints() const;
+        void DecayUnlessCommanded(float intervalSeconds);
 
         infra::MemoryRange<ControlStrategy* const> strategies;
         motion::MotionActuation& actuation;
@@ -55,5 +59,7 @@ namespace balance
         bool engaged{ false };
         Setpoints setpoints;
         infra::TimePoint commandedAt;
+        bool cancelled{ true };
+        Effort applied;
     };
 }

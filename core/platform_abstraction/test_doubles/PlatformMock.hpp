@@ -17,6 +17,7 @@ namespace platform
         MOCK_METHOD(MotorDriver&, Motors, (), (override));
         MOCK_METHOD(WheelEncoders&, Encoders, (), (override));
         MOCK_METHOD(InertialSensor&, Inertial, (), (override));
+        MOCK_METHOD(void, StartBluetooth, (const infra::Function<void(Bluetooth& bluetooth)>& onReady), (override));
         MOCK_METHOD(void, Run, (), (override));
     };
 }

@@ -15,6 +15,8 @@ target_link_libraries(inverted_pendulum_bot.cli.main PUBLIC
     inverted_pendulum_bot.control_loop.implementations
     inverted_pendulum_bot.safety_supervisor.implementations
     inverted_pendulum_bot.balance_control.implementations
+    inverted_pendulum_bot.telemetry.implementations
+    inverted_pendulum_bot.ble_link
 )
 
 target_sources(inverted_pendulum_bot.cli.main PRIVATE
