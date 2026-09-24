@@ -24,8 +24,8 @@ namespace balance
     CascadedPidStrategy::CascadedPidStrategy(const Config& config)
         : gains(config.gains)
         , pitchLoop({}, { -1.0f, 1.0f })
-        , velocityLoop({}, { -config.maximumLean, config.maximumLean })
-        , yawLoop({}, { -config.maximumDifferential, config.maximumDifferential })
+        , velocityLoop(config.maximumLean)
+        , yawLoop(config.maximumDifferential)
     {
         Clear();
     }
@@ -42,11 +42,10 @@ namespace balance
 
     void CascadedPidStrategy::Clear()
     {
-        for (auto* loop : { &pitchLoop, &velocityLoop, &yawLoop })
-        {
-            loop->Reset();
-            loop->SetPoint(0.0f);
-        }
+        pitchLoop.Reset();
+        pitchLoop.SetPoint(0.0f);
+        velocityLoop.Reset();
+        yawLoop.Reset();
 
         differential = 0.0f;
         damping = 0.0f;
@@ -54,13 +53,8 @@ namespace balance
 
     void CascadedPidStrategy::Steer(const Setpoints& setpoints, const odometry::ChassisMotion& chassis, float intervalSeconds)
     {
-        velocityLoop.SetTunings(Discretised(velocityKp, intervalSeconds));
-        velocityLoop.SetPoint(setpoints.velocity);
-        pitchLoop.SetPoint(-velocityLoop.Process(chassis.forwardVelocity));
-
-        yawLoop.SetTunings(Discretised(yawKp, intervalSeconds));
-        yawLoop.SetPoint(setpoints.yawRate);
-        differential = yawLoop.Process(chassis.yawRate);
+        pitchLoop.SetPoint(-velocityLoop.Process(setpoints.velocity, chassis.forwardVelocity, GainsFrom(velocityKp), intervalSeconds));
+        differential = yawLoop.Process(setpoints.yawRate, chassis.yawRate, GainsFrom(yawKp), intervalSeconds);
     }
 
     Effort CascadedPidStrategy::Balance(const estimation::Estimate& estimate, float intervalSeconds)
@@ -97,8 +91,8 @@ namespace balance
         gains[index] = value;
     }
 
-    controllers::PidTunings<float> CascadedPidStrategy::Discretised(std::size_t proportional, float intervalSeconds) const
+    PidGains CascadedPidStrategy::GainsFrom(std::size_t proportional) const
     {
-        return { gains[proportional], gains[proportional + 1] * intervalSeconds, gains[proportional + 2] / intervalSeconds };
+        return PidGains{ gains[proportional], gains[proportional + 1], gains[proportional + 2] };
     }
 }

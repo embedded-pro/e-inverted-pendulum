@@ -19,6 +19,10 @@ target_sources(inverted_pendulum_bot.balance_control.implementations PRIVATE
     BalanceControlImpl.cpp
     CascadedPidStrategy.hpp
     CascadedPidStrategy.cpp
+    ContinuousPid.hpp
+    ContinuousPid.cpp
+    LqrStrategy.hpp
+    LqrStrategy.cpp
 )
 
 add_subdirectory(test)
