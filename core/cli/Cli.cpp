@@ -1,32 +1,14 @@
 #include "core/cli/Cli.hpp"
+#include "core/cli/DecimalParser.hpp"
 #include "infra/util/Tokenizer.hpp"
-#include <algorithm>
 #include <array>
 #include <chrono>
-#include <cstdlib>
 #include <optional>
 
 namespace application
 {
     namespace
     {
-        std::optional<float> ParseEffort(const infra::BoundedConstString& token)
-        {
-            std::array<char, 16> buffer{};
-            if (token.size() >= buffer.size())
-                return std::nullopt;
-
-            std::copy_n(token.begin(), token.size(), buffer.begin());
-
-            char* end = nullptr;
-            const auto value = std::strtof(buffer.data(), &end);
-
-            if (end != buffer.data() + token.size())
-                return std::nullopt;
-
-            return value;
-        }
-
         const char* NameOf(motion::DriverState state)
         {
             switch (state)
@@ -152,7 +134,7 @@ namespace application
                   {
                       Identify(params);
                   } },
-              { { "drive", "d", "apply signed effort to both wheels, -1.0 to 1.0, while armed" },
+              { { "drive", "d", "apply signed effort to both wheels as decimals, -1.0 to 1.0, while armed" },
                   [this](const infra::BoundedConstString& params)
                   {
                       Drive(params);
@@ -254,13 +236,13 @@ namespace application
 
         if (tokenizer.Size() == 2)
         {
-            effortLeft = ParseEffort(tokenizer.Token(0));
-            effortRight = ParseEffort(tokenizer.Token(1));
+            effortLeft = ParseDecimal(tokenizer.Token(0));
+            effortRight = ParseDecimal(tokenizer.Token(1));
         }
 
         if (!effortLeft.has_value() || !effortRight.has_value())
         {
-            tracer.Trace() << "usage: drive <left> <right>";
+            tracer.Trace() << "usage: drive <left> <right>, decimals such as 0.5 or -1.0";
             return;
         }
 

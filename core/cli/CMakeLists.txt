@@ -17,12 +17,15 @@ target_link_libraries(inverted_pendulum_bot.cli PUBLIC
     services.peripheral
     services.tracer
     infra.timer
+    infra.stream
     infra.util
 )
 
 target_sources(inverted_pendulum_bot.cli PRIVATE
     Cli.hpp
     Cli.cpp
+    DecimalParser.hpp
+    DecimalParser.cpp
 )
 
 add_subdirectory(test)
