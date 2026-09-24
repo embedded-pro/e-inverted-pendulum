@@ -10,6 +10,7 @@ option(INVERTED_PENDULUM_BOT_BUILD_TESTS "Enable build of the examples" Off)
 option(INVERTED_PENDULUM_BOT_BUILD_SIMULATOR "Enable build of the Qt simulator applications" Off)
 option(INVERTED_PENDULUM_BOT_BUILD_HIL_TESTS "Build hardware-in-the-loop tests" Off)
 option(INVERTED_PENDULUM_BOT_EMBEDDED_BUILD "Building for an embedded target" Off)
+set(INVERTED_PENDULUM_BOT_TARGET_PLATFORM "host" CACHE STRING "Platform implementation to build: host or st")
 
 if (INVERTED_PENDULUM_BOT_BUILD_TESTS)
     set(BUILD_TESTING On)
