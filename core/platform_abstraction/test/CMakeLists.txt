@@ -9,5 +9,4 @@ target_link_libraries(inverted_pendulum_bot.platform_abstraction_test PUBLIC
 
 target_sources(inverted_pendulum_bot.platform_abstraction_test PRIVATE
     TestInertialFrame.cpp
-    TestSignMagnitude.cpp
 )

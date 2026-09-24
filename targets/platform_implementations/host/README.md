@@ -7,6 +7,8 @@ off-target:
 - **StatusLed** — a no-op GPIO stub (so `DebugLed` has an output to drive).
 - **Communication** — `services::SerialCommunicationLoopback` (TX loops back to RX).
 - **Tracer** — `services::TracerToStream` over an in-memory string stream.
+- **Motors** — records the last bridge command; its configuration channel is a
+  DRV8711 register emulator that reads back what was written, so configuration passes.
 - **Run** — runs the host `EventDispatcher`; a `hal::TimerServiceGeneric` provides
   the system timer.
 

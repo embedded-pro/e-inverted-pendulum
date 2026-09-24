@@ -6,8 +6,8 @@ namespace application
     {
         hal::PwmStmBase::Config config;
 
-        config.alignment = hal::PwmStmBase::Alignment::edgeAligned;
-        config.preloadEnabled = false;
+        config.alignment = hal::PwmStmBase::Alignment::centerAlignedUpCounting;
+        config.preloadEnabled = true;
 
         hal::PwmStmBase::BreakInput breakInput;
         breakInput.activeHigh = false;
@@ -16,28 +16,45 @@ namespace application
         return config;
     }
 
-    MotorDriverStm::MotorDriverStm()
-        : left(16, leftPwm, leftBreak, leftDirection, PwmConfig())
-        , right(17, rightPwm, rightBreak, rightDirection, PwmConfig())
-    {}
-
-    platform::MotorBridge& MotorDriverStm::Left()
+    hal::SpiMasterStm::Config MotorDriverStm::SpiConfig()
     {
-        return left;
+        hal::SpiMasterStm::Config config;
+
+        config.msbFirst = true;
+        config.polarityLow = true;
+        config.phase1st = true;
+        config.baudRatePrescaler = SPI_BAUDRATEPRESCALER_128;
+
+        return config;
     }
 
-    platform::MotorBridge& MotorDriverStm::Right()
+    MotorDriverStm::MotorDriverStm()
+        : channels{ { { 1, leftInput1 }, { 2, leftInput2 }, { 3, rightInput1 }, { 4, rightInput2 } } }
+        , pwm{ 1, channels, faultBreak, PwmConfig() }
+    {}
+
+    void MotorDriverStm::SetBaseFrequency(hal::Hertz baseFrequency)
     {
-        return right;
+        pwm.SetBaseFrequency(baseFrequency);
+    }
+
+    void MotorDriverStm::Drive(const platform::BridgeInputs& left, const platform::BridgeInputs& right)
+    {
+        pwm.Start(left.input1, left.input2, right.input1, right.input2);
+    }
+
+    hal::SpiMaster& MotorDriverStm::ConfigurationChannel()
+    {
+        return configurationChannel;
     }
 
     void MotorDriverStm::EnableFaultNotification(const infra::Function<void()>& onFault)
     {
-        faultPin.EnableInterrupt(onFault, hal::InterruptTrigger::fallingEdge);
+        faultInterrupt.EnableInterrupt(onFault, hal::InterruptTrigger::fallingEdge);
     }
 
     void MotorDriverStm::DisableFaultNotification()
     {
-        faultPin.DisableInterrupt();
+        faultInterrupt.DisableInterrupt();
     }
 }

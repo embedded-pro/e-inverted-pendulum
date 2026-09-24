@@ -33,13 +33,15 @@ namespace application
             void Odometry(const infra::BoundedConstString& params);
             void Imu(const infra::BoundedConstString& params);
             void Calibrate(const infra::BoundedConstString& params);
+            void ClearFault(const infra::BoundedConstString& params);
+            void DriverStatus(const infra::BoundedConstString& params);
 
             services::Tracer& tracer;
             motion::MotionActuation& motionActuation;
             odometry::WheelOdometry& wheelOdometry;
             sensing::InertialSensing& inertialSensing;
 
-            std::array<Command, 8> commands;
+            std::array<Command, 10> commands;
         };
 
         services::DebugLed debugLed;

@@ -18,7 +18,7 @@ target_link_libraries(inverted_pendulum_bot.platform_host PUBLIC
 target_sources(inverted_pendulum_bot.platform_host PRIVATE
     GpioStub.hpp
     InertialSensorStub.hpp
-    MotorBridgeStub.hpp
+    Drv8711Emulator.hpp
     MotorDriverStub.hpp
     WheelEncoderStub.hpp
     WheelEncodersStub.hpp

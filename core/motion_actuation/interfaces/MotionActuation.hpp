@@ -16,6 +16,13 @@ namespace motion
         driverFault
     };
 
+    enum class DriverState : uint8_t
+    {
+        configuring,
+        ready,
+        failed
+    };
+
     class MotionActuation
     {
     public:
@@ -27,6 +34,7 @@ namespace motion
         virtual void Disable(DisableState state) = 0;
         virtual FaultCause Fault() const = 0;
         virtual void ClearFault() = 0;
+        virtual DriverState State() const = 0;
 
     protected:
         ~MotionActuation() = default;

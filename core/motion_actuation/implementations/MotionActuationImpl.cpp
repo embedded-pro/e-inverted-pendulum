@@ -1,40 +1,24 @@
 #include "core/motion_actuation/implementations/MotionActuationImpl.hpp"
-#include <algorithm>
-#include <cmath>
 
 namespace motion
 {
-    namespace
-    {
-        hal::DutyCycle Off()
-        {
-            return hal::DutyCycle::FromPercent(0);
-        }
-
-        hal::DutyCycle Full()
-        {
-            return hal::DutyCycle::FromPercent(100);
-        }
-
-        hal::DutyCycle DutyOf(float magnitude)
-        {
-            return hal::DutyCycle{ static_cast<uint32_t>(std::lround(std::clamp(magnitude, 0.0f, 1.0f) * static_cast<float>(hal::DutyCycle::fullScale))) };
-        }
-    }
-
     MotionActuationImpl::Config::Config() = default;
 
-    MotionActuationImpl::MotionActuationImpl(platform::MotorDriver& motors, const Config& config)
+    MotionActuationImpl::MotionActuationImpl(platform::MotorDriver& motors, DriverConfiguration& driverConfiguration, const Config& config)
         : motors(motors)
+        , decay(config.decay)
     {
-        motors.Left().SetBaseFrequency(config.switchingFrequency);
-        motors.Right().SetBaseFrequency(config.switchingFrequency);
-
+        motors.SetBaseFrequency(config.switchingFrequency);
         ReleaseBridges();
 
         motors.EnableFaultNotification([this]()
             {
                 OnFault();
+            });
+
+        driverConfiguration.Configure([this](bool verified)
+            {
+                state = verified ? DriverState::ready : DriverState::failed;
             });
     }
 
@@ -46,41 +30,18 @@ namespace motion
 
     void MotionActuationImpl::Apply(float effortLeft, float effortRight)
     {
-        if (fault != FaultCause::none)
+        if (!DrivePermitted())
             return;
 
-        ApplyTo(motors.Left(), effortLeft);
-        ApplyTo(motors.Right(), effortRight);
+        motors.Drive(InputsFor(effortLeft, decay), InputsFor(effortRight, decay));
     }
 
-    void MotionActuationImpl::ApplyTo(platform::MotorBridge& bridge, float effort) const
+    void MotionActuationImpl::Disable(DisableState disableState)
     {
-        const auto clamped = std::clamp(effort, -1.0f, 1.0f);
-        const auto duty = DutyOf(std::fabs(clamped));
-
-        if (clamped >= 0.0f)
-            bridge.Start(duty, Off());
+        if (disableState == DisableState::brake && DrivePermitted())
+            motors.Drive(BrakedInputs(), BrakedInputs());
         else
-            bridge.Start(Off(), duty);
-    }
-
-    void MotionActuationImpl::Disable(DisableState state)
-    {
-        if (state == DisableState::brake)
-        {
-            motors.Left().Start(Full(), Full());
-            motors.Right().Start(Full(), Full());
-        }
-        else
-        {
             ReleaseBridges();
-        }
-    }
-
-    void MotionActuationImpl::ReleaseBridges() const
-    {
-        motors.Left().Stop();
-        motors.Right().Stop();
     }
 
     FaultCause MotionActuationImpl::Fault() const
@@ -91,6 +52,21 @@ namespace motion
     void MotionActuationImpl::ClearFault()
     {
         fault = FaultCause::none;
+    }
+
+    DriverState MotionActuationImpl::State() const
+    {
+        return state;
+    }
+
+    bool MotionActuationImpl::DrivePermitted() const
+    {
+        return state == DriverState::ready && fault == FaultCause::none;
+    }
+
+    void MotionActuationImpl::ReleaseBridges() const
+    {
+        motors.Drive(ReleasedInputs(), ReleasedInputs());
     }
 
     void MotionActuationImpl::OnFault()

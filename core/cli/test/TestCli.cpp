@@ -63,6 +63,7 @@ namespace
         MOCK_METHOD(void, Disable, (motion::DisableState state), (override));
         MOCK_METHOD(motion::FaultCause, Fault, (), (const, override));
         MOCK_METHOD(void, ClearFault, (), (override));
+        MOCK_METHOD(motion::DriverState, State, (), (const, override));
     };
 
     class WheelOdometryMock
@@ -164,6 +165,7 @@ TEST_F(CliTest, drive_applies_both_efforts)
 {
     application::Cli cli{ platform, motionActuation, wheelOdometry, inertialSensing };
 
+    EXPECT_CALL(motionActuation, State()).WillOnce(testing::Return(motion::DriverState::ready));
     EXPECT_CALL(motionActuation, Fault()).WillOnce(testing::Return(motion::FaultCause::none));
     EXPECT_CALL(motionActuation, Apply(testing::FloatEq(0.3f), testing::FloatEq(-0.7f)));
 
@@ -176,6 +178,7 @@ TEST_F(CliTest, drive_without_a_second_argument_prints_usage)
 {
     application::Cli cli{ platform, motionActuation, wheelOdometry, inertialSensing };
 
+    EXPECT_CALL(motionActuation, State()).WillOnce(testing::Return(motion::DriverState::ready));
     EXPECT_CALL(motionActuation, Fault()).WillOnce(testing::Return(motion::FaultCause::none));
 
     Send("drive 0.3");
@@ -187,6 +190,7 @@ TEST_F(CliTest, drive_is_refused_while_a_fault_is_latched)
 {
     application::Cli cli{ platform, motionActuation, wheelOdometry, inertialSensing };
 
+    EXPECT_CALL(motionActuation, State()).WillOnce(testing::Return(motion::DriverState::ready));
     EXPECT_CALL(motionActuation, Fault()).WillOnce(testing::Return(motion::FaultCause::driverFault));
 
     Send("drive 0.3 -0.7");
@@ -220,6 +224,7 @@ TEST_F(CliTest, drive_with_a_missing_right_argument_is_rejected)
 {
     application::Cli cli{ platform, motionActuation, wheelOdometry, inertialSensing };
 
+    EXPECT_CALL(motionActuation, State()).WillOnce(testing::Return(motion::DriverState::ready));
     EXPECT_CALL(motionActuation, Fault()).WillOnce(testing::Return(motion::FaultCause::none));
 
     Send("drive 0.3 ");
@@ -231,6 +236,7 @@ TEST_F(CliTest, drive_with_a_non_numeric_argument_is_rejected)
 {
     application::Cli cli{ platform, motionActuation, wheelOdometry, inertialSensing };
 
+    EXPECT_CALL(motionActuation, State()).WillOnce(testing::Return(motion::DriverState::ready));
     EXPECT_CALL(motionActuation, Fault()).WillOnce(testing::Return(motion::FaultCause::none));
 
     Send("drive abc def");
@@ -242,6 +248,7 @@ TEST_F(CliTest, drive_with_a_trailing_third_argument_is_rejected)
 {
     application::Cli cli{ platform, motionActuation, wheelOdometry, inertialSensing };
 
+    EXPECT_CALL(motionActuation, State()).WillOnce(testing::Return(motion::DriverState::ready));
     EXPECT_CALL(motionActuation, Fault()).WillOnce(testing::Return(motion::FaultCause::none));
 
     Send("drive 0.3 0.7 0.9");
@@ -253,6 +260,7 @@ TEST_F(CliTest, drive_with_a_partially_numeric_argument_is_rejected)
 {
     application::Cli cli{ platform, motionActuation, wheelOdometry, inertialSensing };
 
+    EXPECT_CALL(motionActuation, State()).WillOnce(testing::Return(motion::DriverState::ready));
     EXPECT_CALL(motionActuation, Fault()).WillOnce(testing::Return(motion::FaultCause::none));
 
     Send("drive 0.3 0.7x");
@@ -264,6 +272,7 @@ TEST_F(CliTest, drive_with_an_over_long_argument_is_rejected)
 {
     application::Cli cli{ platform, motionActuation, wheelOdometry, inertialSensing };
 
+    EXPECT_CALL(motionActuation, State()).WillOnce(testing::Return(motion::DriverState::ready));
     EXPECT_CALL(motionActuation, Fault()).WillOnce(testing::Return(motion::FaultCause::none));
 
     Send("drive 0.3 0.70000000000000");
@@ -328,4 +337,38 @@ TEST_F(CliTest, calibrate_starts_bias_calibration)
     Send("calibrate");
 
     EXPECT_THAT(Output(), testing::HasSubstr("calibrating"));
+}
+
+TEST_F(CliTest, drive_is_refused_until_the_driver_is_ready)
+{
+    application::Cli cli{ platform, motionActuation, wheelOdometry, inertialSensing };
+
+    EXPECT_CALL(motionActuation, State()).WillOnce(testing::Return(motion::DriverState::configuring));
+
+    Send("drive 0.3 -0.7");
+
+    EXPECT_THAT(Output(), testing::HasSubstr("refused: motor driver not ready"));
+}
+
+TEST_F(CliTest, clear_releases_a_latched_fault)
+{
+    application::Cli cli{ platform, motionActuation, wheelOdometry, inertialSensing };
+
+    EXPECT_CALL(motionActuation, ClearFault());
+
+    Send("clear");
+
+    EXPECT_THAT(Output(), testing::HasSubstr("fault cleared"));
+}
+
+TEST_F(CliTest, driver_reports_state_and_latched_fault)
+{
+    application::Cli cli{ platform, motionActuation, wheelOdometry, inertialSensing };
+
+    EXPECT_CALL(motionActuation, State()).WillOnce(testing::Return(motion::DriverState::failed));
+    EXPECT_CALL(motionActuation, Fault()).WillOnce(testing::Return(motion::FaultCause::driverFault));
+
+    Send("driver");
+
+    EXPECT_THAT(Output(), testing::HasSubstr("driver failed fault driver"));
 }

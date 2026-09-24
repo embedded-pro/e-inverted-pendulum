@@ -32,7 +32,7 @@ namespace application
         hal::GpioPinStm miso{ hal::Port::B, 14 };
         hal::GpioPinStm mosi{ hal::Port::B, 15 };
         hal::GpioPinStm chipSelect{ hal::Port::B, 12 };
-        hal::GpioPinStm dataReady{ hal::Port::A, 10 };
+        hal::GpioPinStm dataReady{ hal::Port::C, 6 };
 
         hal::SpiMasterStm spi{ 2, clock, miso, mosi, BusConfig() };
         services::SpiMasterWithChipSelect spiWithChipSelect{ spi, chipSelect };

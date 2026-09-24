@@ -16,11 +16,8 @@ target_sources(inverted_pendulum_bot.platform_abstraction PRIVATE
     InertialFrame.hpp
     InertialFrame.cpp
     InertialSensor.hpp
-    MotorBridge.hpp
     MotorDriver.hpp
     Platform.hpp
-    SignMagnitude.hpp
-    SignMagnitude.cpp
     WheelEncoders.hpp
 )
 

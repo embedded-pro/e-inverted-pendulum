@@ -1,10 +1,19 @@
 #pragma once
 
-#include "core/platform_abstraction/MotorBridge.hpp"
+#include "hal/interfaces/Spi.hpp"
+#include "hal/synchronous_interfaces/SynchronousPwm.hpp"
 #include "infra/util/Function.hpp"
 
 namespace platform
 {
+    struct BridgeInputs
+    {
+        hal::DutyCycle input1;
+        hal::DutyCycle input2;
+
+        bool operator==(const BridgeInputs& other) const = default;
+    };
+
     class MotorDriver
     {
     public:
@@ -12,8 +21,10 @@ namespace platform
         MotorDriver(const MotorDriver& other) = delete;
         MotorDriver& operator=(const MotorDriver& other) = delete;
 
-        virtual MotorBridge& Left() = 0;
-        virtual MotorBridge& Right() = 0;
+        virtual void SetBaseFrequency(hal::Hertz baseFrequency) = 0;
+        virtual void Drive(const BridgeInputs& left, const BridgeInputs& right) = 0;
+
+        virtual hal::SpiMaster& ConfigurationChannel() = 0;
 
         virtual void EnableFaultNotification(const infra::Function<void()>& onFault) = 0;
         virtual void DisableFaultNotification() = 0;
