@@ -2,7 +2,7 @@
 title: "Safety Supervisor Design"
 type: design
 status: draft
-version: 0.2.0
+version: 0.3.0
 component: "safety-supervisor"
 date: 2026-09-24
 ---
@@ -12,7 +12,7 @@ date: 2026-09-24
 | Title     | Safety Supervisor Design |
 | Type      | design                   |
 | Status    | draft                    |
-| Version   | 0.2.0                    |
+| Version   | 0.3.0                    |
 | Component | safety-supervisor        |
 | Date      | 2026-09-24               |
 
@@ -55,8 +55,9 @@ checked against the transition table for the active mode and rejected if not per
 Rejection is silent to the drive — a refused arm request leaves the system exactly as it
 was.
 
-The balance stage runs only while ARMED. The supervisor sees every balance iteration before the
-balance stage does, so an iteration that detects a disarm condition never reaches the balance stage.
+The balance and outer stages run only while ARMED. The supervisor sees every balance iteration before
+the balance stage does, so an iteration that detects a disarm condition never reaches the balance
+stage. It engages balance control on entry to ARMED and disengages it on every exit.
 The operator's bench drive command is subject to the same permission: it is refused unless ARMED.
 
 ### Part B — Fall detection
@@ -121,14 +122,14 @@ calibration succeeds, because the uncalibrated estimate is invalid.
 
 ### Required
 
-| Interface           | Purpose                                      | Contract                                                                         |
-|---------------------|----------------------------------------------|----------------------------------------------------------------------------------|
-| Attitude estimate   | Detect falls and check arming preconditions  | Carries an explicit validity indication; the supervisor treats invalid as unsafe |
-| Motor driver health | Observe driver-reported faults               | An asserted fault is latched even if it clears immediately afterwards            |
-| Drive disable       | Force both bridges to tri-state              | Must succeed without a healthy control loop; tri-state, never brake              |
-| Strategy lifecycle  | Reset the active strategy on arming          | Reset completes before the drive is permitted                                    |
-| Calibration         | Start and observe gyroscope bias calibration | Reports calibrating, calibrated or failed                                        |
-| Timebase            | Drive liveness monitoring                    | Independent of the balance loop it supervises                                    |
+| Interface           | Purpose                                                              | Contract                                                                         |
+|---------------------|----------------------------------------------------------------------|----------------------------------------------------------------------------------|
+| Attitude estimate   | Detect falls and check arming preconditions                          | Carries an explicit validity indication; the supervisor treats invalid as unsafe |
+| Motor driver health | Observe driver-reported faults                                       | An asserted fault is latched even if it clears immediately afterwards            |
+| Drive disable       | Force both bridges to tri-state                                      | Must succeed without a healthy control loop; tri-state, never brake              |
+| Strategy lifecycle  | Engage balance control on arming, disengage on every exit from ARMED | Engagement completes before the drive is permitted                               |
+| Calibration         | Start and observe gyroscope bias calibration                         | Reports calibrating, calibrated or failed                                        |
+| Timebase            | Drive liveness monitoring                                            | Independent of the balance loop it supervises                                    |
 
 ---
 
