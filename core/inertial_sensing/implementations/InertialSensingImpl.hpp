@@ -26,6 +26,7 @@ namespace sensing
         ~InertialSensingImpl();
 
         Measurement Latest() const override;
+        void OnMeasurement(const infra::Function<void(const Measurement&)>& onMeasurement) override;
         InvalidCause Cause() const override;
 
         void StartCalibration() override;
@@ -52,5 +53,7 @@ namespace sensing
         uint32_t biasSamples{ 0 };
         infra::TimePoint calibrationStarted;
         infra::TimePoint lastCalibrationSample;
+
+        infra::Function<void(const Measurement&)> onMeasurement;
     };
 }
