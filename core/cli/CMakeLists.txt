@@ -17,6 +17,7 @@ target_link_libraries(inverted_pendulum_bot.cli PUBLIC
     services.peripheral
     services.tracer
     infra.timer
+    infra.stream
     infra.util
 )
 

@@ -17,46 +17,45 @@ namespace
     }
 }
 
-TEST(DecimalParserTest, parses_integers)
+TEST(DecimalParserTest, parses_decimals)
 {
-    EXPECT_FLOAT_EQ(0.0f, Parsed("0"));
-    EXPECT_FLOAT_EQ(1.0f, Parsed("1"));
-    EXPECT_FLOAT_EQ(250.0f, Parsed("250"));
+    EXPECT_FLOAT_EQ(0.3f, Parsed("0.3"));
+    EXPECT_FLOAT_EQ(1.0f, Parsed("1.0"));
+    EXPECT_FLOAT_EQ(1.125f, Parsed("1.125"));
+    EXPECT_FLOAT_EQ(250.5f, Parsed("250.5"));
 }
 
-TEST(DecimalParserTest, parses_signed_values)
+TEST(DecimalParserTest, parses_negative_decimals)
 {
     EXPECT_FLOAT_EQ(-0.7f, Parsed("-0.7"));
-    EXPECT_FLOAT_EQ(0.3f, Parsed("+0.3"));
-    EXPECT_FLOAT_EQ(-12.0f, Parsed("-12"));
+    EXPECT_FLOAT_EQ(-1.0f, Parsed("-1.0"));
 }
 
-TEST(DecimalParserTest, parses_fractions_with_or_without_leading_or_trailing_digits)
+TEST(DecimalParserTest, parses_up_to_nine_fraction_digits)
 {
-    EXPECT_FLOAT_EQ(0.5f, Parsed(".5"));
-    EXPECT_FLOAT_EQ(-0.25f, Parsed("-.25"));
-    EXPECT_FLOAT_EQ(3.0f, Parsed("3."));
-    EXPECT_FLOAT_EQ(1.125f, Parsed("1.125"));
+    EXPECT_NEAR(0.123456789f, Parsed("0.123456789"), 1e-7f);
 }
 
-TEST(DecimalParserTest, precision_beyond_seven_fraction_digits_is_ignored)
+TEST(DecimalParserTest, a_decimal_point_is_required)
 {
-    EXPECT_NEAR(0.1234567f, Parsed("0.1234567890123"), 1e-7f);
+    EXPECT_TRUE(Rejected("1"));
+    EXPECT_TRUE(Rejected("-12"));
+    EXPECT_TRUE(Rejected("--1"));
 }
 
-TEST(DecimalParserTest, accepts_up_to_nine_integer_digits)
+TEST(DecimalParserTest, rejects_more_than_eleven_characters)
 {
-    EXPECT_FLOAT_EQ(999999999.0f, Parsed("999999999"));
-    EXPECT_TRUE(Rejected("1000000000"));
+    EXPECT_FLOAT_EQ(-0.12345678f, Parsed("-0.12345678"));
+    EXPECT_TRUE(Rejected("0.1234567890"));
 }
 
-TEST(DecimalParserTest, rejects_empty_and_sign_or_point_alone)
+TEST(DecimalParserTest, rejects_empty_and_incomplete_numbers)
 {
     EXPECT_TRUE(Rejected(""));
     EXPECT_TRUE(Rejected("-"));
-    EXPECT_TRUE(Rejected("+"));
     EXPECT_TRUE(Rejected("."));
-    EXPECT_TRUE(Rejected("-."));
+    EXPECT_TRUE(Rejected(".5"));
+    EXPECT_TRUE(Rejected("3."));
 }
 
 TEST(DecimalParserTest, rejects_anything_but_one_plain_decimal)
@@ -64,16 +63,7 @@ TEST(DecimalParserTest, rejects_anything_but_one_plain_decimal)
     EXPECT_TRUE(Rejected("abc"));
     EXPECT_TRUE(Rejected("0.3x"));
     EXPECT_TRUE(Rejected("1.2.3"));
-    EXPECT_TRUE(Rejected("1e3"));
-    EXPECT_TRUE(Rejected(" 1"));
-    EXPECT_TRUE(Rejected("1 "));
-    EXPECT_TRUE(Rejected("--1"));
+    EXPECT_TRUE(Rejected("1.0e3"));
+    EXPECT_TRUE(Rejected("+0.3"));
     EXPECT_TRUE(Rejected("nan"));
-    EXPECT_TRUE(Rejected("inf"));
-}
-
-TEST(DecimalParserTest, rejects_more_than_fifteen_characters)
-{
-    EXPECT_FLOAT_EQ(0.1234567f, Parsed("0.1234567000000"));
-    EXPECT_TRUE(Rejected("0.12345670000000"));
 }

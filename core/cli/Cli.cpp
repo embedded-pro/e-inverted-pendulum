@@ -134,7 +134,7 @@ namespace application
                   {
                       Identify(params);
                   } },
-              { { "drive", "d", "apply signed effort to both wheels, -1.0 to 1.0, while armed" },
+              { { "drive", "d", "apply signed effort to both wheels as decimals, -1.0 to 1.0, while armed" },
                   [this](const infra::BoundedConstString& params)
                   {
                       Drive(params);
@@ -242,7 +242,7 @@ namespace application
 
         if (!effortLeft.has_value() || !effortRight.has_value())
         {
-            tracer.Trace() << "usage: drive <left> <right>";
+            tracer.Trace() << "usage: drive <left> <right>, decimals such as 0.5 or -1.0";
             return;
         }
 
