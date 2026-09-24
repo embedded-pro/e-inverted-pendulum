@@ -1,5 +1,5 @@
 #include "core/cli/Cli.hpp"
-#include "core/cli/DecimalParser.hpp"
+#include "core/cli/NumberParser.hpp"
 #include "infra/util/Tokenizer.hpp"
 #include <array>
 #include <chrono>
@@ -106,15 +106,15 @@ namespace application
         }
     }
 
-    Cli::Cli(platform::Platform& platform, motion::MotionActuation& motionActuation, odometry::WheelOdometry& wheelOdometry, sensing::InertialSensing& inertialSensing, estimation::AttitudeEstimation& attitudeEstimation, control::ControlLoop& controlLoop, safety::SafetySupervisor& supervisor)
+    Cli::Cli(platform::Platform& platform, motion::MotionActuation& motionActuation, odometry::WheelOdometry& wheelOdometry, sensing::InertialSensing& inertialSensing, estimation::AttitudeEstimation& attitudeEstimation, control::ControlLoop& controlLoop, safety::SafetySupervisor& supervisor, balance::BalanceControl& balanceControl)
         : debugLed{ platform.StatusLed() }
         , terminal{ platform.Communication(), platform.Tracer() }
-        , commands{ terminal, platform.Tracer(), motionActuation, wheelOdometry, inertialSensing, attitudeEstimation, controlLoop, supervisor }
+        , commands{ terminal, platform.Tracer(), motionActuation, wheelOdometry, inertialSensing, attitudeEstimation, controlLoop, supervisor, balanceControl }
     {
         platform.Tracer().Trace() << "inverted-pendulum-bot ready - try 'mode', 'attitude', 'arm' or 'help'";
     }
 
-    Cli::CliCommands::CliCommands(services::TerminalWithCommands& terminal, services::Tracer& tracer, motion::MotionActuation& motionActuation, odometry::WheelOdometry& wheelOdometry, sensing::InertialSensing& inertialSensing, estimation::AttitudeEstimation& attitudeEstimation, control::ControlLoop& controlLoop, safety::SafetySupervisor& supervisor)
+    Cli::CliCommands::CliCommands(services::TerminalWithCommands& terminal, services::Tracer& tracer, motion::MotionActuation& motionActuation, odometry::WheelOdometry& wheelOdometry, sensing::InertialSensing& inertialSensing, estimation::AttitudeEstimation& attitudeEstimation, control::ControlLoop& controlLoop, safety::SafetySupervisor& supervisor, balance::BalanceControl& balanceControl)
         : services::TerminalCommands(terminal)
         , tracer(tracer)
         , motionActuation(motionActuation)
@@ -123,6 +123,7 @@ namespace application
         , attitudeEstimation(attitudeEstimation)
         , controlLoop(controlLoop)
         , supervisor(supervisor)
+        , balanceControl(balanceControl)
         , commands{ {
               { { "ping", "p", "reply with pong" },
                   [this](const infra::BoundedConstString& params)
@@ -133,11 +134,6 @@ namespace application
                   [this](const infra::BoundedConstString& params)
                   {
                       Identify(params);
-                  } },
-              { { "drive", "d", "apply signed effort to both wheels as decimals, -1.0 to 1.0, while armed" },
-                  [this](const infra::BoundedConstString& params)
-                  {
-                      Drive(params);
                   } },
               { { "tristate", "t", "release both bridges to high impedance" },
                   [this](const infra::BoundedConstString& params)
@@ -204,6 +200,21 @@ namespace application
                   {
                       ReportMode(params);
                   } },
+              { { "move", "w", "command velocity in m/s and yaw rate in rad/s while armed, e.g. move 0.2 0.0" },
+                  [this](const infra::BoundedConstString& params)
+                  {
+                      Move(params);
+                  } },
+              { { "strategy", "g", "list control strategies, or select one by name while disarmed" },
+                  [this](const infra::BoundedConstString& params)
+                  {
+                      Strategy(params);
+                  } },
+              { { "param", "k", "list the active strategy's parameters, or 'param <index> <value>' while disarmed" },
+                  [this](const infra::BoundedConstString& params)
+                  {
+                      Param(params);
+                  } },
           } }
     {}
 
@@ -220,34 +231,6 @@ namespace application
     void Cli::CliCommands::Identify(const infra::BoundedConstString&)
     {
         tracer.Trace() << "inverted-pendulum-bot cli";
-    }
-
-    void Cli::CliCommands::Drive(const infra::BoundedConstString& params)
-    {
-        if (!supervisor.DrivePermitted())
-        {
-            tracer.Trace() << "refused: not armed";
-            return;
-        }
-
-        const infra::Tokenizer tokenizer{ params, ' ' };
-        std::optional<float> effortLeft;
-        std::optional<float> effortRight;
-
-        if (tokenizer.Size() == 2)
-        {
-            effortLeft = ParseDecimal(tokenizer.Token(0));
-            effortRight = ParseDecimal(tokenizer.Token(1));
-        }
-
-        if (!effortLeft.has_value() || !effortRight.has_value())
-        {
-            tracer.Trace() << "usage: drive <left> <right>, decimals such as 0.5 or -1.0";
-            return;
-        }
-
-        motionActuation.Apply(*effortLeft, *effortRight);
-        tracer.Trace() << "driving";
     }
 
     void Cli::CliCommands::ReleaseBridges(const infra::BoundedConstString&)
@@ -376,5 +359,97 @@ namespace application
     void Cli::CliCommands::ReportMode(const infra::BoundedConstString&)
     {
         tracer.Trace() << "mode " << NameOf(supervisor.Current()) << " fault " << NameOf(supervisor.LatchedCause());
+    }
+
+    void Cli::CliCommands::Move(const infra::BoundedConstString& params)
+    {
+        const infra::Tokenizer tokenizer{ params, ' ' };
+        std::optional<float> velocity;
+        std::optional<float> yawRate;
+
+        if (tokenizer.Size() == 2)
+        {
+            velocity = ParseDecimal(tokenizer.Token(0));
+            yawRate = ParseDecimal(tokenizer.Token(1));
+        }
+
+        if (!velocity.has_value() || !yawRate.has_value())
+        {
+            tracer.Trace() << "usage: move <velocity> <yawRate>, decimals such as 0.2 or -0.5";
+            return;
+        }
+
+        if (!balanceControl.Move(balance::Setpoints{ *velocity, *yawRate }))
+        {
+            tracer.Trace() << "refused: move needs armed, |velocity| <= 1.0 m/s and |yaw rate| <= 1.6 rad/s";
+            return;
+        }
+
+        tracer.Trace() << "moving";
+    }
+
+    void Cli::CliCommands::Strategy(const infra::BoundedConstString& params)
+    {
+        if (params.empty())
+        {
+            for (std::size_t index = 0; index != balanceControl.StrategyCount(); ++index)
+                tracer.Trace() << "strategy " << balanceControl.StrategyName(index) << (index == balanceControl.ActiveStrategy() ? " (active)" : "");
+
+            return;
+        }
+
+        for (std::size_t index = 0; index != balanceControl.StrategyCount(); ++index)
+            if (params == balanceControl.StrategyName(index))
+            {
+                if (!balanceControl.Select(index))
+                    tracer.Trace() << "refused: strategy changes need disarmed";
+                else
+                    tracer.Trace() << "strategy " << balanceControl.StrategyName(index) << " selected";
+
+                return;
+            }
+
+        tracer.Trace() << "usage: strategy [<name>]";
+    }
+
+    void Cli::CliCommands::Param(const infra::BoundedConstString& params)
+    {
+        if (params.empty())
+        {
+            ListParameters();
+            return;
+        }
+
+        const infra::Tokenizer tokenizer{ params, ' ' };
+        std::optional<uint32_t> index;
+        std::optional<float> value;
+
+        if (tokenizer.Size() == 2)
+        {
+            index = ParseIndex(tokenizer.Token(0));
+            value = ParseDecimal(tokenizer.Token(1));
+        }
+
+        if (!index.has_value() || !value.has_value())
+        {
+            tracer.Trace() << "usage: param <index> <value>, value a decimal such as 2.0";
+            return;
+        }
+
+        if (!balanceControl.SetParameter(*index, *value))
+        {
+            tracer.Trace() << "refused: parameter writes need disarmed, a known index and a value in range";
+            return;
+        }
+
+        tracer.Trace() << balanceControl.Parameters()[*index].name << " = " << *value;
+    }
+
+    void Cli::CliCommands::ListParameters()
+    {
+        const auto descriptors = balanceControl.Parameters();
+
+        for (std::size_t index = 0; index != descriptors.size(); ++index)
+            tracer.Trace() << static_cast<uint32_t>(index) << " " << descriptors[index].name << " " << balanceControl.Parameter(index) << " [" << descriptors[index].minimum << " " << descriptors[index].maximum << "]";
     }
 }

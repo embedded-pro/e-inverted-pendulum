@@ -58,7 +58,7 @@ was.
 The balance and outer stages run only while ARMED. The supervisor sees every balance iteration before
 the balance stage does, so an iteration that detects a disarm condition never reaches the balance
 stage. It engages balance control on entry to ARMED and disengages it on every exit.
-The operator's bench drive command is subject to the same permission: it is refused unless ARMED.
+Operator motion commands are subject to the same permission: they are refused unless ARMED.
 
 ### Part B — Fall detection
 

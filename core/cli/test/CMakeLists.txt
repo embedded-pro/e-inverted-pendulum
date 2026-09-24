@@ -14,5 +14,5 @@ target_link_libraries(inverted_pendulum_bot.cli_test PUBLIC
 
 target_sources(inverted_pendulum_bot.cli_test PRIVATE
     TestCli.cpp
-    TestDecimalParser.cpp
+    TestNumberParser.cpp
 )

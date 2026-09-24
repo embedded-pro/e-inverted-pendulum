@@ -13,7 +13,6 @@ namespace control
         BalanceStage& operator=(const BalanceStage& other) = delete;
 
         virtual void Balance(const estimation::Estimate& estimate, infra::Duration interval) = 0;
-        virtual void Reset() = 0;
 
     protected:
         ~BalanceStage() = default;
@@ -30,5 +29,17 @@ namespace control
 
     protected:
         ~OuterStage() = default;
+    };
+
+    class SupervisedControl
+        : public BalanceStage
+        , public OuterStage
+    {
+    public:
+        virtual void Engage() = 0;
+        virtual void Disengage() = 0;
+
+    protected:
+        ~SupervisedControl() = default;
     };
 }
