@@ -69,6 +69,8 @@ namespace ble
         void ClientConfigurationWritten(services::AttAttribute::Handle handle, uint16_t value) override;
 
         services::GattServerService& Service();
+        uint16_t Mtu() const;
+        bool TelemetrySubscribed() const;
 
     private:
         class WriteHandler

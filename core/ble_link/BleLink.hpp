@@ -1,6 +1,7 @@
 #pragma once
 
 #include "core/ble_link/RobotControlService.hpp"
+#include "core/ble_link/interfaces/LinkStatus.hpp"
 #include "core/platform_abstraction/Bluetooth.hpp"
 #include "infra/util/BoundedString.hpp"
 #include "infra/util/BoundedVector.hpp"
@@ -18,6 +19,7 @@ namespace ble
         ~BleLink();
 
         bool Connected() const;
+        LinkReport Report() const;
 
     private:
         void StateChanged(services::GapPeripheralState state) override;

@@ -3,7 +3,7 @@
 #include "core/balance_control/implementations/BalanceControlImpl.hpp"
 #include "core/balance_control/implementations/CascadedPidStrategy.hpp"
 #include "core/balance_control/implementations/LqrStrategy.hpp"
-#include "core/ble_link/BleLink.hpp"
+#include "core/ble_link/BleEndpoint.hpp"
 #include "core/cli/Cli.hpp"
 #include "core/control_loop/implementations/ControlLoopImpl.hpp"
 #include "core/inertial_sensing/implementations/InertialSensingImpl.hpp"
@@ -13,7 +13,6 @@
 #include "core/telemetry/implementations/TelemetryRecorder.hpp"
 #include "core/wheel_odometry/implementations/WheelOdometryImpl.hpp"
 #include <array>
-#include <optional>
 
 int main()
 {
@@ -30,13 +29,8 @@ int main()
     static safety::SafetySupervisorImpl supervisor{ motionActuation, inertialSensing, balanceControl };
     static telemetry::TelemetryRecorder telemetryRecorder{ supervisor, balanceControl, wheelOdometry, supervisor };
     static control::ControlLoopImpl controlLoop{ inertialSensing, attitudeEstimation, telemetryRecorder, supervisor };
-    static application::Cli cli{ platform, motionActuation, wheelOdometry, inertialSensing, attitudeEstimation, controlLoop, supervisor, balanceControl };
-
-    static std::optional<ble::BleLink> bleLink;
-    platform.StartBluetooth([](platform::Bluetooth& bluetooth)
-        {
-            bleLink.emplace(bluetooth, "inverted-pendulum", supervisor, balanceControl, telemetryRecorder);
-        });
+    static ble::BleEndpoint bleEndpoint{ platform, "inverted-pendulum", supervisor, balanceControl, telemetryRecorder };
+    static application::Cli cli{ platform, motionActuation, wheelOdometry, inertialSensing, attitudeEstimation, controlLoop, supervisor, balanceControl, bleEndpoint };
 
     platform.Run();
 

@@ -99,6 +99,16 @@ namespace ble
         return service;
     }
 
+    uint16_t RobotControlService::Mtu() const
+    {
+        return mtu;
+    }
+
+    bool RobotControlService::TelemetrySubscribed() const
+    {
+        return telemetrySubscribed;
+    }
+
     void RobotControlService::MotionWritten(infra::ConstByteRange data)
     {
         if (data.size() == motionSize)

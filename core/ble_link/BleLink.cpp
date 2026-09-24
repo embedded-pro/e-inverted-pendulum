@@ -31,6 +31,16 @@ namespace ble
         return connected;
     }
 
+    LinkReport BleLink::Report() const
+    {
+        return {
+            connected ? RadioState::connected : RadioState::advertising,
+            Subject().GetIdentityAddress().address,
+            service.Mtu(),
+            service.TelemetrySubscribed()
+        };
+    }
+
     void BleLink::StateChanged(services::GapPeripheralState state)
     {
         if (state == services::GapPeripheralState::connected)

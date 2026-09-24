@@ -1,3 +1,5 @@
+add_subdirectory(interfaces)
+
 add_library(inverted_pendulum_bot.ble_link ${EMIL_EXCLUDE_FROM_ALL})
 
 target_include_directories(inverted_pendulum_bot.ble_link PUBLIC
@@ -6,6 +8,7 @@ target_include_directories(inverted_pendulum_bot.ble_link PUBLIC
 )
 
 target_link_libraries(inverted_pendulum_bot.ble_link PUBLIC
+    inverted_pendulum_bot.ble_link.interfaces
     inverted_pendulum_bot.platform_abstraction
     inverted_pendulum_bot.safety_supervisor.interfaces
     inverted_pendulum_bot.balance_control.interfaces
@@ -15,8 +18,12 @@ target_link_libraries(inverted_pendulum_bot.ble_link PUBLIC
 )
 
 target_sources(inverted_pendulum_bot.ble_link PRIVATE
+    BleEndpoint.hpp
+    BleEndpoint.cpp
     BleLink.hpp
     BleLink.cpp
+    DeviceIdentity.hpp
+    DeviceIdentity.cpp
     RobotControlService.hpp
     RobotControlService.cpp
     WireFormat.hpp

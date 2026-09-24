@@ -34,8 +34,10 @@ namespace application
         return inertial;
     }
 
-    void PlatformImpl::StartBluetooth(const infra::Function<void(platform::Bluetooth& bluetooth)>&)
-    {}
+    void PlatformImpl::StartBluetooth(infra::BoundedConstString deviceName, const infra::Function<void(platform::Bluetooth& bluetooth)>& onReady)
+    {
+        bluetooth.Start(deviceName, onReady);
+    }
 
     void PlatformImpl::Run()
     {

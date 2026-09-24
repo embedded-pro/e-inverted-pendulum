@@ -1,6 +1,8 @@
+#include "core/ble_link/BleEndpoint.hpp"
 #include "core/ble_link/BleLink.hpp"
 #include "core/ble_link/WireFormat.hpp"
 #include "core/ble_link/test/Mocks.hpp"
+#include "core/platform_abstraction/test_doubles/PlatformMock.hpp"
 #include "infra/timer/test_helper/ClockFixture.hpp"
 #include "services/ble/GapAdvertisingData.hpp"
 #include "services/ble/test_doubles/GapPeripheralMock.hpp"
@@ -8,6 +10,7 @@
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
 #include <optional>
+#include <string>
 #include <vector>
 
 namespace
@@ -27,7 +30,10 @@ namespace
                 {
                     registered = &added;
                 });
-            EXPECT_CALL(bluetooth, SetLinkObserver(testing::_));
+            EXPECT_CALL(bluetooth, SetLinkObserver(testing::_)).WillOnce([this](platform::BluetoothLinkObserver& observer)
+                {
+                    linkObserver = &observer;
+                });
             ExpectAdvertising();
 
             link.emplace(bluetooth, "inverted-pendulum", supervisor, balanceControl, telemetrySource);
@@ -67,6 +73,7 @@ namespace
         testing::StrictMock<ble::BalanceControlMock> balanceControl;
         testing::StrictMock<ble::TelemetrySourceMock> telemetrySource;
         services::GattServerService* registered{ nullptr };
+        platform::BluetoothLinkObserver* linkObserver{ nullptr };
         Bytes advertisement;
         Bytes scanResponse;
         std::optional<ble::BleLink> link;
@@ -109,4 +116,88 @@ TEST_F(BleLinkTest, entering_advertising_changes_nothing)
     gap.ChangeState(services::GapPeripheralState::advertising);
 
     EXPECT_FALSE(link->Connected());
+}
+
+TEST_F(BleLinkTest, reports_an_advertising_link_with_the_identity_address)
+{
+    const hal::MacAddress address{ 0x34, 0x12, 0x26, 0xe1, 0x80, 0x00 };
+    EXPECT_CALL(gap, GetIdentityAddress()).WillOnce(testing::Return(services::GapAddress{ address, services::GapDeviceAddressType::publicAddress }));
+
+    const auto report = link->Report();
+
+    EXPECT_EQ(ble::RadioState::advertising, report.radio);
+    EXPECT_EQ(address, report.address);
+    EXPECT_EQ(services::attDefaultMaxMtuSize, report.mtu);
+    EXPECT_FALSE(report.telemetrySubscribed);
+}
+
+TEST_F(BleLinkTest, reports_a_connected_link_with_its_mtu_and_subscription)
+{
+    Connect();
+    linkObserver->AttMtuChanged(247);
+    linkObserver->ClientConfigurationWritten(ble::RobotControlService::clientConfigurationOffset, 1);
+    EXPECT_CALL(gap, GetIdentityAddress()).WillOnce(testing::Return(services::GapAddress{}));
+
+    const auto report = link->Report();
+
+    EXPECT_EQ(ble::RadioState::connected, report.radio);
+    EXPECT_EQ(247, report.mtu);
+    EXPECT_TRUE(report.telemetrySubscribed);
+}
+
+namespace
+{
+    class BleEndpointTest
+        : public testing::Test
+        , public infra::ClockFixture
+    {
+    public:
+        BleEndpointTest()
+        {
+            EXPECT_CALL(platform, StartBluetooth(testing::_, testing::_)).WillOnce([this](infra::BoundedConstString deviceName, const infra::Function<void(platform::Bluetooth&)>& onReady)
+                {
+                    startedName.assign(deviceName.begin(), deviceName.end());
+                    radioReady = onReady;
+                });
+
+            endpoint.emplace(platform, "inverted-pendulum", supervisor, balanceControl, telemetrySource);
+        }
+
+        testing::StrictMock<platform::PlatformMock> platform;
+        testing::StrictMock<ble::BluetoothMock> bluetooth;
+        testing::StrictMock<services::GapPeripheralMock> gap;
+        testing::StrictMock<services::GattServerMock> gattServer;
+        testing::StrictMock<ble::SafetySupervisorMock> supervisor;
+        testing::StrictMock<ble::BalanceControlMock> balanceControl;
+        testing::StrictMock<ble::TelemetrySourceMock> telemetrySource;
+        std::string startedName;
+        infra::Function<void(platform::Bluetooth&)> radioReady;
+        std::optional<ble::BleEndpoint> endpoint;
+    };
+}
+
+TEST_F(BleEndpointTest, starts_the_radio_under_the_device_name)
+{
+    EXPECT_EQ("inverted-pendulum", startedName);
+}
+
+TEST_F(BleEndpointTest, reports_a_starting_radio_until_the_board_hands_back_the_peripheral)
+{
+    EXPECT_EQ(ble::RadioState::starting, endpoint->Report().radio);
+}
+
+TEST_F(BleEndpointTest, builds_the_link_and_advertises_once_the_radio_is_ready)
+{
+    EXPECT_CALL(bluetooth, Gap()).WillRepeatedly(testing::ReturnRef(gap));
+    EXPECT_CALL(bluetooth, GattServer()).WillRepeatedly(testing::ReturnRef(gattServer));
+    EXPECT_CALL(gattServer, AddService(testing::_));
+    EXPECT_CALL(bluetooth, SetLinkObserver(testing::_));
+    EXPECT_CALL(gap, SetAdvertisementData(testing::_, testing::_)).WillOnce(testing::Return(services::GapRequestStatus::accepted));
+    EXPECT_CALL(gap, SetScanResponseData(testing::_, testing::_)).WillOnce(testing::Return(services::GapRequestStatus::accepted));
+    EXPECT_CALL(gap, Advertise(testing::_, testing::_)).WillOnce(testing::Return(services::GapRequestStatus::accepted));
+
+    radioReady(bluetooth);
+
+    EXPECT_CALL(gap, GetIdentityAddress()).WillOnce(testing::Return(services::GapAddress{}));
+    EXPECT_EQ(ble::RadioState::advertising, endpoint->Report().radio);
 }

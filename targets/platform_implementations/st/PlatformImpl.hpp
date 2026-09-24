@@ -8,6 +8,7 @@
 #include "infra/stream/OutputStream.hpp"
 #include "services/tracer/StreamWriterOnSerialCommunication.hpp"
 #include "services/tracer/Tracer.hpp"
+#include "targets/platform_implementations/st/BluetoothStm.hpp"
 #include "targets/platform_implementations/st/InertialSensorStm.hpp"
 #include "targets/platform_implementations/st/MotorDriverStm.hpp"
 #include "targets/platform_implementations/st/WheelEncodersStm.hpp"
@@ -26,7 +27,7 @@ namespace application
         platform::MotorDriver& Motors() override;
         platform::WheelEncoders& Encoders() override;
         platform::InertialSensor& Inertial() override;
-        void StartBluetooth(const infra::Function<void(platform::Bluetooth& bluetooth)>& onReady) override;
+        void StartBluetooth(infra::BoundedConstString deviceName, const infra::Function<void(platform::Bluetooth& bluetooth)>& onReady) override;
         void Run() override;
 
     private:
@@ -52,8 +53,10 @@ namespace application
         WheelEncodersStm encoders;
         InertialSensorStm inertial{ platform::AxisMap{} };
 
-        services::StreamWriterOnSerialCommunication::WithStorage<256> streamWriter{ console };
+        services::StreamWriterOnSerialCommunication::WithStorage<1024> streamWriter{ console };
         infra::TextOutputStream::WithErrorPolicy stream{ streamWriter };
         services::TracerToStream tracer{ stream };
+
+        BluetoothStm bluetooth{ tracer };
     };
 }

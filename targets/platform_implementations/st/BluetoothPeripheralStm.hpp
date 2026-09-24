@@ -1,0 +1,33 @@
+#pragma once
+
+#include "core/ble_link/DeviceIdentity.hpp"
+#include "core/platform_abstraction/Bluetooth.hpp"
+#include "hal_st/middlewares/ble_middleware/GattServerSt.hpp"
+#include "hal_st/middlewares/ble_middleware/TracingGapPeripheralSt.hpp"
+#include "targets/platform_implementations/st/LinkGattServerStm.hpp"
+
+namespace application
+{
+    class BluetoothPeripheralStm final
+        : public platform::Bluetooth
+    {
+    public:
+        BluetoothPeripheralStm(hal::HciEventSource& hciEventSource, services::BondStorageSynchronizer& bondStorageSynchronizer, infra::BoundedConstString deviceName, services::Tracer& tracer);
+
+        services::GapPeripheral& Gap() override;
+        services::GattServer& GattServer() override;
+        void SetLinkObserver(platform::BluetoothLinkObserver& observer) override;
+
+    private:
+        static constexpr uint16_t unknownAppearance{ 0 };
+        static constexpr uint8_t zeroDbmPowerLevel{ 0x18 };
+
+        ble::DeviceIdentity identity;
+        hal::GapSt::RootKeys rootKeys;
+        hal::GapSt::GapService gapService;
+        hal::GapSt::Configuration gapConfiguration;
+        hal::TracingGapPeripheralSt gap;
+        LinkGattServerStm gattServer;
+        hal::GattConfirmIndication confirmIndication;
+    };
+}

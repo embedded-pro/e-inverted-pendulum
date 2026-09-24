@@ -13,6 +13,7 @@ target_link_libraries(inverted_pendulum_bot.cli PUBLIC
     inverted_pendulum_bot.control_loop.interfaces
     inverted_pendulum_bot.safety_supervisor.interfaces
     inverted_pendulum_bot.balance_control.interfaces
+    inverted_pendulum_bot.ble_link.interfaces
     inverted_pendulum_bot.platform_abstraction
     services.util
     services.peripheral

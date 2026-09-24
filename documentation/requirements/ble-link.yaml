@@ -48,3 +48,17 @@
   shall: >
     The device shall require pairing before accepting any characteristic write that
     commands motion, changes mode, or modifies tuning parameters.
+
+- id: REQ-LINK-009
+  title: Distinct device identity
+  shall: >
+    The device shall advertise under an address derived from its microcontroller's
+    factory identity, so that no two robots share an address and a robot keeps its
+    address across resets.
+
+- id: REQ-LINK-010
+  title: Link status on the console
+  shall: >
+    The device shall report on its diagnostic console whether the radio is starting,
+    advertising or connected, together with its address, the negotiated attribute MTU
+    and whether telemetry is subscribed.
