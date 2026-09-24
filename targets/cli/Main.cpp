@@ -2,6 +2,7 @@
 #include "core/attitude_estimation/implementations/AttitudeEstimationImpl.hpp"
 #include "core/balance_control/implementations/BalanceControlImpl.hpp"
 #include "core/balance_control/implementations/CascadedPidStrategy.hpp"
+#include "core/balance_control/implementations/LqrStrategy.hpp"
 #include "core/cli/Cli.hpp"
 #include "core/control_loop/implementations/ControlLoopImpl.hpp"
 #include "core/inertial_sensing/implementations/InertialSensingImpl.hpp"
@@ -20,7 +21,8 @@ int main()
     static sensing::InertialSensingImpl inertialSensing{ platform.Inertial() };
     static estimation::AttitudeEstimationImpl attitudeEstimation;
     static balance::CascadedPidStrategy cascadedPid;
-    static std::array<balance::ControlStrategy*, 1> strategies{ &cascadedPid };
+    static balance::LqrStrategy lqr;
+    static std::array<balance::ControlStrategy*, 2> strategies{ &cascadedPid, &lqr };
     static balance::BalanceControlImpl balanceControl{ infra::MakeRange(strategies), motionActuation, wheelOdometry };
     static safety::SafetySupervisorImpl supervisor{ motionActuation, inertialSensing, balanceControl };
     static control::ControlLoopImpl controlLoop{ inertialSensing, attitudeEstimation, supervisor, supervisor };

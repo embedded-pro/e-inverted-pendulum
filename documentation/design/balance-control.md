@@ -2,7 +2,7 @@
 title: "Balance Control Design"
 type: design
 status: draft
-version: 0.2.0
+version: 0.3.0
 component: "balance-control"
 date: 2026-09-24
 ---
@@ -12,7 +12,7 @@ date: 2026-09-24
 | Title     | Balance Control Design |
 | Type      | design                 |
 | Status    | draft                  |
-| Version   | 0.2.0                  |
+| Version   | 0.3.0                  |
 | Component | balance-control        |
 | Date      | 2026-09-24             |
 
@@ -101,6 +101,31 @@ part. The gains come from solving the linearised regulator problem offline; the 
 evaluates one inner product per iteration. Its parameters are the elements of that gain
 vector, which is why the parameter descriptor must be per-strategy rather than a fixed
 layout of named gains.
+
+The wheel terms are expressed against the operator's command, so the same law both holds position
+and tracks a velocity. The velocity deviation is the measured chassis velocity minus the commanded
+one; the position deviation is that velocity deviation accumulated over the measured outer-loop
+interval. Both update at the outer rate and are held for the balance iterations in between. The
+position deviation is bounded to half a metre, so a robot that is pushed far away does not try to
+drive all the way back, and it stops accumulating while the effort is saturated, which is this
+law's only accumulating term.
+
+The yaw term is the same yaw-rate loop the cascaded PID strategy uses, with its own three gains.
+
+The gains are placeholders until the plant parameters are measured and the regulator problem is
+solved; the ranges are symmetric because a solved gain vector may carry either sign. With the
+effort equal to minus the gains times the state, the pitch terms are positive and the wheel terms
+negative: a robot ahead of its reference first drives forward to tip itself back.
+
+| Index | Parameter   | Unit                      | Range       | Initial |
+|-------|-------------|---------------------------|-------------|---------|
+| 0     | k.pitch     | effort per radian         | -100 to 100 | 2.0     |
+| 1     | k.pitchRate | effort per radian/second  | -10 to 10   | 0.1     |
+| 2     | k.position  | effort per metre          | -10 to 10   | -0.02   |
+| 3     | k.velocity  | effort per metre/second   | -10 to 10   | -0.1    |
+| 4     | yaw.kp      | effort per radian/second  | 0 to 2      | 0.1     |
+| 5     | yaw.ki      | effort per radian         | 0 to 5      | 0.0     |
+| 6     | yaw.kd      | effort per radian/second² | 0 to 1      | 0.0     |
 
 ### Part D — Strategy registry and selection
 
@@ -284,10 +309,10 @@ graph LR
 
 ## Open Questions
 
-| # | Question                                                                                                         | Options                                                                      | Status                       |
-|---|------------------------------------------------------------------------------------------------------------------|------------------------------------------------------------------------------|------------------------------|
-| 1 | Which strategy is the factory default?                                                                           | Cascaded PID; LQR                                                            | decided: cascaded PID        |
-| 2 | Should stored parameters be invalidated when a strategy's descriptor changes between firmware versions?          | Version the descriptor and reject stale values; always fall back to defaults | open                         |
-| 3 | Should the outer velocity loop limit the pitch setpoint it may request, independently of effort saturation?      | Rely on effort saturation; add an explicit pitch setpoint clamp              | decided: clamp at 10 degrees |
-| 4 | Should a third strategy exist for bench testing, commanding zero effort while reporting what it would have done? | Not needed; add an observing strategy                                        | open                         |
-| 5 | How is the yaw term handled by a full-state strategy — inside the gain vector or as a separate loop?             | Separate yaw loop for both strategies; per-strategy choice                   | open                         |
+| # | Question                                                                                                         | Options                                                                      | Status                              |
+|---|------------------------------------------------------------------------------------------------------------------|------------------------------------------------------------------------------|-------------------------------------|
+| 1 | Which strategy is the factory default?                                                                           | Cascaded PID; LQR                                                            | decided: cascaded PID               |
+| 2 | Should stored parameters be invalidated when a strategy's descriptor changes between firmware versions?          | Version the descriptor and reject stale values; always fall back to defaults | open                                |
+| 3 | Should the outer velocity loop limit the pitch setpoint it may request, independently of effort saturation?      | Rely on effort saturation; add an explicit pitch setpoint clamp              | decided: clamp at 10 degrees        |
+| 4 | Should a third strategy exist for bench testing, commanding zero effort while reporting what it would have done? | Not needed; add an observing strategy                                        | open                                |
+| 5 | How is the yaw term handled by a full-state strategy — inside the gain vector or as a separate loop?             | Separate yaw loop for both strategies; per-strategy choice                   | decided: separate yaw loop for both |

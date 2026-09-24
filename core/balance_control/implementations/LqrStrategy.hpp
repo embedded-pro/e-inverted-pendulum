@@ -2,23 +2,21 @@
 
 #include "core/balance_control/implementations/ContinuousPid.hpp"
 #include "core/balance_control/interfaces/ControlStrategy.hpp"
-#include "numerical/controllers/implementations/PidIncremental.hpp"
+#include "numerical/controllers/implementations/Lqr.hpp"
 #include <array>
 
 namespace balance
 {
-    class CascadedPidStrategy final
+    class LqrStrategy final
         : public ControlStrategy
     {
     public:
         enum Gain : std::size_t
         {
-            pitchKp,
-            pitchKi,
-            pitchKd,
-            velocityKp,
-            velocityKi,
-            velocityKd,
+            pitchGain,
+            pitchRateGain,
+            positionGain,
+            velocityGain,
             yawKp,
             yawKi,
             yawKd,
@@ -29,12 +27,12 @@ namespace balance
         {
             Config();
 
-            float maximumLean{ 10.0f * 3.14159265f / 180.0f };
             float maximumDifferential{ 0.3f };
-            std::array<float, parameterCount> gains{ 2.0f, 0.0f, 0.1f, 0.05f, 0.0f, 0.0f, 0.1f, 0.0f, 0.0f };
+            float maximumPositionDeviation{ 0.5f };
+            std::array<float, parameterCount> gains{ 2.0f, 0.1f, -0.02f, -0.1f, 0.1f, 0.0f, 0.0f };
         };
 
-        explicit CascadedPidStrategy(const Config& config = Config());
+        explicit LqrStrategy(const Config& config = Config());
 
         const char* Name() const override;
         void Reset() override;
@@ -48,14 +46,18 @@ namespace balance
         void SetParameter(std::size_t index, float value) override;
 
     private:
-        void Clear();
-        PidGains GainsFrom(std::size_t proportional) const;
+        using Regulator = controllers::Lqr<float, 4, 1>;
 
+        static Regulator RegulatorFor(const std::array<float, parameterCount>& gains);
+        void Clear();
+
+        float maximumPositionDeviation;
         std::array<float, parameterCount> gains;
-        controllers::PidIncrementalSynchronous<float> pitchLoop;
-        ContinuousPid velocityLoop;
+        Regulator regulator;
         ContinuousPid yawLoop;
+        float positionDeviation{ 0.0f };
+        float velocityDeviation{ 0.0f };
         float differential{ 0.0f };
-        float damping{ 0.0f };
+        bool saturated{ false };
     };
 }

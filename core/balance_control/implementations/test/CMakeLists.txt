@@ -11,4 +11,6 @@ target_link_libraries(inverted_pendulum_bot.balance_control_test PUBLIC
 target_sources(inverted_pendulum_bot.balance_control_test PRIVATE
     TestBalanceControlImpl.cpp
     TestCascadedPidStrategy.cpp
+    TestContinuousPid.cpp
+    TestLqrStrategy.cpp
 )
