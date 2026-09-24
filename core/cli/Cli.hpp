@@ -1,5 +1,7 @@
 #pragma once
 
+#include "core/attitude_estimation/interfaces/AttitudeEstimation.hpp"
+#include "core/control_loop/interfaces/ControlLoop.hpp"
 #include "core/inertial_sensing/interfaces/InertialSensing.hpp"
 #include "core/motion_actuation/interfaces/MotionActuation.hpp"
 #include "core/platform_abstraction/Platform.hpp"
@@ -13,14 +15,14 @@ namespace application
     class Cli
     {
     public:
-        Cli(platform::Platform& platform, motion::MotionActuation& motionActuation, odometry::WheelOdometry& wheelOdometry, sensing::InertialSensing& inertialSensing);
+        Cli(platform::Platform& platform, motion::MotionActuation& motionActuation, odometry::WheelOdometry& wheelOdometry, sensing::InertialSensing& inertialSensing, estimation::AttitudeEstimation& attitudeEstimation, control::ControlLoop& controlLoop);
 
     private:
         class CliCommands final
             : public services::TerminalCommands
         {
         public:
-            CliCommands(services::TerminalWithCommands& terminal, services::Tracer& tracer, motion::MotionActuation& motionActuation, odometry::WheelOdometry& wheelOdometry, sensing::InertialSensing& inertialSensing);
+            CliCommands(services::TerminalWithCommands& terminal, services::Tracer& tracer, motion::MotionActuation& motionActuation, odometry::WheelOdometry& wheelOdometry, sensing::InertialSensing& inertialSensing, estimation::AttitudeEstimation& attitudeEstimation, control::ControlLoop& controlLoop);
 
             infra::MemoryRange<const Command> Commands() override;
 
@@ -35,13 +37,18 @@ namespace application
             void Calibrate(const infra::BoundedConstString& params);
             void ClearFault(const infra::BoundedConstString& params);
             void DriverStatus(const infra::BoundedConstString& params);
+            void Attitude(const infra::BoundedConstString& params);
+            void SelectFilter(const infra::BoundedConstString& params);
+            void LoopTiming(const infra::BoundedConstString& params);
 
             services::Tracer& tracer;
             motion::MotionActuation& motionActuation;
             odometry::WheelOdometry& wheelOdometry;
             sensing::InertialSensing& inertialSensing;
+            estimation::AttitudeEstimation& attitudeEstimation;
+            control::ControlLoop& controlLoop;
 
-            std::array<Command, 10> commands;
+            std::array<Command, 13> commands;
         };
 
         services::DebugLed debugLed;

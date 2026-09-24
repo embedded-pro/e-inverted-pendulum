@@ -4,6 +4,7 @@
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
 #include <optional>
+#include <vector>
 
 namespace
 {
@@ -239,4 +240,40 @@ TEST_F(InertialSensingImplTest, a_window_spanned_by_two_samples_is_not_accepted)
     Deliver(0.0f, 0.0f, 0.0f);
 
     EXPECT_NE(sensing::CalibrationState::calibrated, Sensing().Calibration());
+}
+
+TEST_F(InertialSensingImplTest, every_sample_is_reported_as_it_arrives)
+{
+    std::vector<sensing::Measurement> reported;
+    Sensing().OnMeasurement([&reported](const sensing::Measurement& measurement)
+        {
+            reported.push_back(measurement);
+        });
+
+    Deliver(0.1f, 0.2f, 0.3f);
+    ForwardTime(samplePeriod);
+    Deliver(0.1f, 0.2f, 0.3f, false);
+
+    ASSERT_EQ(2, reported.size());
+    EXPECT_EQ(sensing::InvalidCause::uncalibrated, reported[0].cause);
+    EXPECT_FLOAT_EQ(0.2f, reported[0].angularRate.y);
+    EXPECT_EQ(sensing::InvalidCause::transferFailed, reported[1].cause);
+}
+
+TEST_F(InertialSensingImplTest, reported_measurements_are_bias_corrected_once_calibrated)
+{
+    Sensing().StartCalibration();
+    DeliverForWindow(0.01f, -0.02f, 0.03f);
+
+    std::optional<sensing::Measurement> reported;
+    Sensing().OnMeasurement([&reported](const sensing::Measurement& measurement)
+        {
+            reported = measurement;
+        });
+
+    Deliver(0.11f, 0.08f, 0.03f);
+
+    ASSERT_TRUE(reported.has_value());
+    EXPECT_TRUE(reported->valid);
+    EXPECT_NEAR(0.10f, reported->angularRate.y, 1e-5f);
 }

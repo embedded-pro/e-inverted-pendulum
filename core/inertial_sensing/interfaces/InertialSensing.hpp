@@ -1,6 +1,7 @@
 #pragma once
 
 #include "core/platform_abstraction/InertialSensor.hpp"
+#include "infra/util/Function.hpp"
 
 namespace sensing
 {
@@ -38,6 +39,7 @@ namespace sensing
         InertialSensing& operator=(const InertialSensing& other) = delete;
 
         virtual Measurement Latest() const = 0;
+        virtual void OnMeasurement(const infra::Function<void(const Measurement&)>& onMeasurement) = 0;
         virtual InvalidCause Cause() const = 0;
 
         virtual void StartCalibration() = 0;

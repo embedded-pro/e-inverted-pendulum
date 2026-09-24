@@ -31,16 +31,13 @@ namespace sensing
         lastSample = sample;
         sampled = true;
 
-        if (!sample.valid)
-        {
-            if (calibration == CalibrationState::calibrating)
-                calibration = CalibrationState::failed;
-
-            return;
-        }
-
-        if (calibration == CalibrationState::calibrating)
+        if (!sample.valid && calibration == CalibrationState::calibrating)
+            calibration = CalibrationState::failed;
+        else if (calibration == CalibrationState::calibrating)
             Accumulate(sample);
+
+        if (onMeasurement)
+            onMeasurement(Latest());
     }
 
     void InertialSensingImpl::Accumulate(const platform::InertialSample& sample)
@@ -115,6 +112,11 @@ namespace sensing
         measurement.valid = measurement.cause == InvalidCause::none;
 
         return measurement;
+    }
+
+    void InertialSensingImpl::OnMeasurement(const infra::Function<void(const Measurement&)>& onMeasurement)
+    {
+        this->onMeasurement = onMeasurement;
     }
 
     InvalidCause InertialSensingImpl::Cause() const
