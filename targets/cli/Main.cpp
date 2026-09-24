@@ -1,9 +1,9 @@
 #include PLATFORM_IMPL_HEADER
 #include "core/attitude_estimation/implementations/AttitudeEstimationImpl.hpp"
-#include "core/ble_link/BleLink.hpp"
 #include "core/balance_control/implementations/BalanceControlImpl.hpp"
 #include "core/balance_control/implementations/CascadedPidStrategy.hpp"
 #include "core/balance_control/implementations/LqrStrategy.hpp"
+#include "core/ble_link/BleLink.hpp"
 #include "core/cli/Cli.hpp"
 #include "core/control_loop/implementations/ControlLoopImpl.hpp"
 #include "core/inertial_sensing/implementations/InertialSensingImpl.hpp"

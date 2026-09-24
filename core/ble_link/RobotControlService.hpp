@@ -126,7 +126,8 @@ namespace ble
         uint8_t lastCommand{ 0 };
         Outcome lastOutcome{ Outcome::none };
 
-        std::array<uint8_t, modeSize> publishedMode{ 0xff, 0xff, 0xff, 0xff };
+        static constexpr std::array<uint8_t, modeSize> unpublished{ 0xff, 0xff, 0xff, 0xff };
+        std::array<uint8_t, modeSize> publishedMode{ unpublished };
         std::array<uint8_t, modeSize> modeBuffer{};
         std::array<uint8_t, telemetrySize> telemetryBuffer{};
         std::array<uint8_t, tuningSize> tuningBuffer{};

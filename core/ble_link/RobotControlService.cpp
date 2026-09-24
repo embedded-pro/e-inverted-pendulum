@@ -80,6 +80,7 @@ namespace ble
         telemetryInFlight = false;
         modeInFlight = false;
         tuningInFlight = false;
+        publishedMode = unpublished;
     }
 
     void RobotControlService::AttMtuChanged(uint16_t newMtu)
