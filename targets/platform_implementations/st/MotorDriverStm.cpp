@@ -43,9 +43,9 @@ namespace application
         pwm.Start(left.input1, left.input2, right.input1, right.input2);
     }
 
-    hal::SpiMaster& MotorDriverStm::ConfigurationChannel()
+    drivers::DirectPwmStepperMotorDrv8711Decorator& MotorDriverStm::Controller()
     {
-        return configurationChannel;
+        return controller;
     }
 
     void MotorDriverStm::EnableFaultNotification(const infra::Function<void()>& onFault)

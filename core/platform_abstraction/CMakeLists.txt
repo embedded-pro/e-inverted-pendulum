@@ -7,6 +7,7 @@ target_include_directories(inverted_pendulum_bot.platform_abstraction PUBLIC
 
 target_link_libraries(inverted_pendulum_bot.platform_abstraction PUBLIC
     hal.interfaces
+    drivers.motor_controller
     infra.timer
     hal.synchronous_interfaces
     services.tracer
@@ -17,6 +18,7 @@ target_sources(inverted_pendulum_bot.platform_abstraction PRIVATE
     InertialFrame.cpp
     InertialSensor.hpp
     MotorDriver.hpp
+    UnusedAnalogToDigitalPin.hpp
     Platform.hpp
     WheelEncoders.hpp
 )

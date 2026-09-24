@@ -1,6 +1,7 @@
 #pragma once
 
 #include "core/platform_abstraction/MotorDriver.hpp"
+#include "core/platform_abstraction/UnusedAnalogToDigitalPin.hpp"
 #include "targets/platform_implementations/host/Drv8711Emulator.hpp"
 
 namespace application
@@ -18,9 +19,9 @@ namespace application
             lastRight = right;
         }
 
-        hal::SpiMaster& ConfigurationChannel() override
+        drivers::DirectPwmStepperMotorDrv8711Decorator& Controller() override
         {
-            return driver;
+            return controller;
         }
 
         void EnableFaultNotification(const infra::Function<void()>& onFault) override
@@ -44,7 +45,9 @@ namespace application
         }
 
     private:
-        Drv8711Emulator driver;
+        Drv8711Emulator registers;
+        platform::UnusedAnalogToDigitalPin backEmf;
+        drivers::DirectPwmStepperMotorDrv8711Decorator controller{ registers, hal::dummyPin, hal::dummyPin, backEmf };
         platform::BridgeInputs lastLeft{};
         platform::BridgeInputs lastRight{};
         infra::Function<void()> onFault;

@@ -1,6 +1,6 @@
 #pragma once
 
-#include "hal/interfaces/Spi.hpp"
+#include "drivers/motor_controller/DirectPwmStepperMotorDrv8711Decorator.hpp"
 #include "hal/synchronous_interfaces/SynchronousPwm.hpp"
 #include "infra/util/Function.hpp"
 
@@ -24,7 +24,7 @@ namespace platform
         virtual void SetBaseFrequency(hal::Hertz baseFrequency) = 0;
         virtual void Drive(const BridgeInputs& left, const BridgeInputs& right) = 0;
 
-        virtual hal::SpiMaster& ConfigurationChannel() = 0;
+        virtual drivers::DirectPwmStepperMotorDrv8711Decorator& Controller() = 0;
 
         virtual void EnableFaultNotification(const infra::Function<void()>& onFault) = 0;
         virtual void DisableFaultNotification() = 0;

@@ -98,6 +98,11 @@ documents as write-only is masked. Only when every register matches are the latc
 flags cleared and the enable bit set — the bridges can only be energised through a
 configuration that has been verified.
 
+The write, read-back and enable sequence belongs to the driver library, not to this component:
+the part answers nothing on a write, so every user of it needs the same check, and the library is
+where it is written once. This component only chooses the values — sense gain and torque from
+the trip current, dead time, decay — and waits out the part's wake-up time before asking for them.
+
 A driver that does not read back what was written is treated as absent, not as merely
 misconfigured: energising motors through a driver in an unknown state is the failure mode this
 check exists to prevent. Until configuration completes, and forever after it fails, effort and

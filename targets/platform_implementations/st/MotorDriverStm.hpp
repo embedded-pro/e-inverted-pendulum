@@ -1,7 +1,7 @@
 #pragma once
 
 #include "core/platform_abstraction/MotorDriver.hpp"
-#include "hal/interfaces/Gpio.hpp"
+#include "core/platform_abstraction/UnusedAnalogToDigitalPin.hpp"
 #include "hal_st/stm32fxxx/GpioStm.hpp"
 #include "hal_st/stm32fxxx/SpiMasterStm.hpp"
 #include "hal_st/synchronous_stm32fxxx/SynchronousPwmStm.hpp"
@@ -19,18 +19,13 @@ namespace application
 
         void SetBaseFrequency(hal::Hertz baseFrequency) override;
         void Drive(const platform::BridgeInputs& left, const platform::BridgeInputs& right) override;
-        hal::SpiMaster& ConfigurationChannel() override;
+        drivers::DirectPwmStepperMotorDrv8711Decorator& Controller() override;
         void EnableFaultNotification(const infra::Function<void()>& onFault) override;
         void DisableFaultNotification() override;
 
     private:
         static hal::PwmStmBase::Config PwmConfig();
         static hal::SpiMasterStm::Config SpiConfig();
-
-        hal::GpioPinStm sleepPin{ hal::Port::B, 8 };
-        hal::GpioPinStm resetPin{ hal::Port::B, 9 };
-        hal::OutputPin awake{ sleepPin, true };
-        hal::OutputPin reset{ resetPin, false };
 
         hal::GpioPinStm leftInput1{ hal::Port::A, 8 };
         hal::GpioPinStm leftInput2{ hal::Port::A, 9 };
@@ -49,5 +44,10 @@ namespace application
         services::GpioPinInverted spiSelectActiveHigh{ spiSelect };
         hal::SpiMasterStm spi{ 1, spiClock, spiMiso, spiMosi, SpiConfig() };
         services::SpiMasterWithChipSelect configurationChannel{ spi, spiSelectActiveHigh };
+
+        hal::GpioPinStm sleepPin{ hal::Port::B, 8 };
+        hal::GpioPinStm resetPin{ hal::Port::B, 9 };
+        platform::UnusedAnalogToDigitalPin backEmf;
+        drivers::DirectPwmStepperMotorDrv8711Decorator controller{ configurationChannel, hal::dummyPin, hal::dummyPin, backEmf, resetPin, sleepPin };
     };
 }

@@ -12,6 +12,6 @@ target_link_libraries(inverted_pendulum_bot.motion_actuation_test PUBLIC
 
 target_sources(inverted_pendulum_bot.motion_actuation_test PRIVATE
     TestBridgeMapping.cpp
-    TestDrv8711Configuration.cpp
+    TestDrv8711DriverConfiguration.cpp
     TestMotionActuationImpl.cpp
 )
