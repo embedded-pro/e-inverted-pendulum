@@ -24,7 +24,7 @@ namespace application
         , gapConfiguration{ identity.address, gapService, rootKeys, hal::GapSt::encrypted, zeroDbmPowerLevel, false }
         , gap{ hciEventSource, bondStorageSynchronizer, gapConfiguration, tracer }
         , gattServer{ hciEventSource, tracer }
-        , confirmIndication{ hciEventSource }
+        , gattClient{ hciEventSource, tracer }
     {}
 
     services::GapPeripheral& BluetoothPeripheralStm::Gap()
@@ -37,8 +37,8 @@ namespace application
         return gattServer;
     }
 
-    void BluetoothPeripheralStm::SetLinkObserver(platform::BluetoothLinkObserver& observer)
+    services::GattClient& BluetoothPeripheralStm::GattClient()
     {
-        gattServer.SetLinkObserver(observer);
+        return gattClient;
     }
 }

@@ -13,7 +13,7 @@ namespace ble
     public:
         BleEndpoint(platform::Platform& platform, infra::BoundedConstString deviceName, safety::SafetySupervisor& supervisor, balance::BalanceControl& balanceControl, const telemetry::TelemetrySource& telemetry);
 
-        LinkReport Report() const override;
+        std::optional<LinkReport> Report() const override;
 
     private:
         void RadioReady(platform::Bluetooth& bluetooth);

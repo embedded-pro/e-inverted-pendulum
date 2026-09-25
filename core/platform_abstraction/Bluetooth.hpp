@@ -1,25 +1,11 @@
 #pragma once
 
 #include "services/ble/GapPeripheral.hpp"
+#include "services/ble/GattClient.hpp"
 #include "services/ble/GattServer.hpp"
-#include <cstdint>
 
 namespace platform
 {
-    class BluetoothLinkObserver
-    {
-    public:
-        BluetoothLinkObserver() = default;
-        BluetoothLinkObserver(const BluetoothLinkObserver& other) = delete;
-        BluetoothLinkObserver& operator=(const BluetoothLinkObserver& other) = delete;
-
-        virtual void AttMtuChanged(uint16_t mtu) = 0;
-        virtual void ClientConfigurationWritten(services::AttAttribute::Handle handle, uint16_t value) = 0;
-
-    protected:
-        ~BluetoothLinkObserver() = default;
-    };
-
     class Bluetooth
     {
     public:
@@ -29,7 +15,7 @@ namespace platform
 
         virtual services::GapPeripheral& Gap() = 0;
         virtual services::GattServer& GattServer() = 0;
-        virtual void SetLinkObserver(BluetoothLinkObserver& observer) = 0;
+        virtual services::GattClient& GattClient() = 0;
 
     protected:
         ~Bluetooth() = default;

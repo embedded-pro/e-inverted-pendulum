@@ -157,10 +157,10 @@ is running. The role is therefore started, not constructed: the application asks
 the radio under a given device name, and the board hands back the peripheral once the stack is up.
 Nothing else waits for it, and a board without a radio simply never hands it back.
 
-Two link events matter to the application and are not part of a generic GATT server: the attribute
-MTU agreed with the client, and a client's write to a characteristic's notification configuration.
-The board reports both to one link observer. The board also asks for the largest MTU its stack
-supports as soon as a client connects, so the application never has to.
+The peripheral is the library's own Bluetooth abstractions and nothing board-specific: GAP, a GATT
+server for the robot's service, and a GATT client that the stack hands a connection for every link.
+The application exchanges the attribute MTU through that connection, so the board needs no link
+observer of its own.
 
 On the selected part the second core runs the vendor's full Bluetooth stack, flashed separately
 from the application; the board's notes list the image and address.
@@ -171,18 +171,18 @@ from the application; the board's notes list the image and address.
 
 ### Provided
 
-| Interface                 | Purpose                                                         | Contract                                                                                                                   |
-|---------------------------|-----------------------------------------------------------------|----------------------------------------------------------------------------------------------------------------------------|
-| Inertial measurement role | Body-frame angular rate and acceleration                        | Fixed axis convention; failure and staleness reported explicitly, never substituted                                        |
-| Wheel encoder role        | Signed counts for both wheels, and the counter resolution       | Lossless across counter wrap; forward motion positive on both wheels; index events are not yet provided — see REQ-ODOM-005 |
-| Motor driver role         | The two motor bridges, plus notification when the driver faults | Tri-state reachable without a healthy control loop; a fault is reported, never polled                                      |
-| Motor bridge role         | Two duty cycles, one per driver input                           | Both inputs low releases the bridge; the encoding is the driver's, not the board's                                         |
-| Bluetooth peripheral role | Advertising, connection, pairing, GATT database                 | Started asynchronously under a device name; connection loss, MTU changes and notification configuration writes observable  |
-| Parameter store role      | Persist and retrieve tuning parameters                          | Absence or failure is reported so the application can fall back to defaults                                                |
-| Timebase role             | Periodic scheduling and interval measurement                    | Monotonic; reports the measured interval                                                                                   |
-| Status indicator role     | Visible heartbeat and mode indication                           | Never on a timing-critical path                                                                                            |
-| Trace role                | Diagnostic text output                                          | May be a no-op on a board without a channel; never blocks the control loop                                                 |
-| Event loop                | Hand control to the platform's scheduler                        | Does not return on the target                                                                                              |
+| Interface                 | Purpose                                                         | Contract                                                                                                                         |
+|---------------------------|-----------------------------------------------------------------|----------------------------------------------------------------------------------------------------------------------------------|
+| Inertial measurement role | Body-frame angular rate and acceleration                        | Fixed axis convention; failure and staleness reported explicitly, never substituted                                              |
+| Wheel encoder role        | Signed counts for both wheels, and the counter resolution       | Lossless across counter wrap; forward motion positive on both wheels; index events are not yet provided — see REQ-ODOM-005       |
+| Motor driver role         | The two motor bridges, plus notification when the driver faults | Tri-state reachable without a healthy control loop; a fault is reported, never polled                                            |
+| Motor bridge role         | Two duty cycles, one per driver input                           | Both inputs low releases the bridge; the encoding is the driver's, not the board's                                               |
+| Bluetooth peripheral role | Advertising, connection, pairing, GATT database                 | Started asynchronously under a device name; exposes GAP, GATT server and GATT client; connection loss and MTU changes observable |
+| Parameter store role      | Persist and retrieve tuning parameters                          | Absence or failure is reported so the application can fall back to defaults                                                      |
+| Timebase role             | Periodic scheduling and interval measurement                    | Monotonic; reports the measured interval                                                                                         |
+| Status indicator role     | Visible heartbeat and mode indication                           | Never on a timing-critical path                                                                                                  |
+| Trace role                | Diagnostic text output                                          | May be a no-op on a board without a channel; never blocks the control loop                                                       |
+| Event loop                | Hand control to the platform's scheduler                        | Does not return on the target                                                                                                    |
 
 ### Required
 

@@ -11,7 +11,6 @@ namespace ble
         using Properties = services::GattCharacteristic::PropertyFlags;
         using Permissions = services::GattServerCharacteristic::PermissionFlags;
 
-        constexpr uint16_t enableNotification{ 0x0001 };
         constexpr std::size_t responseHeaderSize{ 3 };
         constexpr std::size_t attributeValueHeaderSize{ 3 };
     }
@@ -76,7 +75,6 @@ namespace ble
         balanceControl.CancelMotion();
 
         mtu = services::attDefaultMaxMtuSize;
-        telemetrySubscribed = false;
         telemetryInFlight = false;
         modeInFlight = false;
         tuningInFlight = false;
@@ -88,12 +86,6 @@ namespace ble
         mtu = std::max(newMtu, services::attDefaultMaxMtuSize);
     }
 
-    void RobotControlService::ClientConfigurationWritten(services::AttAttribute::Handle handle, uint16_t value)
-    {
-        if (handle == telemetryValue.Handle() + clientConfigurationOffset)
-            telemetrySubscribed = (value & enableNotification) != 0;
-    }
-
     services::GattServerService& RobotControlService::Service()
     {
         return service;
@@ -102,11 +94,6 @@ namespace ble
     uint16_t RobotControlService::Mtu() const
     {
         return mtu;
-    }
-
-    bool RobotControlService::TelemetrySubscribed() const
-    {
-        return telemetrySubscribed;
     }
 
     void RobotControlService::MotionWritten(infra::ConstByteRange data)
@@ -271,7 +258,7 @@ namespace ble
 
     void RobotControlService::PublishTelemetry()
     {
-        if (!telemetrySubscribed || telemetryInFlight || !Fits(telemetrySize))
+        if (telemetryInFlight || !Fits(telemetrySize))
             return;
 
         const auto sample = telemetry.Latest();

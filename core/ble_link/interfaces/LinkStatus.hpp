@@ -2,23 +2,17 @@
 
 #include "hal/interfaces/MacAddress.hpp"
 #include "services/ble/Att.hpp"
+#include "services/ble/GapPeripheral.hpp"
 #include <cstdint>
+#include <optional>
 
 namespace ble
 {
-    enum class RadioState : uint8_t
-    {
-        starting,
-        advertising,
-        connected
-    };
-
     struct LinkReport
     {
-        RadioState radio{ RadioState::starting };
+        services::GapPeripheralState state{ services::GapPeripheralState::standby };
         hal::MacAddress address{};
         uint16_t mtu{ services::attDefaultMaxMtuSize };
-        bool telemetrySubscribed{ false };
     };
 
     class LinkStatus
@@ -28,7 +22,7 @@ namespace ble
         LinkStatus(const LinkStatus& other) = delete;
         LinkStatus& operator=(const LinkStatus& other) = delete;
 
-        virtual LinkReport Report() const = 0;
+        virtual std::optional<LinkReport> Report() const = 0;
 
     protected:
         ~LinkStatus() = default;

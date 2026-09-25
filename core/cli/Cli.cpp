@@ -101,13 +101,13 @@ namespace application
             return std::nullopt;
         }
 
-        const char* NameOf(ble::RadioState state)
+        const char* NameOf(services::GapPeripheralState state)
         {
             switch (state)
             {
-                case ble::RadioState::starting:
-                    return "starting";
-                case ble::RadioState::advertising:
+                case services::GapPeripheralState::standby:
+                    return "standby";
+                case services::GapPeripheralState::advertising:
                     return "advertising";
                 default:
                     return "connected";
@@ -126,25 +126,25 @@ namespace application
         }
     }
 
-    Cli::Cli(platform::Platform& platform, motion::MotionActuation& motionActuation, odometry::WheelOdometry& wheelOdometry, sensing::InertialSensing& inertialSensing, estimation::AttitudeEstimation& attitudeEstimation, control::ControlLoop& controlLoop, safety::SafetySupervisor& supervisor, balance::BalanceControl& balanceControl, const ble::LinkStatus& link)
+    Cli::Cli(platform::Platform& platform, const Dependencies& dependencies)
         : debugLed{ platform.StatusLed() }
         , terminal{ platform.Communication(), platform.Tracer() }
-        , commands{ terminal, platform.Tracer(), motionActuation, wheelOdometry, inertialSensing, attitudeEstimation, controlLoop, supervisor, balanceControl, link }
+        , commands{ terminal, platform.Tracer(), dependencies }
     {
         platform.Tracer().Trace() << "inverted-pendulum-bot ready - try 'mode', 'attitude', 'arm' or 'help'";
     }
 
-    Cli::CliCommands::CliCommands(services::TerminalWithCommands& terminal, services::Tracer& tracer, motion::MotionActuation& motionActuation, odometry::WheelOdometry& wheelOdometry, sensing::InertialSensing& inertialSensing, estimation::AttitudeEstimation& attitudeEstimation, control::ControlLoop& controlLoop, safety::SafetySupervisor& supervisor, balance::BalanceControl& balanceControl, const ble::LinkStatus& link)
+    Cli::CliCommands::CliCommands(services::TerminalWithCommands& terminal, services::Tracer& tracer, const Dependencies& dependencies)
         : services::TerminalCommands(terminal)
         , tracer(tracer)
-        , motionActuation(motionActuation)
-        , wheelOdometry(wheelOdometry)
-        , inertialSensing(inertialSensing)
-        , attitudeEstimation(attitudeEstimation)
-        , controlLoop(controlLoop)
-        , supervisor(supervisor)
-        , balanceControl(balanceControl)
-        , link(link)
+        , motionActuation(dependencies.motionActuation)
+        , wheelOdometry(dependencies.wheelOdometry)
+        , inertialSensing(dependencies.inertialSensing)
+        , attitudeEstimation(dependencies.attitudeEstimation)
+        , controlLoop(dependencies.controlLoop)
+        , supervisor(dependencies.supervisor)
+        , balanceControl(dependencies.balanceControl)
+        , link(dependencies.link)
         , commands{ {
               { { "ping", "p", "reply with pong" },
                   [this](const infra::BoundedConstString& params)
@@ -483,12 +483,12 @@ namespace application
     {
         const auto report = link.Report();
 
-        if (report.radio == ble::RadioState::starting)
+        if (!report)
         {
             tracer.Trace() << "ble starting";
             return;
         }
 
-        tracer.Trace() << "ble " << NameOf(report.radio) << " address " << infra::AsMacAddress(MostSignificantFirst(report.address)) << " mtu " << report.mtu << " telemetry " << (report.telemetrySubscribed ? "on" : "off");
+        tracer.Trace() << "ble " << NameOf(report->state) << " address " << infra::AsMacAddress(MostSignificantFirst(report->address)) << " mtu " << report->mtu;
     }
 }

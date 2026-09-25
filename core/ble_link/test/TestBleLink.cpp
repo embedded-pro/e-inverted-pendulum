@@ -6,6 +6,8 @@
 #include "infra/timer/test_helper/ClockFixture.hpp"
 #include "services/ble/GapAdvertisingData.hpp"
 #include "services/ble/test_doubles/GapPeripheralMock.hpp"
+#include "services/ble/test_doubles/GattClientConnectionMock.hpp"
+#include "services/ble/test_doubles/GattClientMock.hpp"
 #include "services/ble/test_doubles/GattServerMock.hpp"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
@@ -30,10 +32,7 @@ namespace
                 {
                     registered = &added;
                 });
-            EXPECT_CALL(bluetooth, SetLinkObserver(testing::_)).WillOnce([this](platform::BluetoothLinkObserver& observer)
-                {
-                    linkObserver = &observer;
-                });
+            EXPECT_CALL(bluetooth, GattClient()).WillRepeatedly(testing::ReturnRef(gattClient));
             ExpectAdvertising();
 
             link.emplace(bluetooth, "inverted-pendulum", supervisor, balanceControl, telemetrySource);
@@ -65,15 +64,41 @@ namespace
             gap.ChangeState(services::GapPeripheralState::connected);
         }
 
+        void EstablishGattConnection()
+        {
+            EXPECT_CALL(gattConnection, ExchangeMtu(testing::_)).WillOnce(testing::Return(services::GattRequestStatus::accepted));
+            gattClient.NotifyObservers([this](auto& observer)
+                {
+                    observer.ConnectionEstablished(infra::UnOwnedSharedPtr<services::GattClientConnection>(gattConnection));
+                });
+        }
+
+        void ChangeMtu(uint16_t mtu)
+        {
+            gattConnection.infra::Subject<services::GattClientConnectionObserver>::NotifyObservers([mtu](auto& observer)
+                {
+                    observer.MtuChanged(mtu);
+                });
+        }
+
+        void ReleaseGattConnection()
+        {
+            gattClient.NotifyObservers([this](auto& observer)
+                {
+                    observer.ConnectionReleased(gattConnection);
+                });
+        }
+
         testing::StrictMock<ble::BluetoothMock> bluetooth;
         testing::StrictMock<services::GapPeripheralMock> gap;
         testing::StrictMock<services::GattServerMock> gattServer;
+        testing::StrictMock<services::GattClientMock> gattClient;
+        testing::StrictMock<services::GattClientConnectionMock> gattConnection;
         testing::StrictMock<services::GattServerCharacteristicOperationsMock> operations;
         testing::StrictMock<ble::SafetySupervisorMock> supervisor;
         testing::StrictMock<ble::BalanceControlMock> balanceControl;
         testing::StrictMock<ble::TelemetrySourceMock> telemetrySource;
         services::GattServerService* registered{ nullptr };
-        platform::BluetoothLinkObserver* linkObserver{ nullptr };
         Bytes advertisement;
         Bytes scanResponse;
         std::optional<ble::BleLink> link;
@@ -120,29 +145,46 @@ TEST_F(BleLinkTest, entering_advertising_changes_nothing)
 
 TEST_F(BleLinkTest, reports_an_advertising_link_with_the_identity_address)
 {
+    gap.ChangeState(services::GapPeripheralState::advertising);
     const hal::MacAddress address{ 0x34, 0x12, 0x26, 0xe1, 0x80, 0x00 };
     EXPECT_CALL(gap, GetIdentityAddress()).WillOnce(testing::Return(services::GapAddress{ address, services::GapDeviceAddressType::publicAddress }));
 
     const auto report = link->Report();
 
-    EXPECT_EQ(ble::RadioState::advertising, report.radio);
+    EXPECT_EQ(services::GapPeripheralState::advertising, report.state);
     EXPECT_EQ(address, report.address);
     EXPECT_EQ(services::attDefaultMaxMtuSize, report.mtu);
-    EXPECT_FALSE(report.telemetrySubscribed);
 }
 
-TEST_F(BleLinkTest, reports_a_connected_link_with_its_mtu_and_subscription)
+TEST_F(BleLinkTest, a_gatt_connection_requests_the_largest_mtu)
 {
     Connect();
-    linkObserver->AttMtuChanged(247);
-    linkObserver->ClientConfigurationWritten(ble::RobotControlService::clientConfigurationOffset, 1);
+
+    EstablishGattConnection();
+}
+
+TEST_F(BleLinkTest, reports_a_connected_link_with_the_exchanged_mtu)
+{
+    Connect();
+    EstablishGattConnection();
+    ChangeMtu(247);
     EXPECT_CALL(gap, GetIdentityAddress()).WillOnce(testing::Return(services::GapAddress{}));
 
     const auto report = link->Report();
 
-    EXPECT_EQ(ble::RadioState::connected, report.radio);
+    EXPECT_EQ(services::GapPeripheralState::connected, report.state);
     EXPECT_EQ(247, report.mtu);
-    EXPECT_TRUE(report.telemetrySubscribed);
+}
+
+TEST_F(BleLinkTest, a_released_gatt_connection_no_longer_changes_the_mtu)
+{
+    Connect();
+    EstablishGattConnection();
+    ReleaseGattConnection();
+    ChangeMtu(247);
+    EXPECT_CALL(gap, GetIdentityAddress()).WillOnce(testing::Return(services::GapAddress{}));
+
+    EXPECT_EQ(services::attDefaultMaxMtuSize, link->Report().mtu);
 }
 
 namespace
@@ -167,6 +209,7 @@ namespace
         testing::StrictMock<ble::BluetoothMock> bluetooth;
         testing::StrictMock<services::GapPeripheralMock> gap;
         testing::StrictMock<services::GattServerMock> gattServer;
+        testing::StrictMock<services::GattClientMock> gattClient;
         testing::StrictMock<ble::SafetySupervisorMock> supervisor;
         testing::StrictMock<ble::BalanceControlMock> balanceControl;
         testing::StrictMock<ble::TelemetrySourceMock> telemetrySource;
@@ -183,7 +226,7 @@ TEST_F(BleEndpointTest, starts_the_radio_under_the_device_name)
 
 TEST_F(BleEndpointTest, reports_a_starting_radio_until_the_board_hands_back_the_peripheral)
 {
-    EXPECT_EQ(ble::RadioState::starting, endpoint->Report().radio);
+    EXPECT_FALSE(endpoint->Report().has_value());
 }
 
 TEST_F(BleEndpointTest, builds_the_link_and_advertises_once_the_radio_is_ready)
@@ -191,7 +234,7 @@ TEST_F(BleEndpointTest, builds_the_link_and_advertises_once_the_radio_is_ready)
     EXPECT_CALL(bluetooth, Gap()).WillRepeatedly(testing::ReturnRef(gap));
     EXPECT_CALL(bluetooth, GattServer()).WillRepeatedly(testing::ReturnRef(gattServer));
     EXPECT_CALL(gattServer, AddService(testing::_));
-    EXPECT_CALL(bluetooth, SetLinkObserver(testing::_));
+    EXPECT_CALL(bluetooth, GattClient()).WillRepeatedly(testing::ReturnRef(gattClient));
     EXPECT_CALL(gap, SetAdvertisementData(testing::_, testing::_)).WillOnce(testing::Return(services::GapRequestStatus::accepted));
     EXPECT_CALL(gap, SetScanResponseData(testing::_, testing::_)).WillOnce(testing::Return(services::GapRequestStatus::accepted));
     EXPECT_CALL(gap, Advertise(testing::_, testing::_)).WillOnce(testing::Return(services::GapRequestStatus::accepted));
@@ -199,5 +242,7 @@ TEST_F(BleEndpointTest, builds_the_link_and_advertises_once_the_radio_is_ready)
     radioReady(bluetooth);
 
     EXPECT_CALL(gap, GetIdentityAddress()).WillOnce(testing::Return(services::GapAddress{}));
-    EXPECT_EQ(ble::RadioState::advertising, endpoint->Report().radio);
+    const auto report = endpoint->Report();
+    ASSERT_TRUE(report.has_value());
+    EXPECT_EQ(services::GapPeripheralState::standby, report->state);
 }

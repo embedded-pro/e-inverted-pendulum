@@ -35,17 +35,11 @@ target_compile_definitions(inverted_pendulum_bot.platform_st PUBLIC
 target_sources(inverted_pendulum_bot.platform_st PRIVATE
     BluetoothPeripheralStm.hpp
     BluetoothPeripheralStm.cpp
-    BluetoothStm.hpp
-    BluetoothStm.cpp
     InertialSensorStm.hpp
     InertialSensorStm.cpp
-    LinkGattServerStm.hpp
-    LinkGattServerStm.cpp
     MotorDriverStm.hpp
     MotorDriverStm.cpp
     WheelEncodersStm.hpp
-    VolatileBondStorage.hpp
-    VolatileBondStorage.cpp
     WheelEncodersStm.cpp
     PlatformImpl.hpp
     PlatformImpl.cpp

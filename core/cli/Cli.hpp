@@ -18,14 +18,26 @@ namespace application
     class Cli
     {
     public:
-        Cli(platform::Platform& platform, motion::MotionActuation& motionActuation, odometry::WheelOdometry& wheelOdometry, sensing::InertialSensing& inertialSensing, estimation::AttitudeEstimation& attitudeEstimation, control::ControlLoop& controlLoop, safety::SafetySupervisor& supervisor, balance::BalanceControl& balanceControl, const ble::LinkStatus& link);
+        struct Dependencies
+        {
+            motion::MotionActuation& motionActuation;
+            odometry::WheelOdometry& wheelOdometry;
+            sensing::InertialSensing& inertialSensing;
+            estimation::AttitudeEstimation& attitudeEstimation;
+            control::ControlLoop& controlLoop;
+            safety::SafetySupervisor& supervisor;
+            balance::BalanceControl& balanceControl;
+            const ble::LinkStatus& link;
+        };
+
+        Cli(platform::Platform& platform, const Dependencies& dependencies);
 
     private:
         class CliCommands final
             : public services::TerminalCommands
         {
         public:
-            CliCommands(services::TerminalWithCommands& terminal, services::Tracer& tracer, motion::MotionActuation& motionActuation, odometry::WheelOdometry& wheelOdometry, sensing::InertialSensing& inertialSensing, estimation::AttitudeEstimation& attitudeEstimation, control::ControlLoop& controlLoop, safety::SafetySupervisor& supervisor, balance::BalanceControl& balanceControl, const ble::LinkStatus& link);
+            CliCommands(services::TerminalWithCommands& terminal, services::Tracer& tracer, const Dependencies& dependencies);
 
             infra::MemoryRange<const Command> Commands() override;
 

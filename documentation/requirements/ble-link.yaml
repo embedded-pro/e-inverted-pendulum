@@ -60,5 +60,5 @@
   title: Link status on the console
   shall: >
     The device shall report on its diagnostic console whether the radio is starting,
-    advertising or connected, together with its address, the negotiated attribute MTU
-    and whether telemetry is subscribed.
+    advertising or connected, together with its address and the negotiated attribute
+    MTU.

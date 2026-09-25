@@ -14,12 +14,12 @@ namespace ble
             });
     }
 
-    LinkReport BleEndpoint::Report() const
+    std::optional<LinkReport> BleEndpoint::Report() const
     {
         if (link)
             return link->Report();
 
-        return {};
+        return std::nullopt;
     }
 
     void BleEndpoint::RadioReady(platform::Bluetooth& bluetooth)

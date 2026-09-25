@@ -90,6 +90,11 @@ iteration after the supervisor and balance control have run, and keeps the estim
 chassis motion, the effort actually applied, and the mode and fault cause as one sample. The link
 reads that sample when it is time to notify.
 
+A connected client is treated as subscribed: the link updates the telemetry value at the fixed rate
+for as long as a client is connected, and the Bluetooth stack only turns an update into a
+notification for a client that has enabled notifications. The link therefore never tracks the
+subscription itself.
+
 ### Part E — Generic tuning
 
 The controller supplies a descriptor of the active strategy's parameters; this component
@@ -113,8 +118,9 @@ tuning control point is itself a commanding characteristic, so tuning queries al
 
 Every value is carried in little-endian IEEE 754 single precision, which a client decodes directly.
 The larger values do not fit the default 23-byte attribute MTU, so the robot requests the largest MTU
-the stack supports, 251 bytes, as soon as a client connects. Until the exchange has raised the MTU
-enough, telemetry is not sent and tuning responses carry only their status.
+the stack supports, 251 bytes, as soon as a client connects, through the GATT client connection
+the stack opens for every link. Until the exchange has raised the MTU enough, telemetry is not sent
+and tuning responses carry only their status.
 
 ### Part H — Wire format
 
@@ -171,7 +177,7 @@ the coprocessor reports that its stack is running does the robot build the servi
 advertising. Until then the robot balances and answers the command line as usual.
 
 The command line reports the link without a phone: whether the radio is still starting, advertising
-or connected, the public address, the negotiated attribute MTU, and whether telemetry is subscribed.
+or connected, the public address, and the negotiated attribute MTU.
 
 ---
 
@@ -187,17 +193,17 @@ or connected, the public address, the negotiated attribute MTU, and whether tele
 | Mode command intake    | Accept arm, disarm and clear-fault                                             | Pairing required; forwarded to the supervisor, which applies its own preconditions                        |
 | Telemetry notification | Publish robot state to a subscriber                                            | Fixed rate while subscribed; silent otherwise; never blocks the control loop; samples internally coherent |
 | Tuning access          | Strategy list, active strategy, parameter descriptor, indexed parameter access | Pairing required for writes; the controller decides acceptance and this component reports the outcome     |
-| Link status            | Report radio state, address, attribute MTU and telemetry subscription          | Readable at any time, including before the radio has started                                              |
+| Link status            | Report radio state, address and attribute MTU                                  | Readable at any time, including before the radio has started                                              |
 
 ### Required
 
-| Interface            | Purpose                                                  | Contract                                                                                            |
-|----------------------|----------------------------------------------------------|-----------------------------------------------------------------------------------------------------|
-| Bluetooth peripheral | Advertising, connection, pairing, GATT database          | Started asynchronously; connection loss, MTU changes and client configuration writes are observable |
-| Safety supervisor    | Forward mode commands; read mode and latched fault cause | The supervisor may reject any command; rejection is reported, not retried                           |
-| Balance control      | Deliver setpoints; access strategies and parameters      | Rejected writes leave stored values unchanged                                                       |
-| Telemetry source     | Obtain a coherent state sample                           | Sampled from one control iteration; non-blocking                                                    |
-| Timebase             | Telemetry cadence and command timeout                    | Monotonic                                                                                           |
+| Interface            | Purpose                                                  | Contract                                                                  |
+|----------------------|----------------------------------------------------------|---------------------------------------------------------------------------|
+| Bluetooth peripheral | Advertising, connection, pairing, GATT database          | Started asynchronously; connection loss and MTU changes are observable    |
+| Safety supervisor    | Forward mode commands; read mode and latched fault cause | The supervisor may reject any command; rejection is reported, not retried |
+| Balance control      | Deliver setpoints; access strategies and parameters      | Rejected writes leave stored values unchanged                             |
+| Telemetry source     | Obtain a coherent state sample                           | Sampled from one control iteration; non-blocking                          |
+| Timebase             | Telemetry cadence and command timeout                    | Monotonic                                                                 |
 
 ---
 

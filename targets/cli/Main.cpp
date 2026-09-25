@@ -30,7 +30,7 @@ int main()
     static telemetry::TelemetryRecorder telemetryRecorder{ supervisor, balanceControl, wheelOdometry, supervisor };
     static control::ControlLoopImpl controlLoop{ inertialSensing, attitudeEstimation, telemetryRecorder, supervisor };
     static ble::BleEndpoint bleEndpoint{ platform, "inverted-pendulum", supervisor, balanceControl, telemetryRecorder };
-    static application::Cli cli{ platform, motionActuation, wheelOdometry, inertialSensing, attitudeEstimation, controlLoop, supervisor, balanceControl, bleEndpoint };
+    static application::Cli cli{ platform, { motionActuation, wheelOdometry, inertialSensing, attitudeEstimation, controlLoop, supervisor, balanceControl, bleEndpoint } };
 
     platform.Run();
 

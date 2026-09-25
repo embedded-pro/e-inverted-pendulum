@@ -8,14 +8,15 @@ presets: **NUCLEO-WB55RG**.
   On the NUCLEO-WB55RG this UART is routed to the on-board ST-LINK virtual COM
   port, so no USB-UART adapter is needed.
 - **Tracer** — `services::TracerToStream` over the UART.
-- **Bluetooth** — `BluetoothStm`, started by `StartBluetooth`. It boots the wireless
-  coprocessor (CPU2) through `hal::TracingSystemTransportLayerWb` and, once CPU2 reports
-  its stack running, builds the peripheral: `hal::TracingGapPeripheralSt` with Just Works
-  and encryption, a `hal::TracingGattServerSt` that reports the attribute MTU and
-  notification configuration writes to the link observer, and indication confirmation.
-  It requests a 251-byte MTU on every connection. Bonds are volatile. The address and root
-  keys come from the part's factory identity (see `documentation/design/ble-service.md`).
-  Every HCI command and event is traced on the console.
+- **Bluetooth** — `hal::TracingSystemTransportLayerWb` is a `PlatformImpl` member, so the
+  wireless coprocessor (CPU2) boots when the board is constructed. Bonds are held in EMIL's
+  `services::VolatileBondStorage`, synchronised with `hal::BondStorageSt`. Once CPU2 reports
+  its stack running and `StartBluetooth` has been called, `BluetoothPeripheralStm` is built
+  from hal-st only: `hal::TracingGapPeripheralSt` with Just Works and encryption,
+  `hal::TracingGattServerSt`, and `hal::TracingGattClientSt`, through whose per-link
+  connection the application exchanges a 251-byte MTU. The address and root keys come from
+  the part's factory identity (see `documentation/design/ble-service.md`). Every HCI command
+  and event is traced on the console.
 - **Run** — runs `main_::StmEventInfrastructure`. A first member (`ClockInit`) calls
   `HAL_Init()` + the board's default clock configuration function before any
   peripheral is constructed (32 MHz HSE on the NUCLEO-WB55RG).
@@ -55,6 +56,5 @@ STM32CubeWB release, then repeat the stack upgrade.
 3. On connection `ble` reports `connected` and, once the exchange completes, an MTU above 23.
 4. A mode write before pairing is refused by the stack; after Just Works pairing it is
    accepted.
-5. Subscribing to telemetry makes `ble` report telemetry `on`, with 25 notifications per
-   second.
+5. Subscribing to telemetry delivers 25 notifications per second.
 6. Disconnecting while driving slows the robot to a stop and advertising resumes.
