@@ -117,10 +117,11 @@ tuning control point is itself a commanding characteristic, so tuning queries al
 ### Part G — Attribute MTU
 
 Every value is carried in little-endian IEEE 754 single precision, which a client decodes directly.
-The larger values do not fit the default 23-byte attribute MTU, so the robot requests the largest MTU
-the stack supports, 251 bytes, as soon as a client connects, through the GATT client connection
-the stack opens for every link. Until the exchange has raised the MTU enough, telemetry is not sent
-and tuning responses carry only their status.
+The larger values do not fit the default 23-byte attribute MTU. The robot is a GATT server only, so
+it does not request an MTU itself: the stack is configured for up to 251 bytes, the client negotiates
+the MTU after connecting, as current phones and browsers do, and the GATT server reports the agreed
+value. Until the exchange has raised the MTU enough, telemetry is not sent and tuning responses carry
+only their status.
 
 ### Part H — Wire format
 

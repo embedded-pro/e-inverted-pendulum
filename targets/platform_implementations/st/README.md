@@ -12,11 +12,11 @@ presets: **NUCLEO-WB55RG**.
   wireless coprocessor (CPU2) boots when the board is constructed. Bonds are held in EMIL's
   `services::VolatileBondStorage`, synchronised with `hal::BondStorageSt`. Once CPU2 reports
   its stack running and `StartBluetooth` has been called, `BluetoothPeripheralStm` is built
-  from hal-st only: `hal::TracingGapPeripheralSt` with Just Works and encryption,
-  `hal::TracingGattServerSt`, and `hal::TracingGattClientSt`, through whose per-link
-  connection the application exchanges a 251-byte MTU. The address and root keys come from
-  the part's factory identity (see `documentation/design/ble-service.md`). Every HCI command
-  and event is traced on the console.
+  from hal-st only: `hal::TracingGapPeripheralSt` with Just Works and encryption, and
+  `hal::TracingGattServerSt`, which reports the MTU the client negotiates (up to 251 bytes).
+  The address and root keys come from the part's factory identity (see
+  `documentation/design/ble-service.md`). Every HCI command and event is traced on the
+  console.
 - **Run** — runs `main_::StmEventInfrastructure`. A first member (`ClockInit`) calls
   `HAL_Init()` + the board's default clock configuration function before any
   peripheral is constructed (32 MHz HSE on the NUCLEO-WB55RG).

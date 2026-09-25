@@ -6,8 +6,6 @@
 #include "infra/timer/test_helper/ClockFixture.hpp"
 #include "services/ble/GapAdvertisingData.hpp"
 #include "services/ble/test_doubles/GapPeripheralMock.hpp"
-#include "services/ble/test_doubles/GattClientConnectionMock.hpp"
-#include "services/ble/test_doubles/GattClientMock.hpp"
 #include "services/ble/test_doubles/GattServerMock.hpp"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
@@ -32,7 +30,6 @@ namespace
                 {
                     registered = &added;
                 });
-            EXPECT_CALL(bluetooth, GattClient()).WillRepeatedly(testing::ReturnRef(gattClient));
             ExpectAdvertising();
 
             link.emplace(bluetooth, "inverted-pendulum", supervisor, balanceControl, telemetrySource);
@@ -64,36 +61,17 @@ namespace
             gap.ChangeState(services::GapPeripheralState::connected);
         }
 
-        void EstablishGattConnection()
-        {
-            EXPECT_CALL(gattConnection, ExchangeMtu(testing::_)).WillOnce(testing::Return(services::GattRequestStatus::accepted));
-            gattClient.NotifyObservers([this](auto& observer)
-                {
-                    observer.ConnectionEstablished(infra::UnOwnedSharedPtr<services::GattClientConnection>(gattConnection));
-                });
-        }
-
         void ChangeMtu(uint16_t mtu)
         {
-            gattConnection.infra::Subject<services::GattClientConnectionObserver>::NotifyObservers([mtu](auto& observer)
+            gattServer.NotifyObservers([mtu](auto& observer)
                 {
-                    observer.MtuChanged(mtu);
-                });
-        }
-
-        void ReleaseGattConnection()
-        {
-            gattClient.NotifyObservers([this](auto& observer)
-                {
-                    observer.ConnectionReleased(gattConnection);
+                    observer.MaxAttMtuSizeChanged(mtu);
                 });
         }
 
         testing::StrictMock<ble::BluetoothMock> bluetooth;
         testing::StrictMock<services::GapPeripheralMock> gap;
         testing::StrictMock<services::GattServerMock> gattServer;
-        testing::StrictMock<services::GattClientMock> gattClient;
-        testing::StrictMock<services::GattClientConnectionMock> gattConnection;
         testing::StrictMock<services::GattServerCharacteristicOperationsMock> operations;
         testing::StrictMock<ble::SafetySupervisorMock> supervisor;
         testing::StrictMock<ble::BalanceControlMock> balanceControl;
@@ -156,17 +134,9 @@ TEST_F(BleLinkTest, reports_an_advertising_link_with_the_identity_address)
     EXPECT_EQ(services::attDefaultMaxMtuSize, report.mtu);
 }
 
-TEST_F(BleLinkTest, a_gatt_connection_requests_the_largest_mtu)
+TEST_F(BleLinkTest, reports_a_connected_link_with_the_mtu_the_client_exchanged)
 {
     Connect();
-
-    EstablishGattConnection();
-}
-
-TEST_F(BleLinkTest, reports_a_connected_link_with_the_exchanged_mtu)
-{
-    Connect();
-    EstablishGattConnection();
     ChangeMtu(247);
     EXPECT_CALL(gap, GetIdentityAddress()).WillOnce(testing::Return(services::GapAddress{}));
 
@@ -176,12 +146,13 @@ TEST_F(BleLinkTest, reports_a_connected_link_with_the_exchanged_mtu)
     EXPECT_EQ(247, report.mtu);
 }
 
-TEST_F(BleLinkTest, a_released_gatt_connection_no_longer_changes_the_mtu)
+TEST_F(BleLinkTest, a_disconnection_forgets_the_exchanged_mtu)
 {
     Connect();
-    EstablishGattConnection();
-    ReleaseGattConnection();
     ChangeMtu(247);
+    EXPECT_CALL(balanceControl, CancelMotion());
+    ExpectAdvertising();
+    gap.ChangeState(services::GapPeripheralState::standby);
     EXPECT_CALL(gap, GetIdentityAddress()).WillOnce(testing::Return(services::GapAddress{}));
 
     EXPECT_EQ(services::attDefaultMaxMtuSize, link->Report().mtu);
@@ -209,7 +180,6 @@ namespace
         testing::StrictMock<ble::BluetoothMock> bluetooth;
         testing::StrictMock<services::GapPeripheralMock> gap;
         testing::StrictMock<services::GattServerMock> gattServer;
-        testing::StrictMock<services::GattClientMock> gattClient;
         testing::StrictMock<ble::SafetySupervisorMock> supervisor;
         testing::StrictMock<ble::BalanceControlMock> balanceControl;
         testing::StrictMock<ble::TelemetrySourceMock> telemetrySource;
@@ -234,7 +204,6 @@ TEST_F(BleEndpointTest, builds_the_link_and_advertises_once_the_radio_is_ready)
     EXPECT_CALL(bluetooth, Gap()).WillRepeatedly(testing::ReturnRef(gap));
     EXPECT_CALL(bluetooth, GattServer()).WillRepeatedly(testing::ReturnRef(gattServer));
     EXPECT_CALL(gattServer, AddService(testing::_));
-    EXPECT_CALL(bluetooth, GattClient()).WillRepeatedly(testing::ReturnRef(gattClient));
     EXPECT_CALL(gap, SetAdvertisementData(testing::_, testing::_)).WillOnce(testing::Return(services::GapRequestStatus::accepted));
     EXPECT_CALL(gap, SetScanResponseData(testing::_, testing::_)).WillOnce(testing::Return(services::GapRequestStatus::accepted));
     EXPECT_CALL(gap, Advertise(testing::_, testing::_)).WillOnce(testing::Return(services::GapRequestStatus::accepted));

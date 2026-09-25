@@ -4,30 +4,9 @@
 
 namespace ble
 {
-    BleLink::MtuTracker::MtuTracker(RobotControlService& service)
-        : service(service)
-    {}
-
-    void BleLink::MtuTracker::ServiceDiscovered(const services::GattService&)
-    {}
-
-    void BleLink::MtuTracker::IncludedServiceDiscovered(const services::GattIncludedService&)
-    {}
-
-    void BleLink::MtuTracker::CharacteristicDiscovered(const services::GattCharacteristic&)
-    {}
-
-    void BleLink::MtuTracker::DescriptorDiscovered(const services::GattDescriptor&)
-    {}
-
-    void BleLink::MtuTracker::MtuChanged(uint16_t mtu)
-    {
-        service.AttMtuChanged(mtu);
-    }
-
     BleLink::BleLink(platform::Bluetooth& bluetooth, infra::BoundedConstString deviceName, safety::SafetySupervisor& supervisor, balance::BalanceControl& balanceControl, const telemetry::TelemetrySource& telemetry)
         : services::GapPeripheralObserver(bluetooth.Gap())
-        , services::GattClientObserver(bluetooth.GattClient())
+        , services::GattServerObserver(bluetooth.GattServer())
         , service(bluetooth.GattServer(), supervisor, balanceControl, telemetry)
     {
         services::GapAdvertisementFormatter advertisementFormatter{ advertisement };
@@ -72,20 +51,9 @@ namespace ble
         }
     }
 
-    void BleLink::ConnectionEstablished(infra::SharedPtr<services::GattClientConnection> established)
+    void BleLink::MaxAttMtuSizeChanged(uint16_t maxAttMtuSize)
     {
-        connection = established;
-        mtuTracker.Attach(*connection);
-        connection->ExchangeMtu([](services::GattResult) {});
-    }
-
-    void BleLink::ConnectionReleased(services::GattClientConnection& released)
-    {
-        if (connection == nullptr || &*connection != &released)
-            return;
-
-        mtuTracker.Detach();
-        connection = nullptr;
+        service.AttMtuChanged(maxAttMtuSize);
     }
 
     void BleLink::Advertise()

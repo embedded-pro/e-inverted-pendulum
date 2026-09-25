@@ -59,6 +59,5 @@ namespace ble
 
         MOCK_METHOD(services::GapPeripheral&, Gap, (), (override));
         MOCK_METHOD(services::GattServer&, GattServer, (), (override));
-        MOCK_METHOD(services::GattClient&, GattClient, (), (override));
     };
 }

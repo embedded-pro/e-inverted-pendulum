@@ -24,7 +24,6 @@ namespace application
         , gapConfiguration{ identity.address, gapService, rootKeys, hal::GapSt::encrypted, zeroDbmPowerLevel, false }
         , gap{ hciEventSource, bondStorageSynchronizer, gapConfiguration, tracer }
         , gattServer{ hciEventSource, tracer }
-        , gattClient{ hciEventSource, tracer }
     {}
 
     services::GapPeripheral& BluetoothPeripheralStm::Gap()
@@ -35,10 +34,5 @@ namespace application
     services::GattServer& BluetoothPeripheralStm::GattServer()
     {
         return gattServer;
-    }
-
-    services::GattClient& BluetoothPeripheralStm::GattClient()
-    {
-        return gattClient;
     }
 }
