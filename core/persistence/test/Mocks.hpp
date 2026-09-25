@@ -1,28 +1,11 @@
 #pragma once
 
 #include "core/balance_control/interfaces/BalanceControl.hpp"
-#include "core/platform_abstraction/Bluetooth.hpp"
 #include "core/safety_supervisor/interfaces/SafetySupervisor.hpp"
-#include "core/telemetry/interfaces/Telemetry.hpp"
 #include "gmock/gmock.h"
 
-namespace ble
+namespace persistence
 {
-    class SafetySupervisorMock
-        : public safety::SafetySupervisor
-    {
-    public:
-        virtual ~SafetySupervisorMock() = default;
-
-        MOCK_METHOD(bool, Arm, (), (override));
-        MOCK_METHOD(bool, Disarm, (), (override));
-        MOCK_METHOD(bool, ClearFault, (), (override));
-        MOCK_METHOD(bool, Calibrate, (), (override));
-        MOCK_METHOD(safety::Mode, Current, (), (const, override));
-        MOCK_METHOD(safety::FaultCause, LatchedCause, (), (const, override));
-        MOCK_METHOD(bool, DrivePermitted, (), (const, override));
-    };
-
     class BalanceControlMock
         : public balance::BalanceControl
     {
@@ -45,22 +28,18 @@ namespace ble
         MOCK_METHOD(balance::Effort, AppliedEffort, (), (const, override));
     };
 
-    class TelemetrySourceMock
-        : public telemetry::TelemetrySource
+    class SafetySupervisorMock
+        : public safety::SafetySupervisor
     {
     public:
-        virtual ~TelemetrySourceMock() = default;
+        virtual ~SafetySupervisorMock() = default;
 
-        MOCK_METHOD(telemetry::Sample, Latest, (), (const, override));
-    };
-
-    class BluetoothMock
-        : public platform::Bluetooth
-    {
-    public:
-        virtual ~BluetoothMock() = default;
-
-        MOCK_METHOD(services::GapPeripheral&, Gap, (), (override));
-        MOCK_METHOD(services::GattServer&, GattServer, (), (override));
+        MOCK_METHOD(bool, Arm, (), (override));
+        MOCK_METHOD(bool, Disarm, (), (override));
+        MOCK_METHOD(bool, ClearFault, (), (override));
+        MOCK_METHOD(bool, Calibrate, (), (override));
+        MOCK_METHOD(safety::Mode, Current, (), (const, override));
+        MOCK_METHOD(safety::FaultCause, LatchedCause, (), (const, override));
+        MOCK_METHOD(bool, DrivePermitted, (), (const, override));
     };
 }
