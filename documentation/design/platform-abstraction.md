@@ -2,7 +2,7 @@
 title: "Platform Abstraction Design"
 type: design
 status: draft
-version: 0.3.0
+version: 0.4.0
 component: "platform-abstraction"
 date: 2026-09-24
 ---
@@ -12,7 +12,7 @@ date: 2026-09-24
 | Title     | Platform Abstraction Design |
 | Type      | design                      |
 | Status    | draft                       |
-| Version   | 0.3.0                       |
+| Version   | 0.4.0                       |
 | Component | platform-abstraction        |
 | Date      | 2026-09-24                  |
 
@@ -164,6 +164,13 @@ so the board needs no link observer of its own.
 On the selected part the second core runs the vendor's full Bluetooth stack, flashed separately
 from the application; the board's notes list the image and address.
 
+### Part H — The watchdog
+
+The selected board runs a window watchdog. A stalled event loop resets the part rather than leaving
+the bridges on their last duty cycle, and a reset always resumes with the drive disabled. Flash
+operations refresh the watchdog around the short critical section in which the wireless coprocessor
+is locked out of flash.
+
 ---
 
 ## Interfaces
@@ -177,7 +184,7 @@ from the application; the board's notes list the image and address.
 | Motor driver role         | The two motor bridges, plus notification when the driver faults | Tri-state reachable without a healthy control loop; a fault is reported, never polled                                      |
 | Motor bridge role         | Two duty cycles, one per driver input                           | Both inputs low releases the bridge; the encoding is the driver's, not the board's                                         |
 | Bluetooth peripheral role | Advertising, connection, pairing, GATT database                 | Started asynchronously under a device name; exposes GAP and GATT server; connection loss and MTU changes observable        |
-| Parameter store role      | Persist and retrieve tuning parameters                          | Absence or failure is reported so the application can fall back to defaults                                                |
+| Parameter store role      | Two flash areas holding the tuning store                        | Readable at power-on; writes may be held until the board allows them; an empty or corrupt store falls back to defaults     |
 | Timebase role             | Periodic scheduling and interval measurement                    | Monotonic; reports the measured interval                                                                                   |
 | Status indicator role     | Visible heartbeat and mode indication                           | Never on a timing-critical path                                                                                            |
 | Trace role                | Diagnostic text output                                          | May be a no-op on a board without a channel; never blocks the control loop                                                 |
@@ -294,5 +301,5 @@ graph LR
 |---|------------------------------------------------------------------------------------------|-----------------------------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | 1 | Does the inertial role expose raw samples or a configured sample rate the board owns?    | Application-driven polling; board-driven sample callback              | decided — a board-driven callback. The part asserts data-ready at its own cadence, so the board owns the rate and timestamps each sample as the driver delivers it, one bus transfer after the edge; polling would report the poller's interval rather than the sensor's |
 | 2 | Should the simulated plant live behind the host board or beside it as a separate tool?   | Behind the host board; separate simulator composed at the entry point | open                                                                                                                                                                                                                                                                     |
-| 3 | Is the parameter store a distinct role or part of the board's general configuration?     | Distinct role; folded into board configuration                        | open                                                                                                                                                                                                                                                                     |
+| 3 | Is the parameter store a distinct role or part of the board's general configuration?     | Distinct role; folded into board configuration                        | decided — a distinct role: the board provides two flash areas for the application's tuning store, while the Bluetooth bonds stay a board concern with their own store                                                                                                    |
 | 4 | Should a second board be defined now to prove the abstraction is not shaped by one part? | Defer until the first board works; define early as a design check     | open                                                                                                                                                                                                                                                                     |

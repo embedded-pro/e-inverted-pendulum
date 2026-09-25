@@ -9,9 +9,11 @@
 #include "core/inertial_sensing/implementations/InertialSensingImpl.hpp"
 #include "core/motion_actuation/implementations/Drv8711DriverConfiguration.hpp"
 #include "core/motion_actuation/implementations/MotionActuationImpl.hpp"
+#include "core/persistence/PersistentTuning.hpp"
 #include "core/safety_supervisor/implementations/SafetySupervisorImpl.hpp"
 #include "core/telemetry/implementations/TelemetryRecorder.hpp"
 #include "core/wheel_odometry/implementations/WheelOdometryImpl.hpp"
+#include "services/crypto/Sha256Software.hpp"
 #include <array>
 
 int main()
@@ -27,10 +29,13 @@ int main()
     static std::array<balance::ControlStrategy*, 2> strategies{ &cascadedPid, &lqr };
     static balance::BalanceControlImpl balanceControl{ infra::MakeRange(strategies), motionActuation, wheelOdometry };
     static safety::SafetySupervisorImpl supervisor{ motionActuation, inertialSensing, balanceControl };
+    static const platform::ParameterStore parameterStore{ platform.ParameterStorage() };
+    static services::Sha256Software sha256;
+    static persistence::PersistentTuning tuning{ parameterStore.first, parameterStore.second, sha256, balanceControl, supervisor };
     static telemetry::TelemetryRecorder telemetryRecorder{ supervisor, balanceControl, wheelOdometry, supervisor };
     static control::ControlLoopImpl controlLoop{ inertialSensing, attitudeEstimation, telemetryRecorder, supervisor };
-    static ble::BleEndpoint bleEndpoint{ platform, "inverted-pendulum", supervisor, balanceControl, telemetryRecorder };
-    static application::Cli cli{ platform, { motionActuation, wheelOdometry, inertialSensing, attitudeEstimation, controlLoop, supervisor, balanceControl, bleEndpoint } };
+    static ble::BleEndpoint bleEndpoint{ platform, "inverted-pendulum", supervisor, tuning.Control(), telemetryRecorder };
+    static application::Cli cli{ platform, { motionActuation, wheelOdometry, inertialSensing, attitudeEstimation, controlLoop, supervisor, tuning.Control(), bleEndpoint } };
 
     platform.Run();
 

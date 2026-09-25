@@ -62,3 +62,9 @@
     The device shall report on its diagnostic console whether the radio is starting,
     advertising or connected, together with its address and the negotiated attribute
     MTU.
+
+- id: REQ-LINK-011
+  title: Pairings survive a reset
+  shall: >
+    The device shall keep its Bluetooth bonds in non-volatile storage, so that a
+    client paired before a reset remains paired after it.

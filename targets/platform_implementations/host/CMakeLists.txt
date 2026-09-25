@@ -16,6 +16,7 @@ target_link_libraries(inverted_pendulum_bot.platform_host PUBLIC
 )
 
 target_sources(inverted_pendulum_bot.platform_host PRIVATE
+    FlashStub.hpp
     GpioStub.hpp
     InertialSensorStub.hpp
     Drv8711Emulator.hpp

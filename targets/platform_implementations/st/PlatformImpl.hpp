@@ -3,14 +3,21 @@
 #include "core/platform_abstraction/Platform.hpp"
 #include "hal_st/instantiations/StmEventInfrastructure.hpp"
 #include INVERTED_PENDULUM_BOT_ST_CLOCK_HEADER
+#include "generated/echo/BondRecord.pb.hpp"
 #include "hal_st/middlewares/ble_middleware/BondStorageSt.hpp"
 #include "hal_st/middlewares/ble_middleware/TracingSystemTransportLayerWb.hpp"
+#include "hal_st/stm32fxxx/FlashCoordinatedWithWirelessStack.hpp"
+#include "hal_st/stm32fxxx/FlashInternalStm.hpp"
 #include "hal_st/stm32fxxx/GpioStm.hpp"
 #include "hal_st/stm32fxxx/UartStm.hpp"
+#include "hal_st/stm32fxxx/WatchDogStm.hpp"
 #include "infra/stream/OutputStream.hpp"
 #include "infra/util/ProxyCreator.hpp"
 #include "services/ble/BondStorageSynchronizer.hpp"
-#include "services/ble/VolatileBondStorage.hpp"
+#include "services/ble/PersistentBondStorage.hpp"
+#include "services/crypto/Sha256Software.hpp"
+#include "services/flash/FlashMultipleAccess.hpp"
+#include "services/flash/FlashRegion.hpp"
 #include "services/tracer/StreamWriterOnSerialCommunication.hpp"
 #include "services/tracer/Tracer.hpp"
 #include "services/util/ConfigurationStore.hpp"
@@ -35,6 +42,7 @@ namespace application
         platform::MotorDriver& Motors() override;
         platform::WheelEncoders& Encoders() override;
         platform::InertialSensor& Inertial() override;
+        platform::ParameterStore ParameterStorage() override;
         void StartBluetooth(infra::BoundedConstString deviceName, const infra::Function<void(platform::Bluetooth& bluetooth)>& onReady) override;
         void Run() override;
 
@@ -42,7 +50,9 @@ namespace application
         static constexpr uint16_t maxAttMtuSize{ 251 };
         static constexpr uint8_t numberOfLinks{ 1 };
         static constexpr uint32_t maxNumberOfBonds{ 10 };
+        static constexpr uint32_t firstPersistenceSector{ 128 };
 
+        void BondsRecovered();
         void BluetoothStackRunning(services::BondStorageSynchronizer& synchronizer);
         void StartBluetoothWhenReady();
 
@@ -72,26 +82,33 @@ namespace application
         infra::TextOutputStream::WithErrorPolicy stream{ streamWriter };
         services::TracerToStream tracer{ stream };
 
-        services::ConfigurationStoreStub bondConfigurationStore;
-        std::array<uint8_t, hal::SystemTransportLayerWb::bondBlobSize> bondBlob{};
-        infra::ByteRange bondBlobRange{ infra::MakeRange(bondBlob) };
-        services::VolatileBondStorage::WithMaxBonds<maxNumberOfBonds> volatileBondStorage;
+        hal::WatchDogStm watchdog{ []()
+            {
+                HAL_NVIC_SystemReset();
+            } };
+        hal::FlashHomogeneousInternalStm internalFlash{ FLASH_PAGE_NB, FLASH_PAGE_SIZE, infra::ConstByteRange{ reinterpret_cast<const uint8_t*>(FLASH_BASE), reinterpret_cast<const uint8_t*>(FLASH_BASE + FLASH_SIZE) } };
+        hal::FlashCoordinatedWithWirelessStack flash{ internalFlash, watchdog, hal::FlashCoordinatedWithWirelessStack::WirelessStack::stopped };
+        services::FlashMultipleAccessMaster flashMaster{ flash };
+        services::FlashMultipleAccess tuningFlash{ flashMaster };
+        services::FlashMultipleAccess bondFlash{ flashMaster };
+        services::FlashRegion tuningFirst{ tuningFlash, firstPersistenceSector, 1 };
+        services::FlashRegion tuningSecond{ tuningFlash, firstPersistenceSector + 1, 1 };
+        services::FlashRegion bondFirst{ bondFlash, firstPersistenceSector + 2, 1 };
+        services::FlashRegion bondSecond{ bondFlash, firstPersistenceSector + 3, 1 };
+        services::Sha256Software sha256;
+
+        services::ConfigurationStoreImpl<bonds::BondRecord>::WithBlobs<> bondStore{ bondFirst, bondSecond, sha256, [this](bool)
+            {
+                BondsRecovered();
+            } };
+        infra::ByteRange stackBonds;
+        std::optional<services::PersistentBondStorage> bondStorage;
         hal::BondStorageSt bondStorageSt{ maxNumberOfBonds };
         infra::Creator<services::BondStorageSynchronizer, services::BondStorageSynchronizerImpl, void()> bondStorageSynchronizerCreator{ [this](std::optional<services::BondStorageSynchronizerImpl>& synchronizer)
             {
-                synchronizer.emplace(volatileBondStorage, bondStorageSt);
+                synchronizer.emplace(*bondStorage, bondStorageSt);
             } };
-
-        hal::TracingSystemTransportLayerWb transport{
-            services::ConfigurationStoreAccess<infra::ByteRange>{ bondConfigurationStore, bondBlobRange },
-            bondStorageSynchronizerCreator,
-            { maxAttMtuSize, hal::SystemTransportLayerWb::RfWakeupClock::lowSpeedExternal, numberOfLinks },
-            [this](services::BondStorageSynchronizer& synchronizer)
-            {
-                BluetoothStackRunning(synchronizer);
-            },
-            tracer
-        };
+        std::optional<hal::TracingSystemTransportLayerWb> transport;
 
         services::BondStorageSynchronizer* bondStorageSynchronizer{ nullptr };
         infra::BoundedConstString bluetoothName;

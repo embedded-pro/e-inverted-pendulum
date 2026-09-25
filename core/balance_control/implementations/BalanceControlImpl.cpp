@@ -66,22 +66,43 @@ namespace balance
 
     infra::MemoryRange<const ParameterDescriptor> BalanceControlImpl::Parameters() const
     {
-        return Active().Parameters();
+        return StrategyParameters(active);
     }
 
     float BalanceControlImpl::Parameter(std::size_t index) const
     {
-        return Active().Parameter(index);
+        return StrategyParameter(active, index);
     }
 
     bool BalanceControlImpl::SetParameter(std::size_t index, float value)
     {
-        const auto descriptors = Active().Parameters();
+        return SetStrategyParameter(active, index, value);
+    }
 
-        if (engaged || index >= descriptors.size() || !(value >= descriptors[index].minimum && value <= descriptors[index].maximum))
+    infra::MemoryRange<const ParameterDescriptor> BalanceControlImpl::StrategyParameters(std::size_t strategy) const
+    {
+        if (strategy >= strategies.size())
+            return {};
+
+        return strategies[strategy]->Parameters();
+    }
+
+    float BalanceControlImpl::StrategyParameter(std::size_t strategy, std::size_t index) const
+    {
+        return strategies[strategy]->Parameter(index);
+    }
+
+    bool BalanceControlImpl::SetStrategyParameter(std::size_t strategy, std::size_t index, float value)
+    {
+        if (engaged || strategy >= strategies.size())
             return false;
 
-        Active().SetParameter(index, value);
+        const auto descriptors = strategies[strategy]->Parameters();
+
+        if (index >= descriptors.size() || !(value >= descriptors[index].minimum && value <= descriptors[index].maximum))
+            return false;
+
+        strategies[strategy]->SetParameter(index, value);
         return true;
     }
 
