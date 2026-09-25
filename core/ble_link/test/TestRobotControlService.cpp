@@ -17,7 +17,6 @@ namespace
     using Service = ble::RobotControlService;
     using Bytes = std::vector<uint8_t>;
 
-    constexpr services::AttAttribute::Handle telemetryHandle{ 0x20 };
     constexpr uint16_t largeMtu{ 247 };
 
     Bytes Float(float value)
@@ -58,8 +57,6 @@ namespace
 
             for (auto& characteristic : registered->Characteristics())
                 characteristic.Attach(operations);
-
-            Characteristic(ble::uuid::telemetry).Handle() = telemetryHandle;
         }
 
         services::GattServerCharacteristic& Characteristic(const services::AttAttribute::Uuid128& type)
@@ -102,10 +99,9 @@ namespace
             service->Connected();
         }
 
-        void Subscribe()
+        void RaiseMtu()
         {
             service->AttMtuChanged(largeMtu);
-            service->ClientConfigurationWritten(telemetryHandle + Service::clientConfigurationOffset, 0x0001);
         }
 
         testing::StrictMock<services::GattServerMock> gattServer;
@@ -213,10 +209,9 @@ TEST_F(RobotControlServiceTest, a_mode_change_is_published_on_the_next_tick_only
     ForwardTime(40ms);
 }
 
-TEST_F(RobotControlServiceTest, telemetry_waits_for_a_subscription)
+TEST_F(RobotControlServiceTest, telemetry_is_not_sent_while_disconnected)
 {
-    Connect();
-    service->AttMtuChanged(largeMtu);
+    RaiseMtu();
 
     ForwardTime(200ms);
 }
@@ -224,15 +219,14 @@ TEST_F(RobotControlServiceTest, telemetry_waits_for_a_subscription)
 TEST_F(RobotControlServiceTest, telemetry_waits_for_an_mtu_large_enough)
 {
     Connect();
-    service->ClientConfigurationWritten(telemetryHandle + Service::clientConfigurationOffset, 0x0001);
 
     ForwardTime(200ms);
 }
 
-TEST_F(RobotControlServiceTest, a_subscribed_client_receives_telemetry_every_forty_milliseconds)
+TEST_F(RobotControlServiceTest, a_connected_client_receives_telemetry_every_forty_milliseconds)
 {
     Connect();
-    Subscribe();
+    RaiseMtu();
     EXPECT_CALL(telemetrySource, Latest()).WillRepeatedly(testing::Return(telemetry::Sample{ 0.1f, -0.2f, 0.3f, -0.4f, 0.5f, -0.6f, safety::Mode::armed, safety::FaultCause::none }));
     Bytes sent;
     ExpectUpdate(ble::uuid::telemetry, sent);
@@ -249,7 +243,7 @@ TEST_F(RobotControlServiceTest, a_subscribed_client_receives_telemetry_every_for
 TEST_F(RobotControlServiceTest, telemetry_reports_the_latched_fault_cause)
 {
     Connect();
-    Subscribe();
+    RaiseMtu();
     EXPECT_CALL(telemetrySource, Latest()).WillOnce(testing::Return(telemetry::Sample{ 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, safety::Mode::fault, safety::FaultCause::loopStalled }));
     Bytes sent;
     ExpectUpdate(ble::uuid::telemetry, sent);
@@ -264,7 +258,7 @@ TEST_F(RobotControlServiceTest, telemetry_reports_the_latched_fault_cause)
 TEST_F(RobotControlServiceTest, telemetry_is_dropped_while_the_previous_update_is_outstanding)
 {
     Connect();
-    Subscribe();
+    RaiseMtu();
     EXPECT_CALL(telemetrySource, Latest()).WillOnce(testing::Return(telemetry::Sample{}));
     Bytes sent;
     ExpectUpdate(ble::uuid::telemetry, sent, services::GattRequestStatus::invalidState);
@@ -273,35 +267,16 @@ TEST_F(RobotControlServiceTest, telemetry_is_dropped_while_the_previous_update_i
     ForwardTime(200ms);
 }
 
-TEST_F(RobotControlServiceTest, unsubscribing_stops_telemetry)
+TEST_F(RobotControlServiceTest, disconnecting_decays_motion_and_forgets_the_mtu)
 {
     Connect();
-    Subscribe();
-    service->ClientConfigurationWritten(telemetryHandle + Service::clientConfigurationOffset, 0x0000);
-
-    ForwardTime(200ms);
-}
-
-TEST_F(RobotControlServiceTest, a_client_configuration_of_another_attribute_is_ignored)
-{
-    Connect();
-    service->AttMtuChanged(largeMtu);
-    service->ClientConfigurationWritten(telemetryHandle + 5, 0x0001);
-
-    ForwardTime(200ms);
-}
-
-TEST_F(RobotControlServiceTest, disconnecting_decays_motion_and_forgets_the_subscription_and_mtu)
-{
-    Connect();
-    Subscribe();
+    RaiseMtu();
     EXPECT_CALL(balanceControl, CancelMotion());
 
     service->Disconnected();
     ForwardTime(200ms);
 
     Connect();
-    service->ClientConfigurationWritten(telemetryHandle + Service::clientConfigurationOffset, 0x0001);
     ForwardTime(200ms);
 }
 

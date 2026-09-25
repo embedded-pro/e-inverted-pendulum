@@ -34,8 +34,27 @@ namespace application
         return inertial;
     }
 
-    void PlatformImpl::StartBluetooth(const infra::Function<void(platform::Bluetooth& bluetooth)>&)
-    {}
+    void PlatformImpl::StartBluetooth(infra::BoundedConstString deviceName, const infra::Function<void(platform::Bluetooth& bluetooth)>& onReady)
+    {
+        bluetoothName = deviceName;
+        onBluetoothReady = onReady;
+        StartBluetoothWhenReady();
+    }
+
+    void PlatformImpl::BluetoothStackRunning(services::BondStorageSynchronizer& synchronizer)
+    {
+        bondStorageSynchronizer = &synchronizer;
+        StartBluetoothWhenReady();
+    }
+
+    void PlatformImpl::StartBluetoothWhenReady()
+    {
+        if (bondStorageSynchronizer == nullptr || !onBluetoothReady || bluetooth)
+            return;
+
+        bluetooth.emplace(transport, *bondStorageSynchronizer, bluetoothName, tracer);
+        onBluetoothReady(*bluetooth);
+    }
 
     void PlatformImpl::Run()
     {

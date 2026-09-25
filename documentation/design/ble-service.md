@@ -2,7 +2,7 @@
 title: "BLE Service Design"
 type: design
 status: draft
-version: 0.2.0
+version: 0.3.0
 component: "ble-service"
 date: 2026-09-24
 ---
@@ -12,7 +12,7 @@ date: 2026-09-24
 | Title     | BLE Service Design |
 | Type      | design             |
 | Status    | draft              |
-| Version   | 0.2.0              |
+| Version   | 0.3.0              |
 | Component | ble-service        |
 | Date      | 2026-09-24         |
 
@@ -90,6 +90,11 @@ iteration after the supervisor and balance control have run, and keeps the estim
 chassis motion, the effort actually applied, and the mode and fault cause as one sample. The link
 reads that sample when it is time to notify.
 
+A connected client is treated as subscribed: the link updates the telemetry value at the fixed rate
+for as long as a client is connected, and the Bluetooth stack only turns an update into a
+notification for a client that has enabled notifications. The link therefore never tracks the
+subscription itself.
+
 ### Part E — Generic tuning
 
 The controller supplies a descriptor of the active strategy's parameters; this component
@@ -112,9 +117,11 @@ tuning control point is itself a commanding characteristic, so tuning queries al
 ### Part G — Attribute MTU
 
 Every value is carried in little-endian IEEE 754 single precision, which a client decodes directly.
-The larger values do not fit the default 23-byte attribute MTU, so the robot requests the largest MTU
-the stack supports, 251 bytes, as soon as a client connects. Until the exchange has raised the MTU
-enough, telemetry is not sent and tuning responses carry only their status.
+The larger values do not fit the default 23-byte attribute MTU. The robot is a GATT server only, so
+it does not request an MTU itself: the stack is configured for up to 251 bytes, the client negotiates
+the MTU after connecting, as current phones and browsers do, and the GATT server reports the agreed
+value. Until the exchange has raised the MTU enough, telemetry is not sent and tuning responses carry
+only their status.
 
 ### Part H — Wire format
 
@@ -151,6 +158,28 @@ adds a status: 0 accepted, 1 refused by balance control, 2 invalid request, 3 MT
 A request that arrives while the previous response is still being sent is ignored; the client waits
 for each response before sending the next request.
 
+### Part I — Device identity
+
+Each robot advertises under a public address derived from its microcontroller's factory identity,
+so two robots in one room never collide and a client recognises the same robot after a reset. The
+address follows the vendor's scheme: the vendor's company identifier, the device identifier and the
+low bytes of the factory-programmed unique device number. A part whose unique device number was never
+programmed falls back to a fold of its 96-bit unique identifier in those low bytes.
+
+The identity and encryption root keys, from which the stack derives every bond's keys, are derived
+from the same 96-bit unique identifier with a different constant per key, so the two keys differ
+from each other and from every other robot. They are not secret: anyone who can read the part can
+recompute them. That matches Just Works, which already accepts an unauthenticated pairing exchange.
+
+### Part J — Radio bring-up and status
+
+The radio starts after the rest of the robot: the board boots the wireless coprocessor, and only when
+the coprocessor reports that its stack is running does the robot build the service and begin
+advertising. Until then the robot balances and answers the command line as usual.
+
+The command line reports the link without a phone: whether the radio is still starting, advertising
+or connected, the public address, and the negotiated attribute MTU.
+
 ---
 
 ## Interfaces
@@ -165,12 +194,13 @@ for each response before sending the next request.
 | Mode command intake    | Accept arm, disarm and clear-fault                                             | Pairing required; forwarded to the supervisor, which applies its own preconditions                        |
 | Telemetry notification | Publish robot state to a subscriber                                            | Fixed rate while subscribed; silent otherwise; never blocks the control loop; samples internally coherent |
 | Tuning access          | Strategy list, active strategy, parameter descriptor, indexed parameter access | Pairing required for writes; the controller decides acceptance and this component reports the outcome     |
+| Link status            | Report radio state, address and attribute MTU                                  | Readable at any time, including before the radio has started                                              |
 
 ### Required
 
 | Interface            | Purpose                                                  | Contract                                                                  |
 |----------------------|----------------------------------------------------------|---------------------------------------------------------------------------|
-| Bluetooth peripheral | Advertising, connection, pairing, GATT database          | Connection loss is observable to the application                          |
+| Bluetooth peripheral | Advertising, connection, pairing, GATT database          | Started asynchronously; connection loss and MTU changes are observable    |
 | Safety supervisor    | Forward mode commands; read mode and latched fault cause | The supervisor may reject any command; rejection is reported, not retried |
 | Balance control      | Deliver setpoints; access strategies and parameters      | Rejected writes leave stored values unchanged                             |
 | Telemetry source     | Obtain a coherent state sample                           | Sampled from one control iteration; non-blocking                          |
@@ -290,6 +320,7 @@ graph LR
 
 | Constraint                  | Value / Description                                                                                   |
 |-----------------------------|-------------------------------------------------------------------------------------------------------|
+| Radio start                 | The service exists only after the wireless coprocessor reports its stack running                      |
 | Single client               | One concurrent connection; a second is refused rather than queued                                     |
 | Command timeout             | 500 ms of silence begins setpoint decay                                                               |
 | Telemetry rate              | 25 notifications per second while subscribed                                                          |

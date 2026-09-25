@@ -2,7 +2,7 @@
 title: "Platform Abstraction Design"
 type: design
 status: draft
-version: 0.2.0
+version: 0.3.0
 component: "platform-abstraction"
 date: 2026-09-24
 ---
@@ -12,7 +12,7 @@ date: 2026-09-24
 | Title     | Platform Abstraction Design |
 | Type      | design                      |
 | Status    | draft                       |
-| Version   | 0.2.0                       |
+| Version   | 0.3.0                       |
 | Component | platform-abstraction        |
 | Date      | 2026-09-24                  |
 
@@ -149,6 +149,21 @@ reports a mismatch, a parameter store reports that it is absent. The application
 to treat these as first-class outcomes, which is only possible if the abstraction admits
 them.
 
+### Part G — The Bluetooth role starts late
+
+The radio is the one role that is not ready when the board is constructed. On the selected part the
+Bluetooth stack runs on a second core, which boots and reports back some time after the first core
+is running. The role is therefore started, not constructed: the application asks the board to start
+the radio under a given device name, and the board hands back the peripheral once the stack is up.
+Nothing else waits for it, and a board without a radio simply never hands it back.
+
+The peripheral is the library's own Bluetooth abstractions and nothing board-specific: GAP and a
+GATT server for the robot's service. The GATT server reports the attribute MTU the client negotiates,
+so the board needs no link observer of its own.
+
+On the selected part the second core runs the vendor's full Bluetooth stack, flashed separately
+from the application; the board's notes list the image and address.
+
 ---
 
 ## Interfaces
@@ -161,7 +176,7 @@ them.
 | Wheel encoder role        | Signed counts for both wheels, and the counter resolution       | Lossless across counter wrap; forward motion positive on both wheels; index events are not yet provided — see REQ-ODOM-005 |
 | Motor driver role         | The two motor bridges, plus notification when the driver faults | Tri-state reachable without a healthy control loop; a fault is reported, never polled                                      |
 | Motor bridge role         | Two duty cycles, one per driver input                           | Both inputs low releases the bridge; the encoding is the driver's, not the board's                                         |
-| Bluetooth peripheral role | Advertising, connection, pairing, GATT database                 | Connection loss observable to the application                                                                              |
+| Bluetooth peripheral role | Advertising, connection, pairing, GATT database                 | Started asynchronously under a device name; exposes GAP and GATT server; connection loss and MTU changes observable        |
 | Parameter store role      | Persist and retrieve tuning parameters                          | Absence or failure is reported so the application can fall back to defaults                                                |
 | Timebase role             | Periodic scheduling and interval measurement                    | Monotonic; reports the measured interval                                                                                   |
 | Status indicator role     | Visible heartbeat and mode indication                           | Never on a timing-critical path                                                                                            |

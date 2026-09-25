@@ -7,6 +7,8 @@ target_include_directories(inverted_pendulum_bot.platform_st PUBLIC
 
 target_link_libraries(inverted_pendulum_bot.platform_st PUBLIC
     inverted_pendulum_bot.platform_abstraction
+    inverted_pendulum_bot.ble_link
+    hal_st.ble_middleware
     hal_st.instantiations
     drivers.imu.mpu9250
     hal_st.synchronous_stm32fxxx
@@ -31,6 +33,8 @@ target_compile_definitions(inverted_pendulum_bot.platform_st PUBLIC
 )
 
 target_sources(inverted_pendulum_bot.platform_st PRIVATE
+    BluetoothPeripheralStm.hpp
+    BluetoothPeripheralStm.cpp
     InertialSensorStm.hpp
     InertialSensorStm.cpp
     MotorDriverStm.hpp

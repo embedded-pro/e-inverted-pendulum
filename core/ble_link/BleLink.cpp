@@ -6,10 +6,9 @@ namespace ble
 {
     BleLink::BleLink(platform::Bluetooth& bluetooth, infra::BoundedConstString deviceName, safety::SafetySupervisor& supervisor, balance::BalanceControl& balanceControl, const telemetry::TelemetrySource& telemetry)
         : services::GapPeripheralObserver(bluetooth.Gap())
+        , services::GattServerObserver(bluetooth.GattServer())
         , service(bluetooth.GattServer(), supervisor, balanceControl, telemetry)
     {
-        bluetooth.SetLinkObserver(service);
-
         services::GapAdvertisementFormatter advertisementFormatter{ advertisement };
         advertisementFormatter.AppendFlags(services::GapAdvertisementFlags::leGeneralDiscoverableMode | services::GapAdvertisementFlags::brEdrNotSupported);
         advertisementFormatter.AppendCompleteLocalName(deviceName);
@@ -28,29 +27,38 @@ namespace ble
 
     bool BleLink::Connected() const
     {
-        return connected;
+        return state == services::GapPeripheralState::connected;
     }
 
-    void BleLink::StateChanged(services::GapPeripheralState state)
+    LinkReport BleLink::Report() const
     {
-        if (state == services::GapPeripheralState::connected)
-        {
-            connected = true;
+        return { state, services::GapPeripheralObserver::Subject().GetIdentityAddress().address, service.Mtu() };
+    }
+
+    void BleLink::StateChanged(services::GapPeripheralState newState)
+    {
+        const auto wasConnected = Connected();
+        state = newState;
+
+        if (newState == services::GapPeripheralState::connected)
             service.Connected();
-        }
-        else if (state == services::GapPeripheralState::standby)
+        else if (newState == services::GapPeripheralState::standby)
         {
-            if (connected)
+            if (wasConnected)
                 service.Disconnected();
 
-            connected = false;
             Advertise();
         }
     }
 
+    void BleLink::MaxAttMtuSizeChanged(uint16_t maxAttMtuSize)
+    {
+        service.AttMtuChanged(maxAttMtuSize);
+    }
+
     void BleLink::Advertise()
     {
-        auto& gap = Subject();
+        auto& gap = services::GapPeripheralObserver::Subject();
 
         gap.SetAdvertisementData(infra::MakeRange(advertisement), [](services::GapPeripheral::Result) {});
         gap.SetScanResponseData(infra::MakeRange(scanResponse), [](services::GapPeripheral::Result) {});

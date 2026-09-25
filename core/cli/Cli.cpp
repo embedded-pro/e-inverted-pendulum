@@ -1,6 +1,7 @@
 #include "core/cli/Cli.hpp"
 #include "core/cli/NumberParser.hpp"
 #include "infra/util/Tokenizer.hpp"
+#include <algorithm>
 #include <array>
 #include <chrono>
 #include <optional>
@@ -100,30 +101,50 @@ namespace application
             return std::nullopt;
         }
 
+        const char* NameOf(services::GapPeripheralState state)
+        {
+            switch (state)
+            {
+                case services::GapPeripheralState::standby:
+                    return "standby";
+                case services::GapPeripheralState::advertising:
+                    return "advertising";
+                default:
+                    return "connected";
+            }
+        }
+
+        hal::MacAddress MostSignificantFirst(hal::MacAddress address)
+        {
+            std::reverse(address.begin(), address.end());
+            return address;
+        }
+
         uint32_t Microseconds(infra::Duration duration)
         {
             return static_cast<uint32_t>(std::chrono::duration_cast<std::chrono::microseconds>(duration).count());
         }
     }
 
-    Cli::Cli(platform::Platform& platform, motion::MotionActuation& motionActuation, odometry::WheelOdometry& wheelOdometry, sensing::InertialSensing& inertialSensing, estimation::AttitudeEstimation& attitudeEstimation, control::ControlLoop& controlLoop, safety::SafetySupervisor& supervisor, balance::BalanceControl& balanceControl)
+    Cli::Cli(platform::Platform& platform, const Dependencies& dependencies)
         : debugLed{ platform.StatusLed() }
         , terminal{ platform.Communication(), platform.Tracer() }
-        , commands{ terminal, platform.Tracer(), motionActuation, wheelOdometry, inertialSensing, attitudeEstimation, controlLoop, supervisor, balanceControl }
+        , commands{ terminal, platform.Tracer(), dependencies }
     {
         platform.Tracer().Trace() << "inverted-pendulum-bot ready - try 'mode', 'attitude', 'arm' or 'help'";
     }
 
-    Cli::CliCommands::CliCommands(services::TerminalWithCommands& terminal, services::Tracer& tracer, motion::MotionActuation& motionActuation, odometry::WheelOdometry& wheelOdometry, sensing::InertialSensing& inertialSensing, estimation::AttitudeEstimation& attitudeEstimation, control::ControlLoop& controlLoop, safety::SafetySupervisor& supervisor, balance::BalanceControl& balanceControl)
+    Cli::CliCommands::CliCommands(services::TerminalWithCommands& terminal, services::Tracer& tracer, const Dependencies& dependencies)
         : services::TerminalCommands(terminal)
         , tracer(tracer)
-        , motionActuation(motionActuation)
-        , wheelOdometry(wheelOdometry)
-        , inertialSensing(inertialSensing)
-        , attitudeEstimation(attitudeEstimation)
-        , controlLoop(controlLoop)
-        , supervisor(supervisor)
-        , balanceControl(balanceControl)
+        , motionActuation(dependencies.motionActuation)
+        , wheelOdometry(dependencies.wheelOdometry)
+        , inertialSensing(dependencies.inertialSensing)
+        , attitudeEstimation(dependencies.attitudeEstimation)
+        , controlLoop(dependencies.controlLoop)
+        , supervisor(dependencies.supervisor)
+        , balanceControl(dependencies.balanceControl)
+        , link(dependencies.link)
         , commands{ {
               { { "ping", "p", "reply with pong" },
                   [this](const infra::BoundedConstString& params)
@@ -214,6 +235,11 @@ namespace application
                   [this](const infra::BoundedConstString& params)
                   {
                       Param(params);
+                  } },
+              { { "ble", "n", "print the Bluetooth radio state, address, MTU and telemetry subscription" },
+                  [this](const infra::BoundedConstString& params)
+                  {
+                      Bluetooth(params);
                   } },
           } }
     {}
@@ -451,5 +477,18 @@ namespace application
 
         for (std::size_t index = 0; index != descriptors.size(); ++index)
             tracer.Trace() << static_cast<uint32_t>(index) << " " << descriptors[index].name << " " << balanceControl.Parameter(index) << " [" << descriptors[index].minimum << " " << descriptors[index].maximum << "]";
+    }
+
+    void Cli::CliCommands::Bluetooth(const infra::BoundedConstString&)
+    {
+        const auto report = link.Report();
+
+        if (!report)
+        {
+            tracer.Trace() << "ble starting";
+            return;
+        }
+
+        tracer.Trace() << "ble " << NameOf(report->state) << " address " << infra::AsMacAddress(MostSignificantFirst(report->address)) << " mtu " << report->mtu;
     }
 }

@@ -1,7 +1,6 @@
 #pragma once
 
 #include "core/balance_control/interfaces/BalanceControl.hpp"
-#include "core/platform_abstraction/Bluetooth.hpp"
 #include "core/safety_supervisor/interfaces/SafetySupervisor.hpp"
 #include "core/telemetry/interfaces/Telemetry.hpp"
 #include "infra/timer/Timer.hpp"
@@ -12,7 +11,6 @@
 namespace ble
 {
     class RobotControlService
-        : public platform::BluetoothLinkObserver
     {
     public:
         static constexpr std::size_t motionSize{ 8 };
@@ -20,7 +18,6 @@ namespace ble
         static constexpr std::size_t telemetrySize{ 26 };
         static constexpr std::size_t tuningSize{ 33 };
         static constexpr std::size_t maximumNameLength{ 16 };
-        static constexpr services::AttAttribute::Handle clientConfigurationOffset{ 2 };
 
         enum class Command : uint8_t
         {
@@ -65,10 +62,10 @@ namespace ble
         void Connected();
         void Disconnected();
 
-        void AttMtuChanged(uint16_t mtu) override;
-        void ClientConfigurationWritten(services::AttAttribute::Handle handle, uint16_t value) override;
+        void AttMtuChanged(uint16_t mtu);
 
         services::GattServerService& Service();
+        uint16_t Mtu() const;
 
     private:
         class WriteHandler
@@ -119,7 +116,6 @@ namespace ble
         infra::TimerRepeating ticker;
 
         uint16_t mtu{ services::attDefaultMaxMtuSize };
-        bool telemetrySubscribed{ false };
         bool telemetryInFlight{ false };
         bool modeInFlight{ false };
         bool tuningInFlight{ false };

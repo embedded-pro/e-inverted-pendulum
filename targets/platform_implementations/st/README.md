@@ -8,6 +8,15 @@ presets: **NUCLEO-WB55RG**.
   On the NUCLEO-WB55RG this UART is routed to the on-board ST-LINK virtual COM
   port, so no USB-UART adapter is needed.
 - **Tracer** — `services::TracerToStream` over the UART.
+- **Bluetooth** — `hal::TracingSystemTransportLayerWb` is a `PlatformImpl` member, so the
+  wireless coprocessor (CPU2) boots when the board is constructed. Bonds are held in EMIL's
+  `services::VolatileBondStorage`, synchronised with `hal::BondStorageSt`. Once CPU2 reports
+  its stack running and `StartBluetooth` has been called, `BluetoothPeripheralStm` is built
+  from hal-st only: `hal::TracingGapPeripheralSt` with Just Works and encryption, and
+  `hal::TracingGattServerSt`, which reports the MTU the client negotiates (up to 251 bytes).
+  The address and root keys come from the part's factory identity (see
+  `documentation/design/ble-service.md`). Every HCI command and event is traced on the
+  console.
 - **Run** — runs `main_::StmEventInfrastructure`. A first member (`ClockInit`) calls
   `HAL_Init()` + the board's default clock configuration function before any
   peripheral is constructed (32 MHz HSE on the NUCLEO-WB55RG).
@@ -17,3 +26,35 @@ The default clock header/init function is selected per board in
 keyed off `TARGET_MCU`). To support another STM32 board, add a `TARGET_MCU`
 case there pointing at the matching `hal_st` clock header/function, and add a
 preset in `CMakePresets.json`.
+
+## Wireless coprocessor
+
+CPU2 must run ST's **full** BLE stack, flashed once per board with STM32CubeProgrammer.
+The application only occupies the first 512 KB of flash, so it never overlaps the stack.
+
+| Item    | Value                                                                                             |
+|---------|---------------------------------------------------------------------------------------------------|
+| Image   | `infra/hal/st/hal_st/middlewares/STM32_WPAN/STM32CubeWB/binaries/stm32wb5x_BLE_Stack_full_fw.bin` |
+| Release | STM32CubeWB V1.17.0                                                                               |
+| Address | `0x080CE000` (STM32WB55xG, 1 MB)                                                                  |
+
+```bash
+STM32_Programmer_CLI -c port=swd -fwdelete
+STM32_Programmer_CLI -c port=swd -fwupgrade stm32wb5x_BLE_Stack_full_fw.bin 0x080CE000 firstinstall=1
+STM32_Programmer_CLI -c port=swd -startwirelessstack
+```
+
+If the upgrade is refused, update the FUS first with the FUS image from the same
+STM32CubeWB release, then repeat the stack upgrade.
+
+### Bring-up checklist
+
+1. After reset the console traces the CPU2 ready event and the GAP and GATT set-up, then
+   advertising starts. `ble` reports `advertising` and the public address.
+2. A client (nRF Connect, or a browser with Web Bluetooth) sees `inverted-pendulum`
+   advertising the robot control service `c7a10001-5f6e-4d2b-9a3c-8e1f4b6d2a70`.
+3. On connection `ble` reports `connected` and, once the exchange completes, an MTU above 23.
+4. A mode write before pairing is refused by the stack; after Just Works pairing it is
+   accepted.
+5. Subscribing to telemetry delivers 25 notifications per second.
+6. Disconnecting while driving slows the robot to a stop and advertising resumes.
