@@ -57,7 +57,7 @@ jobs:
         with:
           configurePreset: "host"
           buildPreset: "host-Release-WithPackage"
-      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: host-install-package
           path: build/host/inverted_pendulum_bot-*.*
@@ -82,11 +82,11 @@ jobs:
           persist-credentials: false
           submodules: recursive
       - name: Install GNU Arm Embedded Toolchain ${{ matrix.gcc }}
-        uses: carlosperate/arm-none-eabi-gcc-action@98c40e51546516419841748d3210c290df0d2c6c # v1.13.0
+        uses: carlosperate/arm-none-eabi-gcc-action@0edbb000a5a98e2292b051b463bff6f512547118 # v1.14.0
         with:
           release: ${{ matrix.gcc }}
       - run: sudo apt-get update && sudo apt-get install ninja-build xsltproc
-      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           name: host-install-package
       - run: tar -zxvf inverted_pendulum_bot-*.tar.gz
@@ -110,7 +110,7 @@ jobs:
             cp "$f" "$staging/"
           done
           tar -czf "inverted_pendulum_bot-firmware-${{ matrix.target }}-${version}.tar.gz" -C staging "${{ matrix.target }}"
-      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: firmware-${{ matrix.target }}
           path: inverted_pendulum_bot-firmware-${{ matrix.target }}-*.tar.gz
@@ -157,7 +157,7 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           path: release-assets
           merge-multiple: true
