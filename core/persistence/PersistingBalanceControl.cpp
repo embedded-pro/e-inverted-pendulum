@@ -34,7 +34,7 @@ namespace persistence
         for (const auto& stored : store->strategies)
             RestoreStrategy(stored);
 
-        if (const auto active = StrategyNamed(store->activeStrategy))
+        if (const auto active = StrategyNamed(store->activeStrategy); active.has_value())
             control.Select(*active);
     }
 
@@ -156,7 +156,7 @@ namespace persistence
     void PersistingBalanceControl::RestoreStrategy(const StoredStrategy& stored)
     {
         const auto strategy = StrategyNamed(stored.name);
-        if (!strategy)
+        if (!strategy.has_value())
             return;
 
         const auto descriptors = control.StrategyParameters(*strategy);

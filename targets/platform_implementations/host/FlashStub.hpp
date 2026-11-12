@@ -5,6 +5,7 @@
 #include <algorithm>
 #include <array>
 #include <cstdint>
+#include <ranges>
 
 namespace application
 {
@@ -36,7 +37,7 @@ namespace application
 
         void WriteBuffer(infra::ConstByteRange buffer, uint32_t address, infra::Function<void()> onDone) override
         {
-            std::transform(buffer.begin(), buffer.end(), memory.begin() + address, memory.begin() + address, [](uint8_t written, uint8_t stored)
+            std::ranges::transform(buffer, std::ranges::subrange(memory.begin() + address, memory.end()), memory.begin() + address, [](uint8_t written, uint8_t stored)
                 {
                     return static_cast<uint8_t>(written & stored);
                 });
