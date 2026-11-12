@@ -1,0 +1,11 @@
+syntax = "proto3";
+
+import "EchoAttributes.proto";
+
+package bonds;
+
+message BondRecord
+{
+    bytes stackBonds = 1 [(bytes_size) = 2028];
+    bytes addresses = 2 [(bytes_size) = 60];
+}

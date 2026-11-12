@@ -149,6 +149,9 @@ namespace
         MOCK_METHOD(infra::MemoryRange<const balance::ParameterDescriptor>, Parameters, (), (const, override));
         MOCK_METHOD(float, Parameter, (std::size_t index), (const, override));
         MOCK_METHOD(bool, SetParameter, (std::size_t index, float value), (override));
+        MOCK_METHOD(infra::MemoryRange<const balance::ParameterDescriptor>, StrategyParameters, (std::size_t strategy), (const, override));
+        MOCK_METHOD(float, StrategyParameter, (std::size_t strategy, std::size_t index), (const, override));
+        MOCK_METHOD(bool, SetStrategyParameter, (std::size_t strategy, std::size_t index, float value), (override));
         MOCK_METHOD(bool, Move, (const balance::Setpoints& setpoints), (override));
         MOCK_METHOD(void, CancelMotion, (), (override));
         MOCK_METHOD(bool, Engaged, (), (const, override));

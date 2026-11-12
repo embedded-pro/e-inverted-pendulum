@@ -55,3 +55,14 @@
   shall: >
     An unexpected reset while ARMED shall leave both motor bridges disabled, and
     the system shall resume in INIT rather than in ARMED.
+
+- id: REQ-SAFE-010
+  title: Stalled firmware resets the part
+  shall: >
+    The system shall reset the microcontroller when its event loop stops being
+    serviced, and shall resume in INIT with both motor bridges disabled.
+
+- id: REQ-SAFE-011
+  title: No flash writes while balancing
+  shall: >
+    The system shall not erase or write non-volatile storage while ARMED.

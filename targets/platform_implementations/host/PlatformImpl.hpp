@@ -6,6 +6,7 @@
 #include "infra/stream/StringOutputStream.hpp"
 #include "services/peripheral/SerialCommunicationLoopback.hpp"
 #include "services/tracer/Tracer.hpp"
+#include "targets/platform_implementations/host/FlashStub.hpp"
 #include "targets/platform_implementations/host/GpioStub.hpp"
 #include "targets/platform_implementations/host/InertialSensorStub.hpp"
 #include "targets/platform_implementations/host/MotorDriverStub.hpp"
@@ -23,6 +24,7 @@ namespace application
         platform::MotorDriver& Motors() override;
         platform::WheelEncoders& Encoders() override;
         platform::InertialSensor& Inertial() override;
+        platform::ParameterStore ParameterStorage() override;
         void StartBluetooth(infra::BoundedConstString deviceName, const infra::Function<void(platform::Bluetooth& bluetooth)>& onReady) override;
         void Run() override;
 
@@ -36,5 +38,7 @@ namespace application
         MotorDriverStub motors;
         WheelEncodersStub encoders;
         InertialSensorStub inertial;
+        FlashStub parameterStoreFirst;
+        FlashStub parameterStoreSecond;
     };
 }

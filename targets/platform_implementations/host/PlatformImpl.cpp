@@ -32,6 +32,11 @@ namespace application
         return inertial;
     }
 
+    platform::ParameterStore PlatformImpl::ParameterStorage()
+    {
+        return { parameterStoreFirst, parameterStoreSecond };
+    }
+
     void PlatformImpl::StartBluetooth(infra::BoundedConstString, const infra::Function<void(platform::Bluetooth& bluetooth)>&)
     {}
 

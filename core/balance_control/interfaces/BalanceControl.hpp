@@ -21,6 +21,10 @@ namespace balance
         virtual float Parameter(std::size_t index) const = 0;
         virtual bool SetParameter(std::size_t index, float value) = 0;
 
+        virtual infra::MemoryRange<const ParameterDescriptor> StrategyParameters(std::size_t strategy) const = 0;
+        virtual float StrategyParameter(std::size_t strategy, std::size_t index) const = 0;
+        virtual bool SetStrategyParameter(std::size_t strategy, std::size_t index, float value) = 0;
+
         virtual bool Move(const Setpoints& setpoints) = 0;
         virtual void CancelMotion() = 0;
         virtual bool Engaged() const = 0;

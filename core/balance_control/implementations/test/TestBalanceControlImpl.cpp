@@ -324,9 +324,28 @@ TEST_F(BalanceControlImplTest, a_parameter_outside_its_range_is_rejected)
 TEST_F(BalanceControlImplTest, parameter_writes_are_refused_while_engaged)
 {
     Engage();
-    EXPECT_CALL(first, Parameters()).WillOnce(testing::Return(infra::MakeRange(descriptors)));
 
     EXPECT_FALSE(control.SetParameter(0, 0.5f));
+    EXPECT_FALSE(control.SetStrategyParameter(1, 0, 0.5f));
+}
+
+TEST_F(BalanceControlImplTest, a_strategy_that_is_not_active_has_its_parameters_read_and_written)
+{
+    EXPECT_CALL(second, Parameters()).WillRepeatedly(testing::Return(infra::MakeRange(descriptors)));
+    EXPECT_EQ(2u, control.StrategyParameters(1).size());
+
+    EXPECT_CALL(second, Parameter(0)).WillOnce(testing::Return(0.25f));
+    EXPECT_FLOAT_EQ(0.25f, control.StrategyParameter(1, 0));
+
+    EXPECT_CALL(second, SetParameter(0, 0.5f));
+    EXPECT_TRUE(control.SetStrategyParameter(1, 0, 0.5f));
+    EXPECT_EQ(0u, control.ActiveStrategy());
+}
+
+TEST_F(BalanceControlImplTest, an_unknown_strategy_has_no_parameters)
+{
+    EXPECT_TRUE(control.StrategyParameters(2).empty());
+    EXPECT_FALSE(control.SetStrategyParameter(2, 0, 0.5f));
 }
 
 TEST_F(BalanceControlImplTest, a_move_that_is_not_a_number_is_refused)

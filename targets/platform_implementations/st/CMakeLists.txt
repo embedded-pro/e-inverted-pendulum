@@ -1,5 +1,7 @@
 add_library(inverted_pendulum_bot.platform_st ${EMIL_EXCLUDE_FROM_ALL})
 
+protocol_buffer_echo_cpp(inverted_pendulum_bot.platform_st BondRecord.proto)
+
 target_include_directories(inverted_pendulum_bot.platform_st PUBLIC
     "$<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/../../../>"
     "$<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>"
@@ -13,6 +15,9 @@ target_link_libraries(inverted_pendulum_bot.platform_st PUBLIC
     drivers.imu.mpu9250
     hal_st.synchronous_stm32fxxx
     infra.timer
+    services.ble
+    services.crypto
+    services.flash
     services.peripheral
     services.tracer
 )

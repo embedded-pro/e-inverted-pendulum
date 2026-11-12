@@ -2,7 +2,7 @@
 title: "Balance Control Design"
 type: design
 status: draft
-version: 0.4.0
+version: 0.5.0
 component: "balance-control"
 date: 2026-09-24
 ---
@@ -12,7 +12,7 @@ date: 2026-09-24
 | Title     | Balance Control Design |
 | Type      | design                 |
 | Status    | draft                  |
-| Version   | 0.4.0                  |
+| Version   | 0.5.0                  |
 | Component | balance-control        |
 | Date      | 2026-09-24             |
 
@@ -313,10 +313,10 @@ graph LR
 
 ## Open Questions
 
-| # | Question                                                                                                         | Options                                                                      | Status                              |
-|---|------------------------------------------------------------------------------------------------------------------|------------------------------------------------------------------------------|-------------------------------------|
-| 1 | Which strategy is the factory default?                                                                           | Cascaded PID; LQR                                                            | decided: cascaded PID               |
-| 2 | Should stored parameters be invalidated when a strategy's descriptor changes between firmware versions?          | Version the descriptor and reject stale values; always fall back to defaults | open                                |
-| 3 | Should the outer velocity loop limit the pitch setpoint it may request, independently of effort saturation?      | Rely on effort saturation; add an explicit pitch setpoint clamp              | decided: clamp at 10 degrees        |
-| 4 | Should a third strategy exist for bench testing, commanding zero effort while reporting what it would have done? | Not needed; add an observing strategy                                        | open                                |
-| 5 | How is the yaw term handled by a full-state strategy — inside the gain vector or as a separate loop?             | Separate yaw loop for both strategies; per-strategy choice                   | decided: separate yaw loop for both |
+| # | Question                                                                                                         | Options                                                                      | Status                                                                                                  |
+|---|------------------------------------------------------------------------------------------------------------------|------------------------------------------------------------------------------|---------------------------------------------------------------------------------------------------------|
+| 1 | Which strategy is the factory default?                                                                           | Cascaded PID; LQR                                                            | decided: cascaded PID                                                                                   |
+| 2 | Should stored parameters be invalidated when a strategy's descriptor changes between firmware versions?          | Version the descriptor and reject stale values; always fall back to defaults | decided: neither — stored values are matched by strategy and parameter name, see the persistence design |
+| 3 | Should the outer velocity loop limit the pitch setpoint it may request, independently of effort saturation?      | Rely on effort saturation; add an explicit pitch setpoint clamp              | decided: clamp at 10 degrees                                                                            |
+| 4 | Should a third strategy exist for bench testing, commanding zero effort while reporting what it would have done? | Not needed; add an observing strategy                                        | open                                                                                                    |
+| 5 | How is the yaw term handled by a full-state strategy — inside the gain vector or as a separate loop?             | Separate yaw loop for both strategies; per-strategy choice                   | decided: separate yaw loop for both                                                                     |

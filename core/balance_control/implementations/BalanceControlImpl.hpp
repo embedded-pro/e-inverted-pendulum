@@ -36,6 +36,10 @@ namespace balance
         float Parameter(std::size_t index) const override;
         bool SetParameter(std::size_t index, float value) override;
 
+        infra::MemoryRange<const ParameterDescriptor> StrategyParameters(std::size_t strategy) const override;
+        float StrategyParameter(std::size_t strategy, std::size_t index) const override;
+        bool SetStrategyParameter(std::size_t strategy, std::size_t index, float value) override;
+
         bool Move(const Setpoints& setpoints) override;
         void CancelMotion() override;
         bool Engaged() const override;

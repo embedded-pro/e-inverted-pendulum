@@ -1,0 +1,23 @@
+syntax = "proto3";
+
+import "EchoAttributes.proto";
+
+package persistence;
+
+message StoredParameter
+{
+    string name = 1 [(string_size) = 16];
+    fixed32 value = 2;
+}
+
+message StoredStrategy
+{
+    string name = 1 [(string_size) = 16];
+    repeated StoredParameter parameters = 2 [(array_size) = 12];
+}
+
+message Tuning
+{
+    string activeStrategy = 1 [(string_size) = 16];
+    repeated StoredStrategy strategies = 2 [(array_size) = 4];
+}

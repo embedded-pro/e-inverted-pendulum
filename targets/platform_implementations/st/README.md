@@ -8,15 +8,19 @@ presets: **NUCLEO-WB55RG**.
   On the NUCLEO-WB55RG this UART is routed to the on-board ST-LINK virtual COM
   port, so no USB-UART adapter is needed.
 - **Tracer** — `services::TracerToStream` over the UART.
-- **Bluetooth** — `hal::TracingSystemTransportLayerWb` is a `PlatformImpl` member, so the
-  wireless coprocessor (CPU2) boots when the board is constructed. Bonds are held in EMIL's
-  `services::VolatileBondStorage`, synchronised with `hal::BondStorageSt`. Once CPU2 reports
-  its stack running and `StartBluetooth` has been called, `BluetoothPeripheralStm` is built
-  from hal-st only: `hal::TracingGapPeripheralSt` with Just Works and encryption, and
-  `hal::TracingGattServerSt`, which reports the MTU the client negotiates (up to 251 bytes).
-  The address and root keys come from the part's factory identity (see
-  `documentation/design/ble-service.md`). Every HCI command and event is traced on the
-  console.
+- **Bluetooth** — `hal::TracingSystemTransportLayerWb` is created once the bond store has
+  recovered from flash (see [Persistence](#persistence)), so CPU2 boots with its bonds in
+  place. Bonds are held in EMIL's `services::PersistentBondStorage`, synchronised with
+  `hal::BondStorageSt`. Once CPU2 reports its stack running and `StartBluetooth` has been
+  called, `BluetoothPeripheralStm` is built from hal-st only: `hal::TracingGapPeripheralSt`
+  with Just Works and encryption, and `hal::TracingGattServerSt`, which reports the MTU the
+  client negotiates (up to 251 bytes). The address and root keys come from the part's factory
+  identity (see `documentation/design/ble-service.md`). Every HCI command and event is traced
+  on the console.
+- **ParameterStorage** — two 4 KB flash pages for the tuning store (see
+  [Persistence](#persistence)).
+- **Watchdog** — `hal::WatchDogStm` (WWDG), fed by the event loop. If the loop stalls for
+  about 1.5 s the part resets, and the drive comes back up disabled.
 - **Run** — runs `main_::StmEventInfrastructure`. A first member (`ClockInit`) calls
   `HAL_Init()` + the board's default clock configuration function before any
   peripheral is constructed (32 MHz HSE on the NUCLEO-WB55RG).
@@ -26,6 +30,31 @@ The default clock header/init function is selected per board in
 keyed off `TARGET_MCU`). To support another STM32 board, add a `TARGET_MCU`
 case there pointing at the matching `hal_st` clock header/function, and add a
 preset in `CMakePresets.json`.
+
+## Persistence
+
+Four flash pages between the end of the application's 512 KB and the CPU2 stack hold two
+`services::ConfigurationStoreImpl` stores. Each store keeps two copies, and each copy is
+verified by `services::Sha256Software`.
+
+| Page | Address      | Content                                                               |
+|------|--------------|-----------------------------------------------------------------------|
+| 128  | `0x08080000` | Tuning, copy A                                                        |
+| 129  | `0x08081000` | Tuning, copy B                                                        |
+| 130  | `0x08082000` | Bonds (stack record and bonded addresses, `BondRecord.proto`), copy A |
+| 131  | `0x08083000` | Bonds, copy B                                                         |
+
+One `hal::FlashHomogeneousInternalStm` spans the whole flash, because pages are erased by
+their absolute index. It is wrapped in `hal::FlashCoordinatedWithWirelessStack`, which
+coordinates every write and erase with CPU2. `services::FlashMultipleAccess` shares it
+between the two stores, and each copy is a `services::FlashRegion` of one page.
+
+Boot order:
+1. The flash starts in the `stopped` state, so both stores recover and may erase a stale
+   page before CPU2 runs.
+2. Once the bond store has recovered, the board calls `WirelessStackStarting()` and creates
+   the transport. From then on, flash writes are held.
+3. When CPU2 reports ready, `WirelessStackReady()` releases the held writes.
 
 ## Wireless coprocessor
 
@@ -58,3 +87,6 @@ STM32CubeWB release, then repeat the stack upgrade.
    accepted.
 5. Subscribing to telemetry delivers 25 notifications per second.
 6. Disconnecting while driving slows the robot to a stop and advertising resumes.
+7. Change a parameter and select the other strategy, wait more than two seconds, then reset.
+   `strategy` and `param` show the changed values.
+8. After a reset, a paired client reconnects encrypted without pairing again.
