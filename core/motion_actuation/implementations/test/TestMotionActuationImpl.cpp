@@ -10,8 +10,6 @@ namespace
         : public motion::DriverConfiguration
     {
     public:
-        virtual ~DriverConfigurationMock() = default;
-
         MOCK_METHOD(void, Configure, (const infra::Function<void(bool verified)>& onDone), (override));
     };
 

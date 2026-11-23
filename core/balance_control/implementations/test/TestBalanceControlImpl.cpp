@@ -15,8 +15,6 @@ namespace
         : public balance::ControlStrategy
     {
     public:
-        virtual ~ControlStrategyMock() = default;
-
         MOCK_METHOD(const char*, Name, (), (const, override));
         MOCK_METHOD(void, Reset, (), (override));
         MOCK_METHOD(void, Steer, (const balance::Setpoints& setpoints, const odometry::ChassisMotion& chassis, float intervalSeconds), (override));
@@ -31,8 +29,6 @@ namespace
         : public motion::MotionActuation
     {
     public:
-        virtual ~MotionActuationMock() = default;
-
         MOCK_METHOD(void, Apply, (float effortLeft, float effortRight), (override));
         MOCK_METHOD(void, Disable, (motion::DisableState state), (override));
         MOCK_METHOD(motion::FaultCause, Fault, (), (const, override));
@@ -44,8 +40,6 @@ namespace
         : public odometry::WheelOdometry
     {
     public:
-        virtual ~WheelOdometryMock() = default;
-
         MOCK_METHOD(odometry::WheelMotion, Left, (), (const, override));
         MOCK_METHOD(odometry::WheelMotion, Right, (), (const, override));
         MOCK_METHOD(odometry::ChassisMotion, Chassis, (), (const, override));

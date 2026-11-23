@@ -9,8 +9,6 @@ namespace platform
         : public WheelEncoders
     {
     public:
-        virtual ~WheelEncodersMock() = default;
-
         MOCK_METHOD(hal::SynchronousQuadratureEncoder&, Left, (), (override));
         MOCK_METHOD(hal::SynchronousQuadratureEncoder&, Right, (), (override));
     };

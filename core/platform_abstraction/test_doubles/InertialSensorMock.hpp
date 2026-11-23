@@ -9,8 +9,6 @@ namespace platform
         : public InertialSensor
     {
     public:
-        virtual ~InertialSensorMock() = default;
-
         MOCK_METHOD(void, Start, (const infra::Function<void(const InertialSample&)>& onSample), (override));
         MOCK_METHOD(void, Stop, (), (override));
     };

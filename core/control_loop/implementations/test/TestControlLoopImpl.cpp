@@ -11,8 +11,6 @@ namespace
         : public sensing::InertialSensing
     {
     public:
-        virtual ~InertialSensingMock() = default;
-
         MOCK_METHOD(sensing::Measurement, Latest, (), (const, override));
         MOCK_METHOD(void, OnMeasurement, (const infra::Function<void(const sensing::Measurement&)>& onMeasurement), (override));
         MOCK_METHOD(sensing::InvalidCause, Cause, (), (const, override));
@@ -25,8 +23,6 @@ namespace
         : public estimation::AttitudeEstimation
     {
     public:
-        virtual ~AttitudeEstimationMock() = default;
-
         MOCK_METHOD(estimation::Estimate, Update, (const sensing::Measurement& measurement), (override));
         MOCK_METHOD(estimation::Estimate, Latest, (), (const, override));
         MOCK_METHOD(void, Select, (estimation::Filter filter), (override));
@@ -37,8 +33,6 @@ namespace
         : public control::BalanceStage
     {
     public:
-        virtual ~BalanceStageMock() = default;
-
         MOCK_METHOD(void, Balance, (const estimation::Estimate& estimate, infra::Duration interval), (override));
     };
 
@@ -46,8 +40,6 @@ namespace
         : public control::OuterStage
     {
     public:
-        virtual ~OuterStageMock() = default;
-
         MOCK_METHOD(void, Steer, (infra::Duration interval), (override));
     };
 

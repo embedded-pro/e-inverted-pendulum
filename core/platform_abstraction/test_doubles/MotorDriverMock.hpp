@@ -9,8 +9,6 @@ namespace platform
         : public MotorDriver
     {
     public:
-        virtual ~MotorDriverMock() = default;
-
         MOCK_METHOD(void, SetBaseFrequency, (hal::Hertz baseFrequency), (override));
         MOCK_METHOD(void, Drive, (const BridgeInputs& left, const BridgeInputs& right), (override));
         MOCK_METHOD(drivers::DirectPwmStepperMotorDrv8711Decorator&, Controller, (), (override));
