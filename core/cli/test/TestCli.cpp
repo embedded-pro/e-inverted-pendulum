@@ -65,8 +65,6 @@ namespace
         : public motion::MotionActuation
     {
     public:
-        virtual ~MotionActuationMock() = default;
-
         MOCK_METHOD(void, Apply, (float effortLeft, float effortRight), (override));
         MOCK_METHOD(void, Disable, (motion::DisableState state), (override));
         MOCK_METHOD(motion::FaultCause, Fault, (), (const, override));
@@ -78,8 +76,6 @@ namespace
         : public odometry::WheelOdometry
     {
     public:
-        virtual ~WheelOdometryMock() = default;
-
         MOCK_METHOD(odometry::WheelMotion, Left, (), (const, override));
         MOCK_METHOD(odometry::WheelMotion, Right, (), (const, override));
         MOCK_METHOD(odometry::ChassisMotion, Chassis, (), (const, override));
@@ -89,8 +85,6 @@ namespace
         : public sensing::InertialSensing
     {
     public:
-        virtual ~InertialSensingMock() = default;
-
         MOCK_METHOD(sensing::Measurement, Latest, (), (const, override));
         MOCK_METHOD(void, OnMeasurement, (const infra::Function<void(const sensing::Measurement&)>& onMeasurement), (override));
         MOCK_METHOD(sensing::InvalidCause, Cause, (), (const, override));
@@ -103,8 +97,6 @@ namespace
         : public estimation::AttitudeEstimation
     {
     public:
-        virtual ~AttitudeEstimationMock() = default;
-
         MOCK_METHOD(estimation::Estimate, Update, (const sensing::Measurement& measurement), (override));
         MOCK_METHOD(estimation::Estimate, Latest, (), (const, override));
         MOCK_METHOD(void, Select, (estimation::Filter filter), (override));
@@ -115,8 +107,6 @@ namespace
         : public control::ControlLoop
     {
     public:
-        virtual ~ControlLoopMock() = default;
-
         MOCK_METHOD(control::TimingStatistics, Statistics, (), (const, override));
         MOCK_METHOD(void, ResetStatistics, (), (override));
     };
@@ -125,8 +115,6 @@ namespace
         : public safety::SafetySupervisor
     {
     public:
-        virtual ~SafetySupervisorMock() = default;
-
         MOCK_METHOD(bool, Arm, (), (override));
         MOCK_METHOD(bool, Disarm, (), (override));
         MOCK_METHOD(bool, ClearFault, (), (override));
@@ -140,8 +128,6 @@ namespace
         : public balance::BalanceControl
     {
     public:
-        virtual ~BalanceControlMock() = default;
-
         MOCK_METHOD(std::size_t, StrategyCount, (), (const, override));
         MOCK_METHOD(const char*, StrategyName, (std::size_t index), (const, override));
         MOCK_METHOD(std::size_t, ActiveStrategy, (), (const, override));
@@ -159,8 +145,6 @@ namespace
         : public ble::LinkStatus
     {
     public:
-        virtual ~LinkStatusMock() = default;
-
         MOCK_METHOD(std::optional<ble::LinkReport>, Report, (), (const, override));
     };
 

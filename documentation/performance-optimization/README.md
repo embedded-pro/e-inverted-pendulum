@@ -2,9 +2,9 @@
 title: "Embedded Performance Optimization"
 type: theory
 status: approved
-version: 1.0.0
+version: 1.1.0
 component: "performance-optimization"
-date: 2026-04-07
+date: 2026-11-23
 ---
 
 | Field     | Value                             |
@@ -12,9 +12,9 @@ date: 2026-04-07
 | Title     | Embedded Performance Optimization |
 | Type      | theory                            |
 | Status    | approved                          |
-| Version   | 1.0.0                             |
+| Version   | 1.1.0                             |
 | Component | foc                               |
-| Date      | 2026-04-07                        |
+| Date      | 2026-11-23                        |
 
 ## Overview
 
@@ -78,7 +78,7 @@ The GCC/Clang compiler applies transformations that can drastically change cycle
    propagation and dead-code elimination.
 
 2. **Loop unrolling**: The compiler repeats loop body $k$ times to reduce branch overhead and expose
-   more instruction-level parallelism.  Controlled by `-funroll-loops` or `#pragma GCC optimize("O3")`.
+   more instruction-level parallelism.  Controlled by `-funroll-loops` or `-O3`.
 
 3. **Constant propagation / folding**: Compile-time evaluation of constant expressions eliminates
    runtime computation.  Use `constexpr` aggressively for lookup tables and configuration constants.
@@ -86,7 +86,7 @@ The GCC/Clang compiler applies transformations that can drastically change cycle
 4. **Auto-vectorisation**: Cortex-M4 SIMD (DSP extensions) can process two 16-bit or four 8-bit
    operands per cycle.  Q15/Q31 fixed-point code benefits; floating-point does not (no NEON on M4).
 
-5. **Fast-math transformations** (`-ffast-math`, `#pragma GCC optimize("fast-math")`):
+5. **Fast-math transformations** (`-ffast-math`):
    - Allows re-association of floating-point expressions.
    - Enables FMA generation (avoids separate multiply + add).
    - Assumes no NaN/Inf inputs.
@@ -204,28 +204,17 @@ result = a * b + c;
 // Becomes: vfma.f32 s0, s1, s2  (1 cycle, full precision)
 ```
 
-### 8. Per-File Optimisation Pragmas
+### 8. Optimisation Flags per Translation Unit
 
-For performance-critical translation units (FOC implementations, SVM, transforms):
+Set the flags of a performance-critical translation unit in CMake:
 
-```cpp
-#if defined(__GNUC__) || defined(__clang__)
-#pragma GCC optimize("O3", "fast-math")
-#endif
+```cmake
+set_source_files_properties(Hot.cpp PROPERTIES COMPILE_OPTIONS "-O3;-ffast-math")
 ```
 
-Place at the top of the `.cpp` file, before any includes that define affected functions.
-
-### 9. Per-Function Attributes
-
-```cpp
-__attribute__((optimize("-O3")))
-void CriticalFunction() {
-    // Always compiled at -O3 regardless of TU-level flags
-}
-```
-
-Note: function attributes do not propagate to callees.  Use file-level pragmas for transitive effect.
+Never use `#pragma GCC optimize` or the `optimize` attribute. GCC does not inline a callee whose options
+differ from its caller's, so such a function calls every small helper out of line. For a hot function
+defined in a header, use `OPTIMIZE_FOR_SPEED` instead.
 
 ---
 
@@ -234,7 +223,7 @@ Note: function attributes do not propagate to callees.  Use file-level pragmas f
 By default, Debug builds (`-O0`) disable all optimisations, making code 3–10× slower than Release.
 This breaks real-time deadlines for FOC ISRs during debugging sessions.
 
-**Solution 1 — Use `-Og` for debug builds** (recommended):
+Use `-Og` for debug builds:
 
 ```cmake
 set(CMAKE_CXX_FLAGS_DEBUG "-Og -g" CACHE STRING "Debug flags" FORCE)
@@ -243,18 +232,7 @@ set(CMAKE_CXX_FLAGS_DEBUG "-Og -g" CACHE STRING "Debug flags" FORCE)
 `-Og` provides: basic inlining, dead-code elimination, register allocation — while keeping full
 debuggability (variable inspection, correct stack trace).
 
-**Solution 2 — File-level pragma** (when specific files must remain fast even at -O0):
-
-```cpp
-#pragma GCC optimize("O3", "fast-math")
-```
-
-**Solution 3 — Function attribute** (for a single bottleneck function):
-
-```cpp
-__attribute__((optimize("-O3")))
-void CriticalFunction() { /* ... */ }
-```
+When a file must stay fast in Debug builds too, raise its level in CMake (section 8), not with a pragma.
 
 ---
 
@@ -385,14 +363,11 @@ GPIO_ClearPin(DEBUG_PIN);
 
 ## Quick Reference
 
-### GCC Optimisation Pragmas
+### Per-File Optimisation Flags
 
-```cpp
-#pragma GCC optimize("O3")        // Maximum speed
-#pragma GCC optimize("Os")        // Minimum size
-#pragma GCC optimize("fast-math") // Aggressive FP
-#pragma GCC push_options          // Save current options
-#pragma GCC pop_options           // Restore options
+```cmake
+set_source_files_properties(Hot.cpp PROPERTIES COMPILE_OPTIONS "-O3")  # maximum speed
+set_source_files_properties(Big.cpp PROPERTIES COMPILE_OPTIONS "-Os")  # minimum size
 ```
 
 ### Function Attributes

@@ -12,8 +12,6 @@ namespace ble
         : public safety::SafetySupervisor
     {
     public:
-        virtual ~SafetySupervisorMock() = default;
-
         MOCK_METHOD(bool, Arm, (), (override));
         MOCK_METHOD(bool, Disarm, (), (override));
         MOCK_METHOD(bool, ClearFault, (), (override));
@@ -27,8 +25,6 @@ namespace ble
         : public balance::BalanceControl
     {
     public:
-        virtual ~BalanceControlMock() = default;
-
         MOCK_METHOD(std::size_t, StrategyCount, (), (const, override));
         MOCK_METHOD(const char*, StrategyName, (std::size_t index), (const, override));
         MOCK_METHOD(std::size_t, ActiveStrategy, (), (const, override));
@@ -46,8 +42,6 @@ namespace ble
         : public telemetry::TelemetrySource
     {
     public:
-        virtual ~TelemetrySourceMock() = default;
-
         MOCK_METHOD(telemetry::Sample, Latest, (), (const, override));
     };
 
@@ -55,8 +49,6 @@ namespace ble
         : public platform::Bluetooth
     {
     public:
-        virtual ~BluetoothMock() = default;
-
         MOCK_METHOD(services::GapPeripheral&, Gap, (), (override));
         MOCK_METHOD(services::GattServer&, GattServer, (), (override));
     };

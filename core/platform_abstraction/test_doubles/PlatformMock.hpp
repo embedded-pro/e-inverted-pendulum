@@ -9,8 +9,6 @@ namespace platform
         : public Platform
     {
     public:
-        virtual ~PlatformMock() = default;
-
         MOCK_METHOD(hal::GpioPin&, StatusLed, (), (override));
         MOCK_METHOD(hal::SerialCommunication&, Communication, (), (override));
         MOCK_METHOD(services::Tracer&, Tracer, (), (override));

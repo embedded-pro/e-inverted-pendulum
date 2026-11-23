@@ -15,8 +15,6 @@ namespace
         : public motion::MotionActuation
     {
     public:
-        virtual ~MotionActuationMock() = default;
-
         MOCK_METHOD(void, Apply, (float effortLeft, float effortRight), (override));
         MOCK_METHOD(void, Disable, (motion::DisableState state), (override));
         MOCK_METHOD(motion::FaultCause, Fault, (), (const, override));
@@ -28,8 +26,6 @@ namespace
         : public sensing::InertialSensing
     {
     public:
-        virtual ~InertialSensingMock() = default;
-
         MOCK_METHOD(sensing::Measurement, Latest, (), (const, override));
         MOCK_METHOD(void, OnMeasurement, (const infra::Function<void(const sensing::Measurement&)>& onMeasurement), (override));
         MOCK_METHOD(sensing::InvalidCause, Cause, (), (const, override));
@@ -42,8 +38,6 @@ namespace
         : public control::SupervisedControl
     {
     public:
-        virtual ~SupervisedControlMock() = default;
-
         MOCK_METHOD(void, Balance, (const estimation::Estimate& estimate, infra::Duration interval), (override));
         MOCK_METHOD(void, Steer, (infra::Duration interval), (override));
         MOCK_METHOD(void, Engage, (), (override));

@@ -11,8 +11,6 @@ namespace
         : public control::BalanceStage
     {
     public:
-        virtual ~BalanceStageMock() = default;
-
         MOCK_METHOD(void, Balance, (const estimation::Estimate& estimate, infra::Duration interval), (override));
     };
 
@@ -20,8 +18,6 @@ namespace
         : public balance::BalanceControl
     {
     public:
-        virtual ~BalanceControlMock() = default;
-
         MOCK_METHOD(std::size_t, StrategyCount, (), (const, override));
         MOCK_METHOD(const char*, StrategyName, (std::size_t index), (const, override));
         MOCK_METHOD(std::size_t, ActiveStrategy, (), (const, override));
@@ -39,8 +35,6 @@ namespace
         : public odometry::WheelOdometry
     {
     public:
-        virtual ~WheelOdometryMock() = default;
-
         MOCK_METHOD(odometry::WheelMotion, Left, (), (const, override));
         MOCK_METHOD(odometry::WheelMotion, Right, (), (const, override));
         MOCK_METHOD(odometry::ChassisMotion, Chassis, (), (const, override));
@@ -50,8 +44,6 @@ namespace
         : public safety::SafetySupervisor
     {
     public:
-        virtual ~SafetySupervisorMock() = default;
-
         MOCK_METHOD(bool, Arm, (), (override));
         MOCK_METHOD(bool, Disarm, (), (override));
         MOCK_METHOD(bool, ClearFault, (), (override));
