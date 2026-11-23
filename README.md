@@ -1,14 +1,14 @@
-# inverted-pendulum-bot
+# e-inverted-pendulum
 
-Firmware for a self-balancing inverted pendulum robot, written in C++20 with strict
-real-time and memory constraints. The repository was bootstrapped from
-[`embedded-pro/embedded-scaffold`](https://github.com/embedded-pro/embedded-scaffold)
-and carries its structure, build system, dev container, CI, and documentation
-scaffolding, so the project starts from a working, testable baseline.
+Firmware for a self-balancing inverted pendulum robot on the ST NUCLEO-WB55RG, written in
+C++20 with strict real-time and memory constraints, with a host build for tests. The
+repository started from [`embedded-pro/embedded-scaffold`](https://github.com/embedded-pro/embedded-scaffold).
 
-> **Status**: the structure is in place; the `example_*` components and `cli`
-> are the scaffold's worked examples and are expected to be replaced by the robot's
-> own components (sensing, control, actuation).
+> **Status**: the robot's components (inertial sensing, attitude estimation, balance
+> control, motion actuation, wheel odometry, control loop, safety supervisor, telemetry,
+> BLE link) are in `core/`. `core/example_component/`, `targets/example_app/`,
+> `tools/example_tool/` and the accumulator integration test are scaffold examples still
+> to be removed.
 
 ## Overview
 
@@ -19,9 +19,11 @@ logic in `core/` depends only on that interface; each board provides a concrete
 therefore compiled once and runs on the host (for testing) and on the
 microcontroller.
 
-The current headline example is **`cli`**: blink a status LED and serve a tiny
-UART command-line interface (`ping`, `id`). It is written once against the interface
-and builds for the host and the **ST NUCLEO-WB55RG**.
+The firmware entry point is **`targets/cli`**: it wires the components to the
+platform and serves a UART command-line interface to inspect and drive the robot
+(sensor readout, calibration, filter and control-strategy selection, arming, motion
+commands, loop timing, BLE state; `help` lists them). It builds for the host and the
+**ST NUCLEO-WB55RG**.
 
 ## Features
 
@@ -29,10 +31,12 @@ and builds for the host and the **ST NUCLEO-WB55RG**.
   interface, not on an MCU — so it is built once and unit-tested on the host against
   a `PlatformMock`, then run on real hardware.
 - **Real firmware output**: `cli` builds to a flashable `.elf`/`.hex` for the
-  NUCLEO-WB55RG (LED blink + UART CLI).
+  NUCLEO-WB55RG.
+- **Selectable estimation and control**: complementary or Kalman pitch filter; cascaded
+  PID or LQR balance control, tunable over the CLI or BLE.
+- **Safety supervisor**: self-test, calibration, arming and disarm conditions.
 - **No heap allocation** in runtime/embedded code — bounded containers from
   `infra/embedded-infra-lib` (`infra::BoundedVector`, `infra::BoundedString`).
-- **Worked examples** in every top-level folder showing the conventions to follow.
 - **Unit tests** (GoogleTest) and **BDD integration tests** (cucumber-cpp / Gherkin).
 - **Dev container** with the full toolchain (CMake, Ninja, ccache, ARM GCC, Qt6).
 - **CI** for build, linting/formatting, static analysis, documentation and
@@ -50,8 +54,8 @@ and builds for the host and the **ST NUCLEO-WB55RG**.
 
 1. Clone with submodules:
    ```bash
-   git clone --recursive https://github.com/embedded-pro/e-Inverted-pendulum-bot.git
-   cd e-Inverted-pendulum-bot
+   git clone --recursive https://github.com/embedded-pro/e-inverted-pendulum.git
+   cd e-inverted-pendulum
    ```
 
 2. Configure & build for the host:
@@ -65,19 +69,13 @@ and builds for the host and the **ST NUCLEO-WB55RG**.
    ctest --preset host
    ```
 
-4. Run the example tool / app on the host:
-   ```bash
-   ./build/host/bin/Debug/inverted_pendulum_bot.tool.example 2 3 4   # -> total = 9
-   ./build/host/bin/Debug/inverted_pendulum_bot.example_app          # -> accumulator total = 5
-   ```
-
-5. Build the `cli` firmware for the board (produces `.elf`/`.hex`):
+4. Build the `cli` firmware for the board (produces `.elf`/`.hex`):
    ```bash
    cmake --preset NUCLEO-WB55RG          # ST Nucleo-68
    cmake --build --preset NUCLEO-WB55RG-Debug
    ```
-   On hardware the status LED (LD2, green, PB0) blinks and a UART command-line
-   interface (115200 8N1) accepts `ping` and `id`. The CLI is on USART1
+   On hardware the status LED (LD2, green, PB0) blinks and the UART command-line
+   interface runs at 115200 8N1. The CLI is on USART1
    (PB6 TX / PB7 RX), which the NUCLEO-WB55RG routes to the on-board ST-LINK virtual
    COM port — no USB-UART adapter needed.
 
@@ -87,19 +85,28 @@ All presets are defined in `CMakePresets.json` (`host`, `host-single-Debug`,
 ## Project Structure
 
 ```
-e-Inverted-pendulum-bot/
+e-inverted-pendulum/
 ├── core/                      # Reusable libraries only — no entry points
-│   ├── platform_abstraction/  #   platform::Platform interface (+ mock) — the seam
-│   ├── cli/            #   portable app: LED blink + UART CLI (+ unit test)
-│   └── example_component/     #   trivial interfaces/ + implementations/ (+ unit test)
+│   ├── platform_abstraction/  #   platform::Platform interface (+ mocks) — the seam
+│   ├── inertial_sensing/      #   IMU samples, gyroscope bias calibration
+│   ├── attitude_estimation/   #   pitch: complementary or Kalman filter
+│   ├── balance_control/       #   cascaded PID or LQR, setpoints
+│   ├── motion_actuation/      #   DRV8711 motor driver, effort mapping
+│   ├── wheel_odometry/        #   wheel velocity and chassis motion
+│   ├── control_loop/          #   pacing of estimation, balance and outer loops
+│   ├── safety_supervisor/     #   self-test, calibration, arming, disarm
+│   ├── telemetry/             #   telemetry recorder
+│   ├── ble_link/              #   GATT service: teleoperation, telemetry, tuning
+│   ├── cli/                   #   UART command-line interface
+│   └── example_component/     #   scaffold example, to be removed
 ├── targets/                   # Application entry points + platform implementations
-│   ├── cli/            #   one Main.cpp reused across host/st
-│   ├── example_app/           #   a trivial host-only entry point
+│   ├── cli/                   #   the firmware: one Main.cpp for host and st
+│   ├── example_app/           #   scaffold example, to be removed
 │   └── platform_implementations/
-│       ├── host/              #   PlatformImpl: stubs + loopback serial (host build)
-│       └── st/                #   PlatformImpl: NUCLEO-WB55RG (LED PB0, USART1)
+│       ├── host/              #   PlatformImpl: host stubs
+│       └── st/                #   PlatformImpl: NUCLEO-WB55RG
 ├── tools/                     # Host-side developer tools
-│   └── example_tool/          #   a CLI reusing a core library
+│   └── example_tool/          #   scaffold example, to be removed
 ├── integration_tests/         # BDD integration tests (cucumber-cpp / Gherkin)
 ├── infra/                     # Infrastructure submodules
 │   ├── embedded-infra-lib/    #   bounded containers, build helpers, toolchains
