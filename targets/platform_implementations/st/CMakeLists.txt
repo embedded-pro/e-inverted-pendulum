@@ -9,12 +9,13 @@ target_link_libraries(inverted_pendulum_bot.platform_st PUBLIC
     inverted_pendulum_bot.platform_abstraction
     inverted_pendulum_bot.ble_link
     hal_st.ble_middleware
-    hal_st.instantiations
+    hal_st.stm32fxxx
     drivers.imu.mpu9250
     hal_st.synchronous_stm32fxxx
     infra.timer
     services.peripheral
     services.tracer
+    services.util.watchdog
 )
 
 # Select the board-specific default clock configuration. Each supported ST board

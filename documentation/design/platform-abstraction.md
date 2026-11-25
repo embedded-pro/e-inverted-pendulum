@@ -2,7 +2,7 @@
 title: "Platform Abstraction Design"
 type: design
 status: draft
-version: 0.3.1
+version: 0.4.0
 component: "platform-abstraction"
 date: 2026-11-25
 ---
@@ -12,7 +12,7 @@ date: 2026-11-25
 | Title     | Platform Abstraction Design |
 | Type      | design                      |
 | Status    | draft                       |
-| Version   | 0.3.1                       |
+| Version   | 0.4.0                       |
 | Component | platform-abstraction        |
 | Date      | 2026-11-25                  |
 
@@ -164,6 +164,41 @@ so the board needs no link observer of its own.
 
 On the selected part the second core runs the vendor's full Bluetooth stack, flashed separately
 from the application; the board's notes list the image and address.
+
+### Part H — The watchdog
+
+The watchdog is a board property, not a role: no component in `core/` uses it, so `Platform`
+has no method for it. The selected board runs its event loop on a dispatcher that supervises
+itself. The window watchdog's early-warning interrupt refreshes the watchdog while the loop
+makes progress. When one event runs for longer than the stall limit, the board resets the part.
+
+| Quantity                       | Value      | Source                                                |
+|--------------------------------|------------|-------------------------------------------------------|
+| Watchdog clock                 | 488 Hz     | PCLK1 64 MHz / (4096 x prescaler 32)                  |
+| Early-warning period           | 129 ms     | 63 watchdog ticks                                     |
+| Early-warning service deadline | 2 ms       | One tick: the part resets if the interrupt runs later |
+| Reset after an event starts    | 129–258 ms | The first warning in an event counts as progress      |
+
+An event that finishes within 129 ms never causes a reset. The limit is far above the longest
+event the firmware runs, and short enough to stop a stalled robot from driving on.
+
+Two conditions follow from the service deadline:
+
+- No code may mask interrupts for longer than 2 ms.
+- No flash erase may stall the main core for longer than 2 ms. Today nothing writes flash: the
+  Bluetooth stack keeps its bond data in SRAM. A later flash writer must refresh the watchdog
+  around each erase.
+
+The watchdog starts while the board is constructed, before the event loop runs. From then on,
+only the early-warning interrupt keeps it alive. The watchdog driver also sets the interrupt
+priority grouping (`SCB->AIRCR`). On this part, with four priority bits, the grouping it sets and
+the one `HAL_Init` sets give the same preemption.
+
+A reset leaves the motor driver's inputs, sleep and reset lines undriven. The driver's pull-downs
+are expected to keep the bridges released until the application starts again in INIT
+(REQ-SAFE-009). Verify this on the robot.
+
+The host board has no watchdog.
 
 ---
 

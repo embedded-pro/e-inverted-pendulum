@@ -17,7 +17,11 @@ presets: **NUCLEO-WB55RG**.
   The address and root keys come from the part's factory identity (see
   `documentation/design/ble-service.md`). Every HCI command and event is traced on the
   console.
-- **Run** — runs `main_::StmEventInfrastructure`. A first member (`ClockInit`) calls
+- **Watchdog** — `hal::WatchDogStm` (WWDG) supervises the event loop through
+  `services::EventDispatcherWithWeakPtrAndWatchdog`. An event that runs for 129–258 ms or more
+  resets the part; see `documentation/design/platform-abstraction.md`, Part H. A debugger halt
+  freezes the watchdog.
+- **Run** — runs the supervised event dispatcher. A first member (`ClockInit`) calls
   `HAL_Init()` + the board's default clock configuration function before any
   peripheral is constructed (32 MHz HSE on the NUCLEO-WB55RG).
 
