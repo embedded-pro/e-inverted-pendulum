@@ -682,7 +682,7 @@ TEST_F(CliTest, store_reports_a_restored_record_and_a_saved_change)
     EXPECT_THAT(Output(), testing::HasSubstr("store restore restored save saved"));
 }
 
-TEST_F(CliTest, store_reports_defaults_and_a_failed_save)
+TEST_F(CliTest, store_reports_a_corrupt_record_and_a_failed_save)
 {
     application::Cli cli{ platform, dependencies };
 
@@ -692,4 +692,28 @@ TEST_F(CliTest, store_reports_defaults_and_a_failed_save)
     Send("store");
 
     EXPECT_THAT(Output(), testing::HasSubstr("store restore corrupt save failed"));
+}
+
+TEST_F(CliTest, store_reports_defaults_and_a_pending_save)
+{
+    application::Cli cli{ platform, dependencies };
+
+    EXPECT_CALL(tuningStore, Restore()).WillOnce(testing::Return(persistence::RestoreResult::defaults));
+    EXPECT_CALL(tuningStore, LastSave()).WillOnce(testing::Return(persistence::SaveResult::pending));
+
+    Send("store");
+
+    EXPECT_THAT(Output(), testing::HasSubstr("store restore defaults save pending"));
+}
+
+TEST_F(CliTest, store_reports_a_restore_in_progress_and_no_save)
+{
+    application::Cli cli{ platform, dependencies };
+
+    EXPECT_CALL(tuningStore, Restore()).WillOnce(testing::Return(persistence::RestoreResult::pending));
+    EXPECT_CALL(tuningStore, LastSave()).WillOnce(testing::Return(persistence::SaveResult::none));
+
+    Send("store");
+
+    EXPECT_THAT(Output(), testing::HasSubstr("store restore pending save none"));
 }

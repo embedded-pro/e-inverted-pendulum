@@ -1,4 +1,5 @@
 #include "core/persistence/implementations/PersistentBalanceControl.hpp"
+#include "infra/util/ReallyAssert.hpp"
 #include <algorithm>
 
 namespace persistence
@@ -254,8 +255,11 @@ namespace persistence
             const auto name = control.StrategyName(strategy);
             const auto descriptors = control.StrategyParameters(strategy);
 
-            for (std::size_t index = 0; index != descriptors.size() && !record.entries.full(); ++index)
+            for (std::size_t index = 0; index != descriptors.size(); ++index)
+            {
+                really_assert(!record.entries.full());
                 record.entries.push_back({ KeyOf(name, descriptors[index].name), control.StrategyParameter(strategy, index) });
+            }
         }
 
         return record;

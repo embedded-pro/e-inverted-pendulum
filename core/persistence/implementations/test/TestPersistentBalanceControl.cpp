@@ -48,6 +48,64 @@ namespace
         }
     };
 
+    class ControllableEeprom
+        : public hal::Eeprom
+    {
+    public:
+        uint32_t Size() const override
+        {
+            return static_cast<uint32_t>(storage.size());
+        }
+
+        void WriteBuffer(infra::ConstByteRange buffer, uint32_t address, infra::Function<void()> onDone) override
+        {
+            if (!dropWrites)
+                std::copy(buffer.begin(), buffer.end(), storage.begin() + address);
+
+            Complete(holdWrites, onDone);
+        }
+
+        void ReadBuffer(infra::ByteRange buffer, uint32_t address, infra::Function<void()> onDone) override
+        {
+            std::copy(storage.begin() + address, storage.begin() + address + buffer.size(), buffer.begin());
+            Complete(holdReads, onDone);
+        }
+
+        void Erase(infra::Function<void()> onDone) override
+        {
+            storage.fill(0xff);
+            Complete(false, onDone);
+        }
+
+        void Release()
+        {
+            auto onDone = held;
+            held = nullptr;
+            infra::EventDispatcher::Instance().Schedule(onDone);
+        }
+
+        bool dropWrites{ false };
+        bool holdWrites{ false };
+        bool holdReads{ false };
+
+    private:
+        void Complete(bool hold, const infra::Function<void()>& onDone)
+        {
+            if (hold)
+                held = onDone;
+            else
+                infra::EventDispatcher::Instance().Schedule(onDone);
+        }
+
+        std::array<uint8_t, 512> storage = []
+        {
+            std::array<uint8_t, 512> erased{};
+            erased.fill(0xff);
+            return erased;
+        }();
+        infra::Function<void()> held;
+    };
+
     class PersistentBalanceControlTest
         : public testing::Test
         , public infra::ClockFixture
@@ -215,6 +273,10 @@ TEST_F(PersistentBalanceControlTest, a_burst_of_changes_makes_one_save)
     ExpectCapture(0.5f, 0.5f, 0.0f);
     ForwardTime(1ms);
     ForwardTime(5s);
+
+    ASSERT_TRUE(Stored(0).has_value());
+    EXPECT_EQ(1, Stored(0)->sequence);
+    EXPECT_FALSE(Stored(persistence::PersistentBalanceControl::regionSize).has_value());
 }
 
 TEST_F(PersistentBalanceControlTest, a_rejected_change_is_not_saved)
@@ -286,4 +348,72 @@ TEST_F(PersistentBalanceControlTest, other_calls_are_forwarded)
 
     EXPECT_CALL(control, Parameter(1)).WillOnce(testing::Return(0.3f));
     EXPECT_FLOAT_EQ(0.3f, store->Parameter(1));
+}
+
+TEST_F(PersistentBalanceControlTest, a_change_during_a_save_starts_another_save)
+{
+    ControllableEeprom controllable;
+    Start(controllable);
+    AcceptParameter();
+    controllable.holdWrites = true;
+    ExpectCapture(0.5f, 0.0f, 0.0f);
+    ForwardTime(2s);
+
+    AcceptParameter();
+    ForwardTime(2s);
+
+    controllable.holdWrites = false;
+    controllable.Release();
+    ExecuteAllActions();
+    EXPECT_EQ(persistence::SaveResult::pending, store->LastSave());
+
+    ExpectCapture(0.5f, 0.0f, 0.0f);
+    ForwardTime(2s);
+    EXPECT_EQ(persistence::SaveResult::saved, store->LastSave());
+}
+
+TEST_F(PersistentBalanceControlTest, the_save_waits_for_the_restore)
+{
+    ControllableEeprom controllable;
+    controllable.holdReads = true;
+    Start(controllable);
+    EXPECT_EQ(persistence::RestoreResult::pending, store->Restore());
+
+    AcceptParameter();
+    ForwardTime(2s);
+
+    controllable.Release();
+    ExecuteAllActions();
+    controllable.holdReads = false;
+    controllable.Release();
+    ExecuteAllActions();
+    EXPECT_EQ(persistence::RestoreResult::defaults, store->Restore());
+
+    ExpectCapture(0.5f, 0.0f, 0.0f);
+    ForwardTime(2s);
+    EXPECT_EQ(persistence::SaveResult::saved, store->LastSave());
+}
+
+TEST_F(PersistentBalanceControlTest, after_a_failed_save_the_next_change_saves_to_the_same_copy)
+{
+    ControllableEeprom controllable;
+    Start(controllable);
+    controllable.dropWrites = true;
+    AcceptParameter();
+    ExpectCapture(0.5f, 0.0f, 0.0f);
+    ForwardTime(2s);
+    EXPECT_EQ(persistence::SaveResult::failed, store->LastSave());
+
+    controllable.dropWrites = false;
+    AcceptParameter();
+    ExpectCapture(0.5f, 0.0f, 0.0f);
+    ForwardTime(2s);
+    EXPECT_EQ(persistence::SaveResult::saved, store->LastSave());
+
+    std::array<uint8_t, persistence::PersistentBalanceControl::regionSize> buffer{};
+    controllable.ReadBuffer(infra::MakeRange(buffer), 0, [] {});
+    ExecuteAllActions();
+    const auto saved = persistence::Decode(infra::MakeConstByteRange(buffer));
+    ASSERT_TRUE(saved.has_value());
+    EXPECT_EQ(1, saved->sequence);
 }
