@@ -193,3 +193,34 @@ TEST_F(AttitudeEstimationImplTest, the_offset_applies_while_converging)
     EXPECT_FALSE(estimate.valid);
     EXPECT_NEAR(0.3f, estimate.pitch, 1e-3f);
 }
+
+TEST_F(AttitudeEstimationImplTest, a_new_offset_applies_to_the_latest_estimate_at_once)
+{
+    Settle(0.15f);
+
+    EXPECT_TRUE(estimation.SetUprightOffset(0.05f));
+
+    EXPECT_NEAR(0.10f, estimation.Latest().pitch, 1e-3f);
+}
+
+TEST_F(AttitudeEstimationImplTest, the_offset_stays_applied_across_an_invalid_measurement)
+{
+    EXPECT_TRUE(estimation.SetUprightOffset(0.05f));
+    Settle(0.15f);
+
+    const auto estimate = estimation.Update(Invalid());
+
+    EXPECT_FALSE(estimate.valid);
+    EXPECT_NEAR(0.10f, estimate.pitch, 1e-3f);
+}
+
+TEST_F(AttitudeEstimationImplTest, the_offset_applies_to_the_kalman_filter)
+{
+    estimation.Select(estimation::Filter::kalman);
+    EXPECT_TRUE(estimation.SetUprightOffset(-0.05f));
+
+    const auto estimate = Settle(0.1f, 2000);
+
+    ASSERT_TRUE(estimate.valid);
+    EXPECT_NEAR(0.15f, estimate.pitch, 1e-2f);
+}

@@ -120,7 +120,9 @@ disagree, and the filter converges to a steady error instead of the true angle.
 A sensor that is not mounted exactly level reads a constant pitch when the robot is upright. The
 estimator subtracts an upright offset from every pitch it publishes, while converging too. The
 filters themselves run on the uncorrected angle. The operator sets the offset at run time, within
-±0.35 rad (±20°); see `calibration.md`.
+±0.35 rad (±20°); see `calibration.md`. A new offset also corrects the latest estimate at once.
+The published pitch already has the offset removed, so the uncorrected angle is the published
+pitch plus the current offset.
 
 ---
 
@@ -133,6 +135,7 @@ filters themselves run on the uncorrected angle. The operator sets the offset at
 | Attitude estimate   | Pitch angle and pitch rate                    | Produced on every inertial sample; always accompanied by a validity indication                          |
 | Estimate validity   | Whether the estimate may be acted upon        | Invalid whenever inputs are stale or failed, calibration is incomplete, or the filter has not converged |
 | Calibration control | Begin bias calibration and report its outcome | Reports success or failure; failure leaves the previous bias unchanged and the estimate invalid         |
+| Upright offset      | Set and read the upright offset               | Within ±0.35 rad; subtracted from every published pitch                                                 |
 
 ### Required
 

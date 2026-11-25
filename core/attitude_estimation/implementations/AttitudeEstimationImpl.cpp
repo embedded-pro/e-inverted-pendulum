@@ -85,6 +85,7 @@ namespace estimation
         if (!(std::fabs(offset) <= maximumUprightOffset))
             return false;
 
+        latest.pitch += uprightOffset - offset;
         uprightOffset = offset;
         return true;
     }

@@ -168,6 +168,7 @@ namespace sensing
             return false;
 
         axisMap = map;
+        sampled = false;
         ClearBias();
         return true;
     }
@@ -197,7 +198,7 @@ namespace sensing
         bias = {};
         biasSum = {};
         biasSamples = 0;
-        calibration = CalibrationState::uncalibrated;
+        calibration = calibration == CalibrationState::calibrating ? CalibrationState::failed : CalibrationState::uncalibrated;
     }
 
     platform::InertialSample InertialSensingImpl::ToBody(const platform::InertialSample& sample) const

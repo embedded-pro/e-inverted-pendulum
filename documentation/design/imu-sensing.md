@@ -106,8 +106,9 @@ is a fitted value rather than a measured one.
 
 The board keeps an identity map. This component applies a second signed permutation that the
 operator sets at run time (`calibration.md`). A map that is not a permutation of the three axes
-with unit signs is rejected. A new map clears the gyroscope bias, so the component reports itself
-uncalibrated until the next calibration.
+with unit signs is rejected. A new map clears the gyroscope bias and the last sample, so the
+component reports itself uncalibrated until the next calibration. A change during a calibration
+fails that attempt, so the safety supervisor sees the outcome.
 
 ### Part D — Units are converted at the board boundary
 
@@ -163,6 +164,7 @@ would stay true forever at exactly the moment it stopped being true.
 | Inertial measurement | Bias-corrected angular rate and acceleration     | Body frame, SI units, carries the sample instant; invalid unless fresh, calibrated and read successfully |
 | Validity and cause   | Whether the measurement may be believed, and why | Invalid is never merely degraded; the cause distinguishes stale from failed from uncalibrated            |
 | Calibration control  | Begin bias calibration and report its outcome    | Failure leaves the previous bias unchanged; a new attempt may be started at any time                     |
+| Frame and stillness  | Set the axis map and the stillness threshold     | Invalid values rejected; a change clears the bias and fails an attempt in progress                       |
 
 ### Required
 
@@ -184,7 +186,7 @@ would stay true forever at exactly the moment it stopped being true.
 | Measurement   | cause              | enumeration               | none, neverSampled, stale, transferFailed, uncalibrated | Why an invalid measurement is invalid                                          |
 | Calibration   | gyroBias           | radians per second        | -0.17 to 0.17                                           | One per axis, re-estimated each power-on                                       |
 | Calibration   | window             | milliseconds              | 500 to 2000                                             | Averaging window                                                               |
-| Calibration   | stillnessThreshold | radians per second        | fitted value                                            | Exceeding it during the window fails the attempt                               |
+| Calibration   | stillnessThreshold | radians per second        | 0.01 to 1.0                                             | Exceeding it during the window fails the attempt                               |
 | Configuration | samplePeriod       | microseconds              | greater than zero                                       | Expected cadence; only staleness is judged by it                               |
 | Configuration | stalePeriods       | count                     | greater than zero                                       | Periods without a sample before invalidity                                     |
 
@@ -202,6 +204,9 @@ stateDiagram-v2
     Calibrating --> Failed : motion beyond the threshold, or a failed transfer
     Failed --> Calibrating : StartCalibration
     Calibrated --> Calibrating : StartCalibration
+    Calibrated --> Uncalibrated : axis map or threshold changed
+    Failed --> Uncalibrated : axis map or threshold changed
+    Calibrating --> Failed : axis map or threshold changed
 ```
 
 Measurements are invalid in every state but Calibrated.
