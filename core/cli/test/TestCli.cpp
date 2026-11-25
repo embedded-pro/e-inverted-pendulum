@@ -135,6 +135,9 @@ namespace
         MOCK_METHOD(infra::MemoryRange<const balance::ParameterDescriptor>, Parameters, (), (const, override));
         MOCK_METHOD(float, Parameter, (std::size_t index), (const, override));
         MOCK_METHOD(bool, SetParameter, (std::size_t index, float value), (override));
+        MOCK_METHOD(infra::MemoryRange<const balance::ParameterDescriptor>, StrategyParameters, (std::size_t strategy), (const, override));
+        MOCK_METHOD(float, StrategyParameter, (std::size_t strategy, std::size_t index), (const, override));
+        MOCK_METHOD(bool, SetStrategyParameter, (std::size_t strategy, std::size_t index, float value), (override));
         MOCK_METHOD(bool, Move, (const balance::Setpoints& setpoints), (override));
         MOCK_METHOD(void, CancelMotion, (), (override));
         MOCK_METHOD(bool, Engaged, (), (const, override));
@@ -146,6 +149,14 @@ namespace
     {
     public:
         MOCK_METHOD(std::optional<ble::LinkReport>, Report, (), (const, override));
+    };
+
+    class TuningStoreMock
+        : public persistence::TuningStore
+    {
+    public:
+        MOCK_METHOD(persistence::RestoreResult, Restore, (), (const, override));
+        MOCK_METHOD(persistence::SaveResult, LastSave, (), (const, override));
     };
 
     constexpr std::array<balance::ParameterDescriptor, 2> descriptors{ {
@@ -199,7 +210,8 @@ namespace
         testing::StrictMock<SafetySupervisorMock> supervisor;
         testing::StrictMock<BalanceControlMock> balanceControl;
         testing::StrictMock<LinkStatusMock> link;
-        application::Cli::Dependencies dependencies{ motionActuation, wheelOdometry, inertialSensing, attitudeEstimation, controlLoop, supervisor, balanceControl, link };
+        testing::StrictMock<TuningStoreMock> tuningStore;
+        application::Cli::Dependencies dependencies{ motionActuation, wheelOdometry, inertialSensing, attitudeEstimation, controlLoop, supervisor, balanceControl, link, tuningStore };
     };
 }
 
@@ -656,4 +668,28 @@ TEST_F(CliTest, ble_reports_an_advertising_radio)
 
     EXPECT_THAT(Output(), testing::HasSubstr("ble advertising"));
     EXPECT_THAT(Output(), testing::HasSubstr("mtu 23"));
+}
+
+TEST_F(CliTest, store_reports_a_restored_record_and_a_saved_change)
+{
+    application::Cli cli{ platform, dependencies };
+
+    EXPECT_CALL(tuningStore, Restore()).WillOnce(testing::Return(persistence::RestoreResult::restored));
+    EXPECT_CALL(tuningStore, LastSave()).WillOnce(testing::Return(persistence::SaveResult::saved));
+
+    Send("store");
+
+    EXPECT_THAT(Output(), testing::HasSubstr("store restore restored save saved"));
+}
+
+TEST_F(CliTest, store_reports_defaults_and_a_failed_save)
+{
+    application::Cli cli{ platform, dependencies };
+
+    EXPECT_CALL(tuningStore, Restore()).WillOnce(testing::Return(persistence::RestoreResult::corrupt));
+    EXPECT_CALL(tuningStore, LastSave()).WillOnce(testing::Return(persistence::SaveResult::failed));
+
+    Send("store");
+
+    EXPECT_THAT(Output(), testing::HasSubstr("store restore corrupt save failed"));
 }

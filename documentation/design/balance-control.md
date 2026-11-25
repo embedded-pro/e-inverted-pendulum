@@ -2,9 +2,9 @@
 title: "Balance Control Design"
 type: design
 status: draft
-version: 0.4.0
+version: 0.5.0
 component: "balance-control"
-date: 2026-09-24
+date: 2026-11-25
 ---
 
 | Field     | Value                  |
@@ -12,9 +12,9 @@ date: 2026-09-24
 | Title     | Balance Control Design |
 | Type      | design                 |
 | Status    | draft                  |
-| Version   | 0.4.0                  |
+| Version   | 0.5.0                  |
 | Component | balance-control        |
-| Date      | 2026-09-24             |
+| Date      | 2026-11-25             |
 
 > **The control law is a runtime choice, not an architectural commitment.** This document
 > designs the seam that makes that true: one strategy interface, several interchangeable
@@ -173,6 +173,7 @@ mode. An invalid estimate reaching an engaged controller produces zero effort.
 | Strategy selection   | Change the active strategy                               | Accepted only while not ARMED; a rejected request leaves the active strategy and its state untouched                                           |
 | Parameter descriptor | Describe the active strategy's tunable parameters        | Reports count, order, identity and permitted range; changes when the active strategy changes                                                   |
 | Parameter access     | Read and write parameters by index                       | Writes accepted only while not ARMED; out-of-range values rejected with the stored value unchanged                                             |
+| Strategy parameters  | Read and write any strategy's parameters by index        | Same checks as parameter access; used to save and restore every strategy (`persistence.md`)                                                    |
 | Strategy lifecycle   | Engage and disengage balance control                     | Engaged by the supervisor on every transition into ARMED, before the drive is permitted; disengaged on every transition out                    |
 | Effort report        | The effort applied in the last balance iteration         | Zero while disengaged or when the estimate was invalid                                                                                         |
 | Motion setpoint      | Command forward velocity and yaw rate                    | Accepted only while engaged and within range; decays to zero at a fixed deceleration after 500 ms without a new command, or at once on request |
@@ -307,7 +308,7 @@ graph LR
 | Inner-outer separation | The cascade assumes the inner pitch loop is materially faster than the outer velocity loop; violating that produces a slow instability rather than an obvious failure                                                                       |
 | Small-angle validity   | Strategies are tuned against a model linearised about upright; behaviour degrades as the body approaches the fall threshold                                                                                                                 |
 | Level ground           | No slope compensation. On an incline the robot holds a pitch offset and drifts unless the operator commands against it                                                                                                                      |
-| Parameter identity     | Parameters are addressed by index, not by name, to keep the link payload bounded. Reordering a strategy's parameters is a breaking change for stored values                                                                                 |
+| Parameter identity     | Parameters are addressed by index over the link, to keep the payload bounded. Stored values are keyed by name (`persistence.md`), so a reorder does not break them                                                                          |
 
 ---
 

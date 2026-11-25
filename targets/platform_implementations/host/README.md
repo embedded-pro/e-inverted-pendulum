@@ -9,6 +9,7 @@ off-target:
 - **Tracer** — `services::TracerToStream` over an in-memory string stream.
 - **Motors** — records the last bridge command; the EMIL DRV8711 driver talks to a
   register emulator that reads back what was written, so configuration verifies.
+- **Eeprom** — 512 bytes of RAM that read back as erased (0xFF) at start.
 - **Run** — runs the host `EventDispatcher`; a `hal::TimerServiceGeneric` provides
   the system timer.
 

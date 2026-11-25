@@ -93,6 +93,7 @@ e-inverted-pendulum/
 │   ├── wheel_odometry/        #   wheel velocity and chassis motion
 │   ├── control_loop/          #   pacing of estimation, balance and outer loops
 │   ├── safety_supervisor/     #   self-test, calibration, arming, disarm
+│   ├── persistence/           #   tuning record in EEPROM
 │   ├── telemetry/             #   telemetry recorder
 │   ├── ble_link/              #   GATT service: teleoperation, telemetry, tuning
 │   └── cli/                   #   UART command-line interface

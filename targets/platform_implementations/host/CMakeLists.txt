@@ -19,6 +19,7 @@ target_sources(inverted_pendulum_bot.platform_host PRIVATE
     GpioStub.hpp
     InertialSensorStub.hpp
     Drv8711Emulator.hpp
+    EepromStub.hpp
     MotorDriverStub.hpp
     WheelEncoderStub.hpp
     WheelEncodersStub.hpp

@@ -337,3 +337,42 @@ TEST_F(BalanceControlImplTest, a_parameter_that_is_not_a_number_is_rejected)
 
     EXPECT_FALSE(control.SetParameter(0, std::numeric_limits<float>::quiet_NaN()));
 }
+
+TEST_F(BalanceControlImplTest, parameters_of_any_strategy_are_readable)
+{
+    EXPECT_CALL(second, Parameters()).WillOnce(testing::Return(infra::MakeRange(descriptors)));
+    EXPECT_EQ(2u, control.StrategyParameters(1).size());
+
+    EXPECT_CALL(second, Parameter(0)).WillOnce(testing::Return(0.25f));
+    EXPECT_FLOAT_EQ(0.25f, control.StrategyParameter(1, 0));
+}
+
+TEST_F(BalanceControlImplTest, a_parameter_of_an_inactive_strategy_is_written)
+{
+    EXPECT_CALL(second, Parameters()).WillOnce(testing::Return(infra::MakeRange(descriptors)));
+    EXPECT_CALL(second, SetParameter(1, 1.5f));
+
+    EXPECT_TRUE(control.SetStrategyParameter(1, 1, 1.5f));
+}
+
+TEST_F(BalanceControlImplTest, a_strategy_parameter_outside_its_range_is_rejected)
+{
+    EXPECT_CALL(second, Parameters()).WillRepeatedly(testing::Return(infra::MakeRange(descriptors)));
+
+    EXPECT_FALSE(control.SetStrategyParameter(1, 0, 1.5f));
+    EXPECT_FALSE(control.SetStrategyParameter(1, 2, 0.0f));
+    EXPECT_FALSE(control.SetStrategyParameter(1, 0, std::numeric_limits<float>::quiet_NaN()));
+}
+
+TEST_F(BalanceControlImplTest, a_parameter_of_an_unknown_strategy_is_rejected)
+{
+    EXPECT_FALSE(control.SetStrategyParameter(2, 0, 0.5f));
+}
+
+TEST_F(BalanceControlImplTest, strategy_parameter_writes_are_refused_while_engaged)
+{
+    Engage();
+    EXPECT_CALL(second, Parameters()).WillRepeatedly(testing::Return(infra::MakeRange(descriptors)));
+
+    EXPECT_FALSE(control.SetStrategyParameter(1, 0, 0.5f));
+}

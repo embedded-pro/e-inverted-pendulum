@@ -9,6 +9,7 @@
 #include "core/inertial_sensing/implementations/InertialSensingImpl.hpp"
 #include "core/motion_actuation/implementations/Drv8711DriverConfiguration.hpp"
 #include "core/motion_actuation/implementations/MotionActuationImpl.hpp"
+#include "core/persistence/implementations/PersistentBalanceControl.hpp"
 #include "core/safety_supervisor/implementations/SafetySupervisorImpl.hpp"
 #include "core/telemetry/implementations/TelemetryRecorder.hpp"
 #include "core/wheel_odometry/implementations/WheelOdometryImpl.hpp"
@@ -26,11 +27,12 @@ int main()
     static balance::LqrStrategy lqr;
     static std::array<balance::ControlStrategy*, 2> strategies{ &cascadedPid, &lqr };
     static balance::BalanceControlImpl balanceControl{ infra::MakeRange(strategies), motionActuation, wheelOdometry };
+    static persistence::PersistentBalanceControl persistentBalanceControl{ balanceControl, platform.Eeprom() };
     static safety::SafetySupervisorImpl supervisor{ motionActuation, inertialSensing, balanceControl };
     static telemetry::TelemetryRecorder telemetryRecorder{ supervisor, balanceControl, wheelOdometry, supervisor };
     static control::ControlLoopImpl controlLoop{ inertialSensing, attitudeEstimation, telemetryRecorder, supervisor };
-    static ble::BleEndpoint bleEndpoint{ platform, "inverted-pendulum", supervisor, balanceControl, telemetryRecorder };
-    static application::Cli cli{ platform, { motionActuation, wheelOdometry, inertialSensing, attitudeEstimation, controlLoop, supervisor, balanceControl, bleEndpoint } };
+    static ble::BleEndpoint bleEndpoint{ platform, "inverted-pendulum", supervisor, persistentBalanceControl, telemetryRecorder };
+    static application::Cli cli{ platform, { motionActuation, wheelOdometry, inertialSensing, attitudeEstimation, controlLoop, supervisor, persistentBalanceControl, bleEndpoint, persistentBalanceControl } };
 
     platform.Run();
 
