@@ -6,6 +6,7 @@
 #include "core/control_loop/interfaces/ControlLoop.hpp"
 #include "core/inertial_sensing/interfaces/InertialSensing.hpp"
 #include "core/motion_actuation/interfaces/MotionActuation.hpp"
+#include "core/persistence/interfaces/TuningStore.hpp"
 #include "core/platform_abstraction/Platform.hpp"
 #include "core/safety_supervisor/interfaces/SafetySupervisor.hpp"
 #include "core/wheel_odometry/interfaces/WheelOdometry.hpp"
@@ -28,6 +29,7 @@ namespace application
             safety::SafetySupervisor& supervisor;
             balance::BalanceControl& balanceControl;
             const ble::LinkStatus& link;
+            const persistence::TuningStore& tuningStore;
         };
 
         Cli(platform::Platform& platform, const Dependencies& dependencies);
@@ -62,6 +64,7 @@ namespace application
             void Param(const infra::BoundedConstString& params);
             void ListParameters();
             void Bluetooth(const infra::BoundedConstString& params);
+            void Store(const infra::BoundedConstString& params);
 
             services::Tracer& tracer;
             motion::MotionActuation& motionActuation;
@@ -72,8 +75,9 @@ namespace application
             safety::SafetySupervisor& supervisor;
             balance::BalanceControl& balanceControl;
             const ble::LinkStatus& link;
+            const persistence::TuningStore& tuningStore;
 
-            std::array<Command, 19> commands;
+            std::array<Command, 20> commands;
         };
 
         services::DebugLed debugLed;

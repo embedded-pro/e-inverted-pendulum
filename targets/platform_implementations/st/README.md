@@ -18,7 +18,7 @@ presets: **NUCLEO-WB55RG**.
   `documentation/design/ble-service.md`). Every HCI command and event is traced on the
   console.
 - **Eeprom** — a 24C04 (512 bytes, address 0x50) through `drivers::Eeprom24xx` on I2C3:
-  SCL = PB10, SDA = PB11. It holds the tuning record.
+  SCL = PB10, SDA = PB11. It holds the tuning record; see `documentation/design/persistence.md`.
 - **Watchdog** — `hal::WatchDogStm` (WWDG) supervises the event loop through
   `services::EventDispatcherWithWeakPtrAndWatchdog`. An event that runs for 129–258 ms or more
   resets the part; see `documentation/design/platform-abstraction.md`, Part H. A debugger halt

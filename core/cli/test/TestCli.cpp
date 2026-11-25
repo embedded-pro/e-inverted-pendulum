@@ -151,6 +151,14 @@ namespace
         MOCK_METHOD(std::optional<ble::LinkReport>, Report, (), (const, override));
     };
 
+    class TuningStoreMock
+        : public persistence::TuningStore
+    {
+    public:
+        MOCK_METHOD(persistence::RestoreResult, Restore, (), (const, override));
+        MOCK_METHOD(persistence::SaveResult, LastSave, (), (const, override));
+    };
+
     constexpr std::array<balance::ParameterDescriptor, 2> descriptors{ {
         { "pitch.kp", 0.0f, 50.0f },
         { "pitch.ki", 0.0f, 100.0f },
@@ -202,7 +210,8 @@ namespace
         testing::StrictMock<SafetySupervisorMock> supervisor;
         testing::StrictMock<BalanceControlMock> balanceControl;
         testing::StrictMock<LinkStatusMock> link;
-        application::Cli::Dependencies dependencies{ motionActuation, wheelOdometry, inertialSensing, attitudeEstimation, controlLoop, supervisor, balanceControl, link };
+        testing::StrictMock<TuningStoreMock> tuningStore;
+        application::Cli::Dependencies dependencies{ motionActuation, wheelOdometry, inertialSensing, attitudeEstimation, controlLoop, supervisor, balanceControl, link, tuningStore };
     };
 }
 
@@ -659,4 +668,52 @@ TEST_F(CliTest, ble_reports_an_advertising_radio)
 
     EXPECT_THAT(Output(), testing::HasSubstr("ble advertising"));
     EXPECT_THAT(Output(), testing::HasSubstr("mtu 23"));
+}
+
+TEST_F(CliTest, store_reports_a_restored_record_and_a_saved_change)
+{
+    application::Cli cli{ platform, dependencies };
+
+    EXPECT_CALL(tuningStore, Restore()).WillOnce(testing::Return(persistence::RestoreResult::restored));
+    EXPECT_CALL(tuningStore, LastSave()).WillOnce(testing::Return(persistence::SaveResult::saved));
+
+    Send("store");
+
+    EXPECT_THAT(Output(), testing::HasSubstr("store restore restored save saved"));
+}
+
+TEST_F(CliTest, store_reports_a_corrupt_record_and_a_failed_save)
+{
+    application::Cli cli{ platform, dependencies };
+
+    EXPECT_CALL(tuningStore, Restore()).WillOnce(testing::Return(persistence::RestoreResult::corrupt));
+    EXPECT_CALL(tuningStore, LastSave()).WillOnce(testing::Return(persistence::SaveResult::failed));
+
+    Send("store");
+
+    EXPECT_THAT(Output(), testing::HasSubstr("store restore corrupt save failed"));
+}
+
+TEST_F(CliTest, store_reports_defaults_and_a_pending_save)
+{
+    application::Cli cli{ platform, dependencies };
+
+    EXPECT_CALL(tuningStore, Restore()).WillOnce(testing::Return(persistence::RestoreResult::defaults));
+    EXPECT_CALL(tuningStore, LastSave()).WillOnce(testing::Return(persistence::SaveResult::pending));
+
+    Send("store");
+
+    EXPECT_THAT(Output(), testing::HasSubstr("store restore defaults save pending"));
+}
+
+TEST_F(CliTest, store_reports_a_restore_in_progress_and_no_save)
+{
+    application::Cli cli{ platform, dependencies };
+
+    EXPECT_CALL(tuningStore, Restore()).WillOnce(testing::Return(persistence::RestoreResult::pending));
+    EXPECT_CALL(tuningStore, LastSave()).WillOnce(testing::Return(persistence::SaveResult::none));
+
+    Send("store");
+
+    EXPECT_THAT(Output(), testing::HasSubstr("store restore pending save none"));
 }

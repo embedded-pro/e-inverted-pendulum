@@ -10,6 +10,36 @@ namespace application
 {
     namespace
     {
+        const char* NameOf(persistence::RestoreResult result)
+        {
+            switch (result)
+            {
+                case persistence::RestoreResult::restored:
+                    return "restored";
+                case persistence::RestoreResult::defaults:
+                    return "defaults";
+                case persistence::RestoreResult::corrupt:
+                    return "corrupt";
+                default:
+                    return "pending";
+            }
+        }
+
+        const char* NameOf(persistence::SaveResult result)
+        {
+            switch (result)
+            {
+                case persistence::SaveResult::pending:
+                    return "pending";
+                case persistence::SaveResult::saved:
+                    return "saved";
+                case persistence::SaveResult::failed:
+                    return "failed";
+                default:
+                    return "none";
+            }
+        }
+
         const char* NameOf(motion::DriverState state)
         {
             switch (state)
@@ -145,6 +175,7 @@ namespace application
         , supervisor(dependencies.supervisor)
         , balanceControl(dependencies.balanceControl)
         , link(dependencies.link)
+        , tuningStore(dependencies.tuningStore)
         , commands{ {
               { { "ping", "p", "reply with pong" },
                   [this](const infra::BoundedConstString& params)
@@ -240,6 +271,11 @@ namespace application
                   [this](const infra::BoundedConstString& params)
                   {
                       Bluetooth(params);
+                  } },
+              { { "store", "u", "print the tuning store restore result and last save result" },
+                  [this](const infra::BoundedConstString& params)
+                  {
+                      Store(params);
                   } },
           } }
     {}
@@ -490,5 +526,10 @@ namespace application
         }
 
         tracer.Trace() << "ble " << NameOf(report->state) << " address " << infra::AsMacAddress(MostSignificantFirst(report->address)) << " mtu " << report->mtu;
+    }
+
+    void Cli::CliCommands::Store(const infra::BoundedConstString&)
+    {
+        tracer.Trace() << "store restore " << NameOf(tuningStore.Restore()) << " save " << NameOf(tuningStore.LastSave());
     }
 }
