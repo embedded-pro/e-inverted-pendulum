@@ -2,9 +2,9 @@
 title: "System Architecture"
 type: architecture
 status: draft
-version: 0.2.0
+version: 0.2.1
 component: "system"
-date: 2026-09-16
+date: 2026-11-25
 ---
 
 | Field     | Value               |
@@ -12,9 +12,9 @@ date: 2026-09-16
 | Title     | System Architecture |
 | Type      | architecture        |
 | Status    | draft               |
-| Version   | 0.2.0               |
+| Version   | 0.2.1               |
 | Component | system              |
-| Date      | 2026-09-16          |
+| Date      | 2026-11-25          |
 
 > Architecture of a two-wheeled self-balancing inverted pendulum robot. This document
 > describes *what* the system is composed of and *why*; component-level behaviour is in
@@ -227,9 +227,9 @@ sequenceDiagram
 | # | Question / Decision                                                | Status  | Options Considered                                                  | Rationale                                                                                                                                                                                                                                                                         |
 |---|--------------------------------------------------------------------|---------|---------------------------------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | 1 | Which inertial sensor part                                         | decided | MPU6050; LSM303 + L3GD20; MPU9250                                   | An MPU9250, on SPI2 with its data-ready line interrupting. Chosen partly because a tested driver is already vendored. Its AK8963 magnetometer is deliberately unused. The deferral did its job — the estimator and controller were specified against the role and neither changes |
-| 2 | Which control strategy ships as the default                        | open    | Cascaded PID; LQR                                                   | Decided *not* to settle architecturally. Both are implemented behind the strategy interface and selected at runtime, so this is a configuration default rather than a design commitment                                                                                           |
+| 2 | Which control strategy ships as the default                        | decided | Cascaded PID; LQR                                                   | Both strategies are implemented and selected at run time. The factory default is cascaded PID; see balance-control.md, question 1                                                                                                                                                 |
 | 3 | Motor driver operating mode                                        | decided | Internal step sequencer; external commutation                       | One DRV8711 drives two brushed DC motors by bypassing its indexer and driving both full bridges directly — the part supplies two bridges, current regulation and fault reporting for one SPI configuration channel                                                                |
 | 4 | Runtime strategy dispatch versus the no-virtual-dispatch rule      | decided | Compile-time selection; runtime interface                           | Runtime selection is required by the product. Dispatch is once per balance iteration in task context, never in an interrupt path, and the strategy cannot change while ARMED, so the armed cost is fixed                                                                          |
-| 5 | Whether the estimator is a complementary filter or a Kalman filter | open    | Complementary; single-axis Kalman                                   | Both satisfy the estimation requirements; the trade is tuning effort against cycles. Deferred to implementation and recorded in the estimation design                                                                                                                             |
-| 6 | Pairing and bonding policy                                         | open    | Just-works pairing; passkey                                         | Requirements demand pairing before any commanding write; the association model is a security decision still to be taken                                                                                                                                                           |
-| 7 | Where specification scenarios execute                              | decided | `integration_tests/features/`; staged in `documentation/use-cases/` | Staged under `documentation/use-cases/` because the executable suite runs everything in `integration_tests/features/` and the components do not exist yet. Scenarios migrate per component as step definitions land                                                               |
+| 5 | Whether the estimator is a complementary filter or a Kalman filter | decided | Complementary; single-axis Kalman                                   | Both filters are implemented and the operator selects one at run time; see attitude-estimation.md, question 1                                                                                                                                                                     |
+| 6 | Pairing and bonding policy                                         | decided | Just-works pairing; passkey                                         | Just Works pairing with encryption; see ble-service.md, question 1                                                                                                                                                                                                                |
+| 7 | Where specification scenarios execute                              | decided | `integration_tests/features/`; staged in `documentation/use-cases/` | Scenarios are staged under `documentation/use-cases/` until they have step definitions. The executable suite runs everything in `integration_tests/features/`. Scenarios migrate one file at a time                                                                               |

@@ -2,9 +2,9 @@
 title: "Inertial Sensing Design"
 type: design
 status: draft
-version: 0.1.0
+version: 0.1.1
 component: "imu-sensing"
-date: 2026-09-19
+date: 2026-11-25
 ---
 
 | Field     | Value                   |
@@ -12,9 +12,9 @@ date: 2026-09-19
 | Title     | Inertial Sensing Design |
 | Type      | design                  |
 | Status    | draft                   |
-| Version   | 0.1.0                   |
+| Version   | 0.1.1                   |
 | Component | imu-sensing             |
-| Date      | 2026-09-19              |
+| Date      | 2026-11-25              |
 
 > Turns a six-axis part on a serial bus into bias-corrected angular rate and acceleration in a
 > fixed body frame, each sample carrying the instant it was taken and an explicit statement of
@@ -282,11 +282,11 @@ graph LR
 
 ## Open Questions
 
-| # | Question                                                                                    | Options                                                                                                      | Status                                   |
-|---|---------------------------------------------------------------------------------------------|--------------------------------------------------------------------------------------------------------------|------------------------------------------|
-| 1 | What is the sensor-to-body axis permutation for the fitted part?                            | Determine by tilting the assembled robot; read it off the mechanical drawing                                 | open — identity until hardware exists    |
-| 2 | Is the stillness threshold right, and should it also bound acceleration?                    | Fit from a bench recording of the robot at rest; add an acceleration bound                                   | open — placeholder value                 |
-| 3 | Should a failed identification read raise a fault rather than simply never sampling?        | Raise it through the safety supervisor once that component exists                                            | open — the supervisor does not exist yet |
-| 4 | Does 12% of a core for transfers survive contact with the control loop?                     | Measure on target; drop to 500 Hz; switch bus clocks per transaction                                         | open — unmeasured                        |
-| 5 | How should a failed SPI transfer become visible, given the bus interface reports no status? | Extend the bus interface with a completion status; time out a transfer in the adapter; leave it as staleness | open — staleness only, today             |
-| 6 | Should the timestamp be taken at the data-ready edge inside the driver?                     | Change the vendored driver to stamp in its handler; accept the constant delivery offset                      | open — offset accepted and documented    |
+| # | Question                                                                                    | Options                                                                                                      | Status                                                                                                    |
+|---|---------------------------------------------------------------------------------------------|--------------------------------------------------------------------------------------------------------------|-----------------------------------------------------------------------------------------------------------|
+| 1 | What is the sensor-to-body axis permutation for the fitted part?                            | Determine by tilting the assembled robot; read it off the mechanical drawing                                 | open — identity until hardware exists                                                                     |
+| 2 | Is the stillness threshold right, and should it also bound acceleration?                    | Fit from a bench recording of the robot at rest; add an acceleration bound                                   | open — placeholder value                                                                                  |
+| 3 | Should a failed identification read raise a fault rather than simply never sampling?        | Raise it through the safety supervisor once that component exists                                            | decided — no samples means the supervisor self-test fails after 1 second (`safety-supervisor.md`, Part F) |
+| 4 | Does 12% of a core for transfers survive contact with the control loop?                     | Measure on target; drop to 500 Hz; switch bus clocks per transaction                                         | open — unmeasured                                                                                         |
+| 5 | How should a failed SPI transfer become visible, given the bus interface reports no status? | Extend the bus interface with a completion status; time out a transfer in the adapter; leave it as staleness | open — staleness only, today                                                                              |
+| 6 | Should the timestamp be taken at the data-ready edge inside the driver?                     | Change the vendored driver to stamp in its handler; accept the constant delivery offset                      | open — offset accepted and documented                                                                     |
