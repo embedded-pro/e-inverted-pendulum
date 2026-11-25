@@ -1,7 +1,7 @@
 Feature: Safety supervision and shutdown
   The safety supervisor owns the decision to energise the motors. These scenarios are
-  staged: the host fixture has no model of the robot's motion, and the motor rating is
-  not recorded. The scenarios that run are in integration_tests/features/safety.feature.
+  staged: the host fixture has no model of the robot's motion, the motor rating is
+  not recorded, and the host has no watchdog. The scenarios that run are in integration_tests/features/safety.feature.
 
   Background:
     Given the robot is calibrated
@@ -18,3 +18,10 @@ Feature: Safety supervision and shutdown
     Given the motor driver has been configured
     When the configured per-motor current limit is read back
     Then it does not exceed the continuous current rating of the fitted motors
+
+  @REQ-SAFE-010
+  Scenario: A stalled event loop resets the microcontroller
+    When one event of the event loop does not finish within 300 milliseconds
+    Then the microcontroller resets
+    And the mode is INIT
+    And both motor bridges are disabled

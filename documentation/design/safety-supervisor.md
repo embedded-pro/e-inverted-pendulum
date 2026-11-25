@@ -2,9 +2,9 @@
 title: "Safety Supervisor Design"
 type: design
 status: draft
-version: 0.3.0
+version: 0.4.0
 component: "safety-supervisor"
-date: 2026-09-24
+date: 2026-11-25
 ---
 
 | Field     | Value                    |
@@ -12,9 +12,9 @@ date: 2026-09-24
 | Title     | Safety Supervisor Design |
 | Type      | design                   |
 | Status    | draft                    |
-| Version   | 0.3.0                    |
+| Version   | 0.4.0                    |
 | Component | safety-supervisor        |
-| Date      | 2026-09-24               |
+| Date      | 2026-11-25               |
 
 > The supervisor owns the single decision that can hurt someone: whether the motors may
 > be energised. Everything else in the firmware is advisory to it.
@@ -83,6 +83,9 @@ freeze the supervisor along with it. A timebase-driven check independent of the 
 loop counts missed services; three consecutive misses is a fault. The check runs at the
 balance period, 2 ms, so a stalled loop is caught within 6 ms. This is the one detector that
 must keep working when the rest of the control stack has stopped.
+
+The check runs on the event loop, so it cannot see a stalled event loop. The board's watchdog
+covers that case: it resets the part (`platform-abstraction.md`, Part H; REQ-SAFE-010).
 
 A motor driver fault latches FAULT from IDLE as well as from ARMED: a driver that has reported a
 fault must not be energised by the next arm request.
@@ -236,9 +239,9 @@ sequenceDiagram
 
 ## Open Questions
 
-| # | Question                                                                                                     | Options                                               | Status   |
-|---|--------------------------------------------------------------------------------------------------------------|-------------------------------------------------------|----------|
-| 1 | Should the fall threshold scale with measured wheel velocity, since a moving robot has less recovery margin? | Fixed threshold; velocity-dependent threshold         | open     |
-| 2 | Should a hardware watchdog back the software liveness monitor?                                               | Software only; add the microcontroller watchdog       | deferred |
-| 3 | Should battery voltage be a supervised fault source?                                                         | Out of scope this revision; add an undervoltage fault | open     |
-| 4 | Should repeated falls within a short window require a longer operator acknowledgement?                       | Treat every fall identically; escalate on repetition  | deferred |
+| # | Question                                                                                                     | Options                                               | Status                                                                                        |
+|---|--------------------------------------------------------------------------------------------------------------|-------------------------------------------------------|-----------------------------------------------------------------------------------------------|
+| 1 | Should the fall threshold scale with measured wheel velocity, since a moving robot has less recovery margin? | Fixed threshold; velocity-dependent threshold         | open                                                                                          |
+| 2 | Should a hardware watchdog back the software liveness monitor?                                               | Software only; add the microcontroller watchdog       | decided: the board's watchdog resets a stalled event loop (`platform-abstraction.md`, Part H) |
+| 3 | Should battery voltage be a supervised fault source?                                                         | Out of scope this revision; add an undervoltage fault | open                                                                                          |
+| 4 | Should repeated falls within a short window require a longer operator acknowledgement?                       | Treat every fall identically; escalate on repetition  | deferred                                                                                      |

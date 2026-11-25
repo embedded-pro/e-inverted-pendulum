@@ -58,6 +58,6 @@ namespace application
 
     void PlatformImpl::Run()
     {
-        eventInfrastructure.Run();
+        eventDispatcher.Run();
     }
 }

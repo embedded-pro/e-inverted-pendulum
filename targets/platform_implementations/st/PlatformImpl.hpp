@@ -1,12 +1,15 @@
 #pragma once
 
 #include "core/platform_abstraction/Platform.hpp"
-#include "hal_st/instantiations/StmEventInfrastructure.hpp"
+#include "generated/stm32fxxx/PinoutTableDefault.hpp"
+#include "hal/cortex_m/InterruptCortex.hpp"
+#include "hal/cortex_m/SystemTickTimerService.hpp"
 #include INVERTED_PENDULUM_BOT_ST_CLOCK_HEADER
 #include "hal_st/middlewares/ble_middleware/BondStorageSt.hpp"
 #include "hal_st/middlewares/ble_middleware/TracingSystemTransportLayerWb.hpp"
 #include "hal_st/stm32fxxx/GpioStm.hpp"
 #include "hal_st/stm32fxxx/UartStm.hpp"
+#include "hal_st/stm32fxxx/WatchDogStm.hpp"
 #include "infra/stream/OutputStream.hpp"
 #include "infra/util/ProxyCreator.hpp"
 #include "services/ble/BondStorageSynchronizer.hpp"
@@ -14,11 +17,13 @@
 #include "services/tracer/StreamWriterOnSerialCommunication.hpp"
 #include "services/tracer/Tracer.hpp"
 #include "services/util/ConfigurationStore.hpp"
+#include "services/util/EventDispatcherWatchdog.hpp"
 #include "targets/platform_implementations/st/BluetoothPeripheralStm.hpp"
 #include "targets/platform_implementations/st/InertialSensorStm.hpp"
 #include "targets/platform_implementations/st/MotorDriverStm.hpp"
 #include "targets/platform_implementations/st/WheelEncodersStm.hpp"
 #include <array>
+#include <chrono>
 #include <optional>
 
 namespace application
@@ -42,6 +47,7 @@ namespace application
         static constexpr uint16_t maxAttMtuSize{ 251 };
         static constexpr uint8_t numberOfLinks{ 1 };
         static constexpr uint32_t maxNumberOfBonds{ 10 };
+        static constexpr std::chrono::milliseconds stallLimit{ 100 };
 
         void BluetoothStackRunning(services::BondStorageSynchronizer& synchronizer);
         void StartBluetoothWhenReady();
@@ -52,11 +58,24 @@ namespace application
             {
                 HAL_Init();
                 INVERTED_PENDULUM_BOT_ST_CLOCK_INIT();
+                __HAL_DBGMCU_FREEZE_WWDG();
             }
         };
 
         ClockInit clockInit;
-        main_::StmEventInfrastructure eventInfrastructure;
+        hal::cortex::InterruptTable::WithStorage<128> interruptTable;
+        hal::WatchDogStm watchdog{ []()
+            {
+                hal::WatchDogStm::Config config;
+                config.prescaler = WWDG_PRESCALER_32;
+                return config;
+            }() };
+        services::EventDispatcherWithWeakPtrAndWatchdog::WithSize<50> eventDispatcher{ watchdog, stallLimit, []()
+            {
+                NVIC_SystemReset();
+            } };
+        hal::GpioStm gpio{ hal::pinoutTableDefaultStm, hal::analogTableDefaultStm };
+        hal::cortex::SystemTickTimerService systemTick{ SystemCoreClock, std::chrono::milliseconds(1) };
 
         hal::GpioPinStm statusLed{ hal::Port::B, 0 };
 
