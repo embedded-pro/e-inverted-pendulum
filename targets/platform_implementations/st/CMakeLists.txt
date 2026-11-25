@@ -11,6 +11,7 @@ target_link_libraries(inverted_pendulum_bot.platform_st PUBLIC
     hal_st.ble_middleware
     hal_st.stm32fxxx
     drivers.imu.mpu9250
+    drivers.eeprom
     hal_st.synchronous_stm32fxxx
     infra.timer
     services.peripheral
