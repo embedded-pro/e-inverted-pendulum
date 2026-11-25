@@ -4,6 +4,7 @@
 #include "infra/event/EventDispatcher.hpp"
 #include <algorithm>
 #include <array>
+#include <cstddef>
 #include <cstdint>
 
 namespace application
@@ -30,7 +31,7 @@ namespace application
 
         void ReadBuffer(infra::ByteRange buffer, uint32_t address, infra::Function<void()> onDone) override
         {
-            std::ranges::copy(infra::MakeRange(storage.begin() + address, storage.begin() + address + buffer.size()), buffer.begin());
+            std::ranges::copy_n(storage.begin() + address, static_cast<std::ptrdiff_t>(buffer.size()), buffer.begin());
             infra::EventDispatcher::Instance().Schedule(onDone);
         }
 
