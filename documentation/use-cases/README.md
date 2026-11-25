@@ -2,9 +2,9 @@
 title: "Use Cases"
 type: use-cases
 status: draft
-version: 0.1.0
+version: 0.1.1
 component: "system"
-date: 2026-09-16
+date: 2026-11-25
 ---
 
 | Field     | Value      |
@@ -12,9 +12,9 @@ date: 2026-09-16
 | Title     | Use Cases  |
 | Type      | use-cases  |
 | Status    | draft      |
-| Version   | 0.1.0      |
+| Version   | 0.1.1      |
 | Component | system     |
-| Date      | 2026-09-16 |
+| Date      | 2026-11-25 |
 
 > **Specification scenarios.** The `.feature` files in this directory are the
 > executable-shaped statement of what the robot must do. They are the bridge between
@@ -27,8 +27,7 @@ date: 2026-09-16
 
 `integration_tests/features/` is *executed* — by `ctest --preset host` and by the SIL
 job in CI. A scenario placed there without a matching step definition fails the build.
-The components these scenarios describe do not exist yet, so the scenarios are staged
-here, where they are specification rather than test code.
+A scenario stays here, as specification, until it has step definitions.
 
 They are not inert. The release pipeline generates the requirements traceability matrix
 from this directory, so coverage is measured on every release.

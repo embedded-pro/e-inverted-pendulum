@@ -2,9 +2,9 @@
 title: "Platform Abstraction Design"
 type: design
 status: draft
-version: 0.3.0
+version: 0.3.1
 component: "platform-abstraction"
-date: 2026-09-24
+date: 2026-11-25
 ---
 
 | Field     | Value                       |
@@ -12,9 +12,9 @@ date: 2026-09-24
 | Title     | Platform Abstraction Design |
 | Type      | design                      |
 | Status    | draft                       |
-| Version   | 0.3.0                       |
+| Version   | 0.3.1                       |
 | Component | platform-abstraction        |
-| Date      | 2026-09-24                  |
+| Date      | 2026-11-25                  |
 
 > The seam that lets a balancing robot be developed, tested and debugged without a
 > balancing robot. Every peripheral the application needs appears here as a role, and
@@ -117,8 +117,9 @@ The low-power timer's counter is 16 bits, which is ample for the configured enco
 resolution, and it has no per-phase polarity; the left wheel is the unmirrored one, so it does
 not need any.
 
-The serial buses are just as constrained. This part has two SPIs and no usable I2C — every
-I2C1 pin option collides with the console UART, an encoder phase or a motor output. So:
+The serial buses are just as constrained. This part has two SPIs. Every I2C1 pin option
+collides with the console UART, an encoder phase or a motor output. I2C3 is free on PA7/PC1
+and on PB10/PB11; its other pins collide with SPI1 or SPI2. So:
 
 | Bus  | Use                                                                                        |
 |------|--------------------------------------------------------------------------------------------|
