@@ -328,7 +328,7 @@ graph LR
 | Bounded buffers             | One most-recent sample is held; there is no unbounded transmit queue                                  |
 | Link is not safety-critical | Loss of the link zeroes motion but never disarms; no safety function depends on it                    |
 | Range, not latency          | Connection interval bounds how quickly a command takes effect; the control loops are unaffected by it |
-| Parameters by index         | Reordering a strategy's parameters breaks previously stored values                                    |
+| Parameters by index         | The link addresses parameters by index; stored values are keyed by name (`persistence.md`)            |
 
 ---
 

@@ -95,6 +95,7 @@ Scope: production code. Tests and host tools may use the heap.
   - `wheel_odometry/` — `odometry::`: wrap-safe counts, wheel velocity, chassis motion. `wheel-odometry.md`.
   - `control_loop/` — `control::`: sample-driven pacing of estimation, balance and outer loops. `control-loop.md`.
   - `safety_supervisor/` — `safety::`: self-test, calibration, arming, disarm conditions. `safety-supervisor.md`.
+  - `persistence/` — `persistence::`: tuning record in EEPROM, saved and restored. `persistence.md`.
   - `telemetry/` — `telemetry::`: telemetry recorder.
   - `ble_link/` — `ble::`: GATT service for teleoperation, telemetry and tuning. `ble-service.md`.
   - `cli/` — `application::Cli`: UART command-line interface over the components.
