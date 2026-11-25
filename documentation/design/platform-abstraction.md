@@ -172,12 +172,12 @@ has no method for it. The selected board runs its event loop on a dispatcher tha
 itself. The window watchdog's early-warning interrupt refreshes the watchdog while the loop
 makes progress. When one event runs for longer than the stall limit, the board resets the part.
 
-| Quantity                       | Value      | Source                                                   |
-|--------------------------------|------------|----------------------------------------------------------|
-| Watchdog clock                 | 488 Hz     | PCLK1 64 MHz / (4096 x prescaler 32)                     |
-| Early-warning period           | 129 ms     | 63 watchdog ticks                                        |
-| Early-warning service deadline | 2 ms       | One tick: the part resets if the interrupt runs later    |
-| Reset after an event starts    | 129–258 ms | The first warning in an event counts as progress         |
+| Quantity                       | Value      | Source                                                |
+|--------------------------------|------------|-------------------------------------------------------|
+| Watchdog clock                 | 488 Hz     | PCLK1 64 MHz / (4096 x prescaler 32)                  |
+| Early-warning period           | 129 ms     | 63 watchdog ticks                                     |
+| Early-warning service deadline | 2 ms       | One tick: the part resets if the interrupt runs later |
+| Reset after an event starts    | 129–258 ms | The first warning in an event counts as progress      |
 
 An event that finishes within 129 ms never causes a reset. The limit is far above the longest
 event the firmware runs, and short enough to stop a stalled robot from driving on.
