@@ -34,6 +34,11 @@ namespace application
         return inertial;
     }
 
+    hal::Eeprom& PlatformImpl::Eeprom()
+    {
+        return eeprom;
+    }
+
     void PlatformImpl::StartBluetooth(infra::BoundedConstString deviceName, const infra::Function<void(platform::Bluetooth& bluetooth)>& onReady)
     {
         bluetoothName = deviceName;

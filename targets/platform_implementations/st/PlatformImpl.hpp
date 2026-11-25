@@ -1,6 +1,7 @@
 #pragma once
 
 #include "core/platform_abstraction/Platform.hpp"
+#include "drivers/eeprom/Eeprom24xx.hpp"
 #include "generated/stm32fxxx/PinoutTableDefault.hpp"
 #include "hal/cortex_m/InterruptCortex.hpp"
 #include "hal/cortex_m/SystemTickTimerService.hpp"
@@ -8,6 +9,7 @@
 #include "hal_st/middlewares/ble_middleware/BondStorageSt.hpp"
 #include "hal_st/middlewares/ble_middleware/TracingSystemTransportLayerWb.hpp"
 #include "hal_st/stm32fxxx/GpioStm.hpp"
+#include "hal_st/stm32fxxx/I2cStm.hpp"
 #include "hal_st/stm32fxxx/UartStm.hpp"
 #include "hal_st/stm32fxxx/WatchDogStm.hpp"
 #include "infra/stream/OutputStream.hpp"
@@ -40,6 +42,7 @@ namespace application
         platform::MotorDriver& Motors() override;
         platform::WheelEncoders& Encoders() override;
         platform::InertialSensor& Inertial() override;
+        hal::Eeprom& Eeprom() override;
         void StartBluetooth(infra::BoundedConstString deviceName, const infra::Function<void(platform::Bluetooth& bluetooth)>& onReady) override;
         void Run() override;
 
@@ -86,6 +89,18 @@ namespace application
         MotorDriverStm motors;
         WheelEncodersStm encoders;
         InertialSensorStm inertial{ platform::AxisMap{} };
+
+        hal::GpioPinStm eepromScl{ hal::Port::B, 10 };
+        hal::GpioPinStm eepromSda{ hal::Port::B, 11 };
+        hal::I2cStm eepromBus{ 3, eepromScl, eepromSda };
+        drivers::Eeprom24xx eeprom{ eepromBus, []()
+            {
+                drivers::Eeprom24xx::Config config;
+                config.deviceAddress = 0x50;
+                config.size = 512;
+                config.pageSize = 16;
+                return config;
+            }() };
 
         services::StreamWriterOnSerialCommunication::WithStorage<1024> streamWriter{ console };
         infra::TextOutputStream::WithErrorPolicy stream{ streamWriter };
