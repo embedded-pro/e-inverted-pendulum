@@ -37,6 +37,9 @@ namespace estimation
         void Select(Filter filter) override;
         Filter Selected() const override;
 
+        bool SetUprightOffset(float offset) override;
+        float UprightOffset() const override;
+
     private:
         PitchFilter& Active();
         Estimate Restart(const sensing::Measurement& measurement);
@@ -47,6 +50,7 @@ namespace estimation
         KalmanPitchFilter kalman;
         Filter selected;
 
+        float uprightOffset{ 0.0f };
         bool running{ false };
         infra::TimePoint previousSample;
         infra::TimePoint convergenceStarted;

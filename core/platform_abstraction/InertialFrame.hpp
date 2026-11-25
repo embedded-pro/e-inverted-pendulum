@@ -16,6 +16,7 @@ namespace platform
         float zSign{ 1.0f };
     };
 
+    bool IsValid(const AxisMap& map);
     InertialAxes ToBodyFrame(const AxisMap& map, float first, float second, float third);
 
     float MilliDegreePerSecondToRadianPerSecond(int32_t milliDegreePerSecond);

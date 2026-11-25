@@ -61,3 +61,16 @@ TEST(InertialFrameTest, gravity_converts_from_millimetres_to_metres_per_second_s
     EXPECT_NEAR(9.80665f, platform::MilliMeterPerSecondSquaredToMeterPerSecondSquared(9806), 1e-3f);
     EXPECT_NEAR(-9.80665f, platform::MilliMeterPerSecondSquaredToMeterPerSecondSquared(-9806), 1e-3f);
 }
+
+TEST(InertialFrameTest, a_signed_permutation_is_a_valid_axis_map)
+{
+    EXPECT_TRUE(platform::IsValid(platform::AxisMap{}));
+    EXPECT_TRUE(platform::IsValid(platform::AxisMap{ 2, 0, 1, -1.0f, 1.0f, -1.0f }));
+}
+
+TEST(InertialFrameTest, a_repeated_axis_an_unknown_axis_or_a_scaled_sign_is_not_valid)
+{
+    EXPECT_FALSE(platform::IsValid(platform::AxisMap{ 0, 0, 2, 1.0f, 1.0f, 1.0f }));
+    EXPECT_FALSE(platform::IsValid(platform::AxisMap{ 0, 1, 3, 1.0f, 1.0f, 1.0f }));
+    EXPECT_FALSE(platform::IsValid(platform::AxisMap{ 0, 1, 2, 1.0f, 2.0f, 1.0f }));
+}

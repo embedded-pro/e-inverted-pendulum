@@ -39,6 +39,9 @@ namespace estimation
         virtual void Select(Filter filter) = 0;
         virtual Filter Selected() const = 0;
 
+        virtual bool SetUprightOffset(float offset) = 0;
+        virtual float UprightOffset() const = 0;
+
     protected:
         ~AttitudeEstimation() = default;
     };

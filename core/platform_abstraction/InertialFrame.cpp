@@ -13,11 +13,17 @@ namespace platform
         }
     }
 
+    bool IsValid(const AxisMap& map)
+    {
+        const bool inRange = map.xFrom < 3 && map.yFrom < 3 && map.zFrom < 3;
+        const bool distinct = map.xFrom != map.yFrom && map.yFrom != map.zFrom && map.xFrom != map.zFrom;
+
+        return inRange && distinct && IsUnitSign(map.xSign) && IsUnitSign(map.ySign) && IsUnitSign(map.zSign);
+    }
+
     InertialAxes ToBodyFrame(const AxisMap& map, float first, float second, float third)
     {
-        really_assert(map.xFrom < 3 && map.yFrom < 3 && map.zFrom < 3);
-        really_assert(map.xFrom != map.yFrom && map.yFrom != map.zFrom && map.xFrom != map.zFrom);
-        really_assert(IsUnitSign(map.xSign) && IsUnitSign(map.ySign) && IsUnitSign(map.zSign));
+        really_assert(IsValid(map));
 
         const std::array<float, 3> sensor{ { first, second, third } };
 

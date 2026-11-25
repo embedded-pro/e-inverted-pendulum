@@ -2,9 +2,9 @@
 title: "Attitude Estimation Design"
 type: design
 status: draft
-version: 0.2.0
+version: 0.3.0
 component: "attitude-estimation"
-date: 2026-09-24
+date: 2026-11-25
 ---
 
 | Field     | Value                      |
@@ -12,9 +12,9 @@ date: 2026-09-24
 | Title     | Attitude Estimation Design |
 | Type      | design                     |
 | Status    | draft                      |
-| Version   | 0.2.0                      |
+| Version   | 0.3.0                      |
 | Component | attitude-estimation        |
-| Date      | 2026-09-24                 |
+| Date      | 2026-11-25                 |
 
 > The controller can only be as good as the pitch estimate. Neither sensor alone is
 > usable: the gyroscope drifts, the accelerometer is fooled by the robot's own motion.
@@ -114,6 +114,13 @@ z, which is a *negative* rotation about y. Pitch is defined positive nose-up, so
 the negated angular rate about y, while the accelerometer-derived angle follows the theory's
 atan2 of the negated x and z components directly. Getting either sign wrong makes the two sensors
 disagree, and the filter converges to a steady error instead of the true angle.
+
+### Part H — Upright offset
+
+A sensor that is not mounted exactly level reads a constant pitch when the robot is upright. The
+estimator subtracts an upright offset from every pitch it publishes, while converging too. The
+filters themselves run on the uncorrected angle. The operator sets the offset at run time, within
+±0.35 rad (±20°); see `calibration.md`.
 
 ---
 

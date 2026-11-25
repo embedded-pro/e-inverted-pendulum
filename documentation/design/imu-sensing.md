@@ -2,7 +2,7 @@
 title: "Inertial Sensing Design"
 type: design
 status: draft
-version: 0.1.1
+version: 0.2.0
 component: "imu-sensing"
 date: 2026-11-25
 ---
@@ -12,7 +12,7 @@ date: 2026-11-25
 | Title     | Inertial Sensing Design |
 | Type      | design                  |
 | Status    | draft                   |
-| Version   | 0.1.1                   |
+| Version   | 0.2.0                   |
 | Component | imu-sensing             |
 | Date      | 2026-11-25              |
 
@@ -104,6 +104,11 @@ physically mounted, and nothing in this repository can establish that.** It is a
 when the sensor is fitted and verified by tilting the robot, in the same way the wheel geometry
 is a fitted value rather than a measured one.
 
+The board keeps an identity map. This component applies a second signed permutation that the
+operator sets at run time (`calibration.md`). A map that is not a permutation of the three axes
+with unit signs is rejected. A new map clears the gyroscope bias, so the component reports itself
+uncalibrated until the next calibration.
+
 ### Part D — Units are converted at the board boundary
 
 The driver reports milli-degrees per second and milli-metres per second squared as integers.
@@ -132,6 +137,9 @@ staleness. That second check matters because the window closes on elapsed time r
 count of samples; without it, one sample, a stall, and a second sample a second later would be
 accepted as a bias drawn from two readings, when the whole point of a window is that averaging
 several hundred shrinks the noise. A failed attempt leaves the previous bias untouched.
+
+The operator can set the stillness threshold at run time, from 0.01 to 1.0 rad/s
+(`calibration.md`). A new threshold clears the bias, as a new axis map does.
 
 ### Part F — Validity has a cause
 

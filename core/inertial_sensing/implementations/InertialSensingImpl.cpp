@@ -2,6 +2,12 @@
 #include "infra/util/ReallyAssert.hpp"
 #include <cmath>
 
+namespace
+{
+    constexpr float minimumStillness{ 0.01f };
+    constexpr float maximumStillness{ 1.0f };
+}
+
 namespace sensing
 {
     InertialSensingImpl::Config::Config() = default;
@@ -26,8 +32,9 @@ namespace sensing
         sensor.Stop();
     }
 
-    void InertialSensingImpl::OnSample(const platform::InertialSample& sample)
+    void InertialSensingImpl::OnSample(const platform::InertialSample& raw)
     {
+        const auto sample = ToBody(raw);
         lastSample = sample;
         sampled = true;
 
@@ -153,5 +160,51 @@ namespace sensing
     platform::InertialAxes InertialSensingImpl::GyroscopeBias() const
     {
         return bias;
+    }
+
+    bool InertialSensingImpl::SetAxisMap(const platform::AxisMap& map)
+    {
+        if (!platform::IsValid(map))
+            return false;
+
+        axisMap = map;
+        ClearBias();
+        return true;
+    }
+
+    platform::AxisMap InertialSensingImpl::CurrentAxisMap() const
+    {
+        return axisMap;
+    }
+
+    bool InertialSensingImpl::SetStillnessThreshold(float threshold)
+    {
+        if (!(threshold >= minimumStillness && threshold <= maximumStillness))
+            return false;
+
+        config.stillnessThreshold = threshold;
+        ClearBias();
+        return true;
+    }
+
+    float InertialSensingImpl::StillnessThreshold() const
+    {
+        return config.stillnessThreshold;
+    }
+
+    void InertialSensingImpl::ClearBias()
+    {
+        bias = {};
+        biasSum = {};
+        biasSamples = 0;
+        calibration = CalibrationState::uncalibrated;
+    }
+
+    platform::InertialSample InertialSensingImpl::ToBody(const platform::InertialSample& sample) const
+    {
+        auto body = sample;
+        body.angularRate = platform::ToBodyFrame(axisMap, sample.angularRate.x, sample.angularRate.y, sample.angularRate.z);
+        body.acceleration = platform::ToBodyFrame(axisMap, sample.acceleration.x, sample.acceleration.y, sample.acceleration.z);
+        return body;
     }
 }

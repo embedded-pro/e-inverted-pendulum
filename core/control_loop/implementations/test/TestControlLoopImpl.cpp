@@ -17,6 +17,10 @@ namespace
         MOCK_METHOD(void, StartCalibration, (), (override));
         MOCK_METHOD(sensing::CalibrationState, Calibration, (), (const, override));
         MOCK_METHOD(platform::InertialAxes, GyroscopeBias, (), (const, override));
+        MOCK_METHOD(bool, SetAxisMap, (const platform::AxisMap& map), (override));
+        MOCK_METHOD(platform::AxisMap, CurrentAxisMap, (), (const, override));
+        MOCK_METHOD(bool, SetStillnessThreshold, (float threshold), (override));
+        MOCK_METHOD(float, StillnessThreshold, (), (const, override));
     };
 
     class AttitudeEstimationMock
@@ -27,6 +31,8 @@ namespace
         MOCK_METHOD(estimation::Estimate, Latest, (), (const, override));
         MOCK_METHOD(void, Select, (estimation::Filter filter), (override));
         MOCK_METHOD(estimation::Filter, Selected, (), (const, override));
+        MOCK_METHOD(bool, SetUprightOffset, (float offset), (override));
+        MOCK_METHOD(float, UprightOffset, (), (const, override));
     };
 
     class BalanceStageMock

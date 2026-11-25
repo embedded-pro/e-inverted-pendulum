@@ -2,6 +2,7 @@
 #include "gtest/gtest.h"
 #include <chrono>
 #include <cmath>
+#include <limits>
 
 namespace
 {
@@ -160,4 +161,35 @@ TEST_F(AttitudeEstimationImplTest, kalman_tracks_the_pitch_once_selected)
 
     EXPECT_TRUE(estimate.valid);
     EXPECT_NEAR(-0.15f, estimate.pitch, 1e-3f);
+}
+
+TEST_F(AttitudeEstimationImplTest, the_upright_offset_is_subtracted_from_the_pitch)
+{
+    EXPECT_TRUE(estimation.SetUprightOffset(0.05f));
+
+    const auto estimate = Settle(0.15f);
+
+    ASSERT_TRUE(estimate.valid);
+    EXPECT_NEAR(0.10f, estimate.pitch, 1e-3f);
+    EXPECT_NEAR(0.10f, estimation.Latest().pitch, 1e-3f);
+    EXPECT_NEAR(0.05f, estimation.UprightOffset(), 1e-6f);
+}
+
+TEST_F(AttitudeEstimationImplTest, an_upright_offset_beyond_twenty_degrees_is_rejected)
+{
+    EXPECT_FALSE(estimation.SetUprightOffset(0.4f));
+    EXPECT_FALSE(estimation.SetUprightOffset(-0.4f));
+    EXPECT_FALSE(estimation.SetUprightOffset(std::numeric_limits<float>::quiet_NaN()));
+
+    EXPECT_NEAR(0.0f, estimation.UprightOffset(), 1e-6f);
+}
+
+TEST_F(AttitudeEstimationImplTest, the_offset_applies_while_converging)
+{
+    EXPECT_TRUE(estimation.SetUprightOffset(-0.1f));
+
+    const auto estimate = estimation.Update(Sample(0.2f));
+
+    EXPECT_FALSE(estimate.valid);
+    EXPECT_NEAR(0.3f, estimate.pitch, 1e-3f);
 }
