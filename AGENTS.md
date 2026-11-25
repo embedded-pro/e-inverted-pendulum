@@ -80,8 +80,7 @@ Scope: production code. Tests and host tools may use the heap.
 ## Domain *(repo)*
 
 - Firmware for a self-balancing inverted pendulum robot on the NUCLEO-WB55RG (Cortex-M4), with a host build for
-  tests. It is created from embedded-scaffold. `core/example_component/` and the accumulator
-  integration test are scaffold examples; replace them.
+  tests. It is created from embedded-scaffold.
 - Architecture: `documentation/architecture/system.md`.
 - `core/` — libraries only, no entry points. Design documents in `documentation/design/`:
   - `platform_abstraction/` — `platform::Platform`, the seam to the hardware (LED, serial, tracer, motors,
