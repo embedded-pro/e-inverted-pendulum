@@ -16,9 +16,7 @@ namespace odometry
             Config();
 
             std::chrono::microseconds samplePeriod{ 20000 };
-            float wheelRadius{ 0.034f };
-            float trackWidth{ 0.145f };
-            float gearRatio{ 1.0f };
+            Geometry geometry;
         };
 
         explicit WheelOdometryImpl(platform::WheelEncoders& encoders, const Config& config = Config());
@@ -27,16 +25,24 @@ namespace odometry
         WheelMotion Right() const override;
         ChassisMotion Chassis() const override;
 
+        void SetEncoderInverted(WheelSide side, bool inverted) override;
+        bool EncoderInverted(WheelSide side) const override;
+        bool SetGeometry(const Geometry& geometry) override;
+        Geometry CurrentGeometry() const override;
+
     private:
         struct Wheel
         {
             uint32_t previousRaw{ 0 };
             bool sampled{ false };
+            bool inverted{ false };
             WheelMotion motion;
         };
 
         void Sample();
         void SampleWheel(Wheel& wheel, hal::SynchronousQuadratureEncoder& encoder, infra::Duration elapsed) const;
+        Wheel& WheelOn(WheelSide side);
+        const Wheel& WheelOn(WheelSide side) const;
         static int32_t ShortestDelta(uint32_t previous, uint32_t current, uint32_t resolution);
 
         platform::WheelEncoders& encoders;

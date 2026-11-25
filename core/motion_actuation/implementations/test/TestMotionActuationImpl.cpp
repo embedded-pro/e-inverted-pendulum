@@ -196,3 +196,25 @@ TEST_F(MotionActuationImplTest, switching_frequency_is_configurable)
 
     Construct(config);
 }
+
+TEST_F(MotionActuationImplTest, an_inverted_motor_is_driven_the_other_way)
+{
+    ConstructReady();
+    actuation->SetMotorInverted(motion::WheelSide::left, true);
+
+    EXPECT_CALL(motors, Drive(Inputs(70, 100), Inputs(100, 30)));
+    actuation->Apply(0.3f, 0.7f);
+
+    EXPECT_TRUE(actuation->MotorInverted(motion::WheelSide::left));
+    EXPECT_FALSE(actuation->MotorInverted(motion::WheelSide::right));
+}
+
+TEST_F(MotionActuationImplTest, an_inverted_motor_is_restored)
+{
+    ConstructReady();
+    actuation->SetMotorInverted(motion::WheelSide::right, true);
+    actuation->SetMotorInverted(motion::WheelSide::right, false);
+
+    EXPECT_CALL(motors, Drive(Inputs(100, 70), Inputs(100, 30)));
+    actuation->Apply(0.3f, 0.7f);
+}

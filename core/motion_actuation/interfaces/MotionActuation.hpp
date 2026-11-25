@@ -16,6 +16,12 @@ namespace motion
         driverFault
     };
 
+    enum class WheelSide : uint8_t
+    {
+        left,
+        right
+    };
+
     enum class DriverState : uint8_t
     {
         configuring,
@@ -35,6 +41,9 @@ namespace motion
         virtual FaultCause Fault() const = 0;
         virtual void ClearFault() = 0;
         virtual DriverState State() const = 0;
+
+        virtual void SetMotorInverted(WheelSide side, bool inverted) = 0;
+        virtual bool MotorInverted(WheelSide side) const = 0;
 
     protected:
         ~MotionActuation() = default;

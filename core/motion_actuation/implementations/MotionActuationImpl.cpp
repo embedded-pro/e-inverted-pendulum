@@ -33,7 +33,7 @@ namespace motion
         if (!DrivePermitted())
             return;
 
-        motors.Drive(InputsFor(effortLeft, decay), InputsFor(effortRight, decay));
+        motors.Drive(InputsFor(Oriented(WheelSide::left, effortLeft), decay), InputsFor(Oriented(WheelSide::right, effortRight), decay));
     }
 
     void MotionActuationImpl::Disable(DisableState disableState)
@@ -57,6 +57,21 @@ namespace motion
     DriverState MotionActuationImpl::State() const
     {
         return state;
+    }
+
+    void MotionActuationImpl::SetMotorInverted(WheelSide side, bool invert)
+    {
+        inverted[static_cast<std::size_t>(side)] = invert;
+    }
+
+    bool MotionActuationImpl::MotorInverted(WheelSide side) const
+    {
+        return inverted[static_cast<std::size_t>(side)];
+    }
+
+    float MotionActuationImpl::Oriented(WheelSide side, float effort) const
+    {
+        return MotorInverted(side) ? -effort : effort;
     }
 
     bool MotionActuationImpl::DrivePermitted() const

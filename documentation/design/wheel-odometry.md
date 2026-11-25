@@ -2,9 +2,9 @@
 title: "Wheel Odometry Design"
 type: design
 status: draft
-version: 0.1.0
+version: 0.2.0
 component: "wheel-odometry"
-date: 2026-09-19
+date: 2026-11-25
 ---
 
 | Field     | Value                 |
@@ -12,9 +12,9 @@ date: 2026-09-19
 | Title     | Wheel Odometry Design |
 | Type      | design                |
 | Status    | draft                 |
-| Version   | 0.1.0                 |
+| Version   | 0.2.0                 |
 | Component | wheel-odometry        |
-| Date      | 2026-09-19            |
+| Date      | 2026-11-25            |
 
 > Turns two sixteen-bit hardware counters that wrap every revolution into a signed wheel
 > position that never wraps, a wheel angular velocity, and the chassis forward velocity and
@@ -151,10 +151,12 @@ other counts up.
 
 This is resolved one layer below, in the platform implementation, by inverting one encoder's
 phase-A polarity in hardware. By the time this component reads a counter, both already count
-up for forward motion. The important consequence is negative: this component must **not**
-apply a sign correction of its own, because it would cancel the hardware one and reintroduce
-exactly the fault the requirement forbids. There is no left-versus-right asymmetry anywhere
-in the accumulation or the velocity path, and there should not be one.
+up for forward motion. This component therefore applies no sign correction by default.
+
+The hardware correction assumes how the encoders are wired. If the built robot differs, the
+operator inverts one wheel's counts at run time (`calibration.md`). The setting is off by default,
+so it never cancels the hardware correction unless someone sets it. The wheel geometry is set at
+run time in the same way.
 
 ---
 
@@ -162,13 +164,14 @@ in the accumulation or the velocity path, and there should not be one.
 
 ### Provided
 
-| Interface      | Purpose                                        | Contract                                                                                           |
-|----------------|------------------------------------------------|----------------------------------------------------------------------------------------------------|
-| Wheel motion   | Signed position and angular velocity per wheel | Lossless across counter wrap; forward motion positive on both wheels; zero until the second sample |
-| Chassis motion | Forward velocity and yaw rate                  | Derived from both wheel velocities and the documented geometry; refreshed on every sample          |
+| Interface      | Purpose                                        | Contract                                                                                            |
+|----------------|------------------------------------------------|-----------------------------------------------------------------------------------------------------|
+| Wheel motion   | Signed position and angular velocity per wheel | Lossless across counter wrap; forward motion positive on both wheels; zero until the second sample  |
+| Chassis motion | Forward velocity and yaw rate                  | Derived from both wheel velocities and the documented geometry; refreshed on every sample           |
+| Calibration    | Encoder inversion per wheel and the geometry   | Inversion applies from the next sample; a geometry outside the ranges in the data model is rejected |
 
-The provided interface is read-only. Consumers observe the latest estimate; they do not drive
-the sampling and cannot advance, reset or reseed the accumulated position.
+Apart from calibration, the provided interface is read-only. Consumers observe the latest estimate;
+they do not drive the sampling and cannot advance, reset or reseed the accumulated position.
 
 ### Required
 
@@ -188,9 +191,9 @@ the sampling and cannot advance, reset or reseed the accumulated position.
 | Chassis motion | forwardVelocity | metres per second  | -1.5 to 1.5       | Mean of both wheel velocities times the wheel radius                                                                          |
 | Chassis motion | yawRate         | radians per second | -3.1 to 3.1       | Wheel difference times radius over track width; positive left                                                                 |
 | Configuration  | samplePeriod    | microseconds       | greater than zero | Sets the cadence and bounds the trackable wheel rate — see Part B. Not used as a divisor; velocity uses the measured interval |
-| Configuration  | wheelRadius     | metres             | greater than zero | Fitted value; documented in one place only                                                                                    |
-| Configuration  | trackWidth      | metres             | greater than zero | Distance between the wheel contact patches                                                                                    |
-| Configuration  | gearRatio       | encoder per wheel  | greater than zero | Encoder revolutions per wheel revolution; one when direct                                                                     |
+| Configuration  | wheelRadius     | metres             | 0.01 to 0.2       | Fitted value; documented in one place only                                                                                    |
+| Configuration  | trackWidth      | metres             | 0.05 to 0.5       | Distance between the wheel contact patches                                                                                    |
+| Configuration  | gearRatio       | encoder per wheel  | 0.1 to 100        | Encoder revolutions per wheel revolution; one when direct                                                                     |
 
 ---
 

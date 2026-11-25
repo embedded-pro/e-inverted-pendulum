@@ -4,6 +4,7 @@
 #include "core/motion_actuation/interfaces/DriverConfiguration.hpp"
 #include "core/motion_actuation/interfaces/MotionActuation.hpp"
 #include "core/platform_abstraction/MotorDriver.hpp"
+#include <array>
 
 namespace motion
 {
@@ -30,7 +31,11 @@ namespace motion
         void ClearFault() override;
         DriverState State() const override;
 
+        void SetMotorInverted(WheelSide side, bool inverted) override;
+        bool MotorInverted(WheelSide side) const override;
+
     private:
+        float Oriented(WheelSide side, float effort) const;
         bool DrivePermitted() const;
         void ReleaseBridges() const;
         void OnFault();
@@ -39,5 +44,6 @@ namespace motion
         Decay decay;
         FaultCause fault{ FaultCause::none };
         DriverState state{ DriverState::configuring };
+        std::array<bool, 2> inverted{};
     };
 }

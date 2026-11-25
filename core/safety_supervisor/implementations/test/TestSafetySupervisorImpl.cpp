@@ -20,6 +20,8 @@ namespace
         MOCK_METHOD(motion::FaultCause, Fault, (), (const, override));
         MOCK_METHOD(void, ClearFault, (), (override));
         MOCK_METHOD(motion::DriverState, State, (), (const, override));
+        MOCK_METHOD(void, SetMotorInverted, (motion::WheelSide side, bool inverted), (override));
+        MOCK_METHOD(bool, MotorInverted, (motion::WheelSide side), (const, override));
     };
 
     class InertialSensingMock

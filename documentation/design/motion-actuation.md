@@ -2,9 +2,9 @@
 title: "Motion Actuation Design"
 type: design
 status: draft
-version: 0.2.0
+version: 0.3.0
 component: "motion-actuation"
-date: 2026-09-24
+date: 2026-11-25
 ---
 
 | Field     | Value                   |
@@ -12,9 +12,9 @@ date: 2026-09-24
 | Title     | Motion Actuation Design |
 | Type      | design                  |
 | Status    | draft                   |
-| Version   | 0.2.0                   |
+| Version   | 0.3.0                   |
 | Component | motion-actuation        |
-| Date      | 2026-09-24              |
+| Date      | 2026-11-25              |
 
 > Turns an abstract effort command into current through two motors. The one component that
 > must always be able to stop, whatever else has failed. What the wheels then did is measured
@@ -79,10 +79,10 @@ Putting all four inputs on one timer has three consequences the rest of the desi
 Which two states a bridge alternates between is the decay mode, and it is a firmware choice
 made per command, not a wiring choice:
 
-| Decay | Forward effort *e*                    | Reverse effort *e*                        | Off-time state        |
-|-------|---------------------------------------|-------------------------------------------|-----------------------|
-| Slow  | input 1 held high, input 2 at 1 − *e* | input 1 at 1 − \|*e*\|, input 2 held high | both legs low (brake) |
-| Fast  | input 1 at *e*, input 2 held low      | input 1 held low, input 2 at \|*e*\|      | released (tri-state)  |
+| Decay | Forward effort *e*                    | Reverse effort *e*             | Off-time state |
+|-------|---------------------------------------|--------------------------------|----------------|
+| Slow  | input 1 held high, input 2 at 1 − *e* | input 1 at 1 − \               | *e*\           |
+| Fast  | input 1 at *e*, input 2 held low      | input 1 held low, input 2 at \ | *e*\           |
 
 Slow decay is the default. It keeps the motor current continuous down to small efforts, so
 torque stays proportional to effort through the zero crossing a balancer lives around, and
@@ -121,6 +121,10 @@ input is switched, per the decay table in Part A. The mapping is monotonic and d
 that a change in commanded effort always produces a change in the same direction at the wheel —
 a property the control strategies rely on and none of them verify. Duty is carried at the
 timer's resolution, not rounded to whole percent.
+
+A motor wired the other way round turns backwards for a positive effort. The operator can invert
+each motor's effort at run time (`calibration.md`). The inversion is off by default and applies
+to the next effort.
 
 Switching frequency sits above the audible band and is matched to the motor's electrical
 time constant: too low and the robot whines and the current ripples; too high and switching
@@ -172,6 +176,7 @@ the wheel odometry component's, and is described in `documentation/design/wheel-
 | Effort application | Apply a signed effort to each motor     | Monotonic mapping to duty and direction; ignored unless the drive is permitted              |
 | Drive disable      | Tri-state or brake both bridges         | The tri-state must succeed without a healthy control loop; safety disables always tri-state |
 | Driver health      | Report driver-asserted faults           | Latched on assertion, even if the condition clears immediately                              |
+| Motor inversion    | Invert the effort of one motor          | Off by default; applies to the next effort                                                  |
 | Wheel encoders     | Access to both decoded encoder counters | Already sign-corrected for the mirrored mounting; consumed by wheel odometry                |
 
 ### Required

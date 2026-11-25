@@ -34,6 +34,8 @@ namespace
         MOCK_METHOD(motion::FaultCause, Fault, (), (const, override));
         MOCK_METHOD(void, ClearFault, (), (override));
         MOCK_METHOD(motion::DriverState, State, (), (const, override));
+        MOCK_METHOD(void, SetMotorInverted, (motion::WheelSide side, bool inverted), (override));
+        MOCK_METHOD(bool, MotorInverted, (motion::WheelSide side), (const, override));
     };
 
     class WheelOdometryMock
@@ -43,6 +45,10 @@ namespace
         MOCK_METHOD(odometry::WheelMotion, Left, (), (const, override));
         MOCK_METHOD(odometry::WheelMotion, Right, (), (const, override));
         MOCK_METHOD(odometry::ChassisMotion, Chassis, (), (const, override));
+        MOCK_METHOD(void, SetEncoderInverted, (odometry::WheelSide side, bool inverted), (override));
+        MOCK_METHOD(bool, EncoderInverted, (odometry::WheelSide side), (const, override));
+        MOCK_METHOD(bool, SetGeometry, (const odometry::Geometry& geometry), (override));
+        MOCK_METHOD(odometry::Geometry, CurrentGeometry, (), (const, override));
     };
 
     MATCHER_P2(SetpointsNear, velocity, yawRate, "")
