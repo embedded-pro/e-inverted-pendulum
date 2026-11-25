@@ -6,9 +6,8 @@ repository started from [`embedded-pro/embedded-scaffold`](https://github.com/em
 
 > **Status**: the robot's components (inertial sensing, attitude estimation, balance
 > control, motion actuation, wheel odometry, control loop, safety supervisor, telemetry,
-> BLE link) are in `core/`. `core/example_component/`, `targets/example_app/`,
-> `tools/example_tool/` and the accumulator integration test are scaffold examples still
-> to be removed.
+> BLE link) are in `core/`. `core/example_component/` and the accumulator integration test are scaffold examples
+> still to be removed.
 
 ## Overview
 
@@ -101,12 +100,10 @@ e-inverted-pendulum/
 │   └── example_component/     #   scaffold example, to be removed
 ├── targets/                   # Application entry points + platform implementations
 │   ├── cli/                   #   the firmware: one Main.cpp for host and st
-│   ├── example_app/           #   scaffold example, to be removed
 │   └── platform_implementations/
 │       ├── host/              #   PlatformImpl: host stubs
 │       └── st/                #   PlatformImpl: NUCLEO-WB55RG
 ├── tools/                     # Host-side developer tools
-│   └── example_tool/          #   scaffold example, to be removed
 ├── integration_tests/         # BDD integration tests (cucumber-cpp / Gherkin)
 ├── infra/                     # Infrastructure submodules
 │   ├── embedded-infra-lib/    #   bounded containers, build helpers, toolchains

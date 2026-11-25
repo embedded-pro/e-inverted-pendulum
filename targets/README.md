@@ -7,8 +7,6 @@ Libraries with no `main` belong in [`core/`](../core).
 targets/
 ├── cli/                   # Headline app: one Main.cpp reused on every platform
 │   └── Main.cpp                  #   includes PLATFORM_IMPL_HEADER, constructs Cli
-├── example_app/                  # Trivial host-only entry point (Accumulator demo)
-│   └── Main.cpp
 └── platform_implementations/
     ├── host/                     # PlatformImpl: stubs + loopback serial (host preset)
     └── st/                       # PlatformImpl: NUCLEO-WB55RG
