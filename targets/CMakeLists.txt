@@ -20,9 +20,4 @@ target_link_libraries(inverted_pendulum_bot.platform_impl INTERFACE
     inverted_pendulum_bot.platform_${INVERTED_PENDULUM_BOT_TARGET_PLATFORM}
 )
 
-# example_app is a trivial host-only demo of using a core library directly.
-if (INVERTED_PENDULUM_BOT_TARGET_PLATFORM STREQUAL "host")
-    add_subdirectory(example_app)
-endif()
-
 add_subdirectory(cli)

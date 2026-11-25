@@ -80,8 +80,8 @@ Scope: production code. Tests and host tools may use the heap.
 ## Domain *(repo)*
 
 - Firmware for a self-balancing inverted pendulum robot on the NUCLEO-WB55RG (Cortex-M4), with a host build for
-  tests. It is created from embedded-scaffold. `core/example_component/`, `targets/example_app/`,
-  `tools/example_tool/` and the accumulator integration test are scaffold examples; replace them.
+  tests. It is created from embedded-scaffold. `core/example_component/` and the accumulator
+  integration test are scaffold examples; replace them.
 - Architecture: `documentation/architecture/system.md`.
 - `core/` — libraries only, no entry points. Design documents in `documentation/design/`:
   - `platform_abstraction/` — `platform::Platform`, the seam to the hardware (LED, serial, tracer, motors,
@@ -103,7 +103,7 @@ Scope: production code. Tests and host tools may use the heap.
 - `targets/cli/Main.cpp` — the firmware entry point for every platform; it includes `PLATFORM_IMPL_HEADER`.
   `targets/platform_implementations/{host,st}/` hold the `PlatformImpl`s (host stubs; NUCLEO-WB55RG).
   `INVERTED_PENDULUM_BOT_TARGET_PLATFORM` selects one.
-- `tools/` — host-only tools on `core/` libraries. Copy `tools/example_tool/` for a new one.
+- `tools/` — host-only tools on `core/` libraries. `tools/README.md` tells how to add one.
 - `integration_tests/` — cucumber-cpp: `features/`, `steps/`, `support/`, `hooks/`, `main/`. Steps bind Gherkin
   lines with `GIVEN`/`WHEN`/`THEN`/`STEP` and share state through the cucumber `context`.
 - `infra/` — submodules: `embedded-infra-lib`, `numerical-toolbox`, `hal/st`. Reuse `numerical-toolbox` for PID,
