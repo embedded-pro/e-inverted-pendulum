@@ -1,5 +1,5 @@
 add_library(inverted_pendulum_bot.integration_tests.steps OBJECT
-    AccumulatorSteps.cpp
+    SafetySteps.cpp
 )
 
 target_link_libraries(inverted_pendulum_bot.integration_tests.steps PUBLIC

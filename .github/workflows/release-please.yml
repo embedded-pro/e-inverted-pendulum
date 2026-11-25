@@ -130,6 +130,11 @@ jobs:
         with:
           persist-credentials: false
           submodules: recursive
+      - name: Collect feature files
+        run: |
+          mkdir -p build/traceability
+          cp integration_tests/features/*.feature build/traceability/
+          for f in documentation/use-cases/*.feature; do cp "$f" "build/traceability/staged-$(basename "$f")"; done
       - name: Generate documentation PDFs and traceability matrix
         uses: embedded-pro/project-documentation@54fca1cb9925af16e53bd9d2640d1285560d295b # v0.2.0
         with:
@@ -139,7 +144,7 @@ jobs:
           output-dir: docs-pdf
           artifact-name: documentation-pdfs
           requirements-dir: documentation/requirements
-          features-dir: documentation/use-cases
+          features-dir: build/traceability
           matrix-output: docs-pdf/traceability-matrix.md
           matrix-pdf-output: docs-pdf/inverted_pendulum_bot-traceability-matrix-${{ needs.release_please.outputs.tag_name }}.pdf
 

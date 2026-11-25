@@ -6,8 +6,7 @@ repository started from [`embedded-pro/embedded-scaffold`](https://github.com/em
 
 > **Status**: the robot's components (inertial sensing, attitude estimation, balance
 > control, motion actuation, wheel odometry, control loop, safety supervisor, telemetry,
-> BLE link) are in `core/`. `core/example_component/` and the accumulator integration test are scaffold examples
-> still to be removed.
+> BLE link) are in `core/`. `integration_tests/` runs the safety scenarios on the host.
 
 ## Overview
 
@@ -96,8 +95,7 @@ e-inverted-pendulum/
 │   ├── safety_supervisor/     #   self-test, calibration, arming, disarm
 │   ├── telemetry/             #   telemetry recorder
 │   ├── ble_link/              #   GATT service: teleoperation, telemetry, tuning
-│   ├── cli/                   #   UART command-line interface
-│   └── example_component/     #   scaffold example, to be removed
+│   └── cli/                   #   UART command-line interface
 ├── targets/                   # Application entry points + platform implementations
 │   ├── cli/                   #   the firmware: one Main.cpp for host and st
 │   └── platform_implementations/
