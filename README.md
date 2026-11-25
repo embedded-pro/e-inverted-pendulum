@@ -131,6 +131,7 @@ add new components.
 | Document                                                                           | Description                                                                       |
 |------------------------------------------------------------------------------------|-----------------------------------------------------------------------------------|
 | [System Architecture](documentation/architecture/system.md)                        | Components, interfaces and cross-cutting concerns of the robot                    |
+| [Roadmap](documentation/roadmap.md)                                                | Milestones from the current firmware to a robot that balances and drives          |
 | [Use Cases](documentation/use-cases/README.md)                                     | Actors, flows and the Gherkin scenarios every requirement traces to               |
 | [Requirements](documentation/requirements/)                                        | Requirement sets, validated against `documentation/tools/requirement.schema.json` |
 | [Safety Supervisor](documentation/design/safety-supervisor.md)                     | Mode state machine: self-test, calibration, arming and the disarm conditions      |
@@ -142,6 +143,8 @@ add new components.
 | [Inertial Sensing Design](documentation/design/imu-sensing.md)                     | MPU9250 wiring, body frame, gyroscope bias calibration and sample validity        |
 | [BLE Service](documentation/design/ble-service.md)                                 | GATT layout for teleoperation, telemetry and tuning                               |
 | [Platform Abstraction](documentation/design/platform-abstraction.md)               | The peripheral roles each board must supply                                       |
+| [Persistence](documentation/design/persistence.md)                                 | Tuning record in EEPROM: two copies, save delay, restore                          |
+| [Runtime Calibration](documentation/design/calibration.md)                         | Calibration values set from the console and kept in EEPROM                        |
 | [Pendulum Dynamics](documentation/theory/pendulum-dynamics.md)                     | Equations of motion, linearisation and the fall time constant                     |
 | [Control Laws](documentation/theory/control-laws.md)                               | Cascaded PID and LQR derived from the shared plant model                          |
 | [Pitch Estimation Theory](documentation/theory/attitude-estimation.md)             | Complementary and Kalman formulations, drift and noise                            |
