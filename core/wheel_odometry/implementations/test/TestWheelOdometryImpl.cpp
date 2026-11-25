@@ -319,3 +319,33 @@ TEST_F(WheelOdometryImplTest, a_geometry_outside_its_ranges_is_rejected)
 
     EXPECT_NEAR(0.034f, Odometry().CurrentGeometry().wheelRadius, 1e-6f);
 }
+
+TEST_F(WheelOdometryImplTest, an_inverted_left_encoder_counts_back_across_a_wrap)
+{
+    Odometry().SetEncoderInverted(odometry::WheelSide::left, true);
+    Sample(resolution - 10, 0);
+    Sample(5, 0);
+
+    EXPECT_EQ(-15, Odometry().Left().position);
+    EXPECT_EQ(0, Odometry().Right().position);
+}
+
+TEST_F(WheelOdometryImplTest, toggling_the_inversion_mid_run_keeps_the_position_continuous)
+{
+    Sample(1000, 1000);
+    Sample(1100, 1000);
+    ASSERT_EQ(100, Odometry().Left().position);
+
+    Odometry().SetEncoderInverted(odometry::WheelSide::left, true);
+    Sample(1150, 1000);
+
+    EXPECT_EQ(50, Odometry().Left().position);
+}
+
+TEST_F(WheelOdometryImplTest, the_geometry_range_limits_are_accepted_and_nan_is_rejected)
+{
+    EXPECT_TRUE(Odometry().SetGeometry(odometry::Geometry{ 0.01f, 0.05f, 0.1f }));
+    EXPECT_TRUE(Odometry().SetGeometry(odometry::Geometry{ 0.2f, 0.5f, 100.0f }));
+    EXPECT_FALSE(Odometry().SetGeometry(odometry::Geometry{ 0.034f, std::numeric_limits<float>::quiet_NaN(), 1.0f }));
+    EXPECT_FALSE(Odometry().SetGeometry(odometry::Geometry{ 0.034f, 0.145f, std::numeric_limits<float>::quiet_NaN() }));
+}

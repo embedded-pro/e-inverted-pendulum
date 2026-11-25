@@ -44,6 +44,6 @@ namespace motion
         Decay decay;
         FaultCause fault{ FaultCause::none };
         DriverState state{ DriverState::configuring };
-        std::array<bool, 2> inverted{};
+        std::array<bool, 2> motorInverted{};
     };
 }

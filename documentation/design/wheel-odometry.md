@@ -143,7 +143,7 @@ Yaw is positive when the right wheel runs ahead of the left, which is the robot 
 its left. Both are derived here, beside the geometry they depend on, so that a consumer never
 has to know the wheel radius or the track width to interpret what it is given.
 
-### Part E — Sign convention is settled before this component sees it
+### Part E — Sign convention: settled in hardware, overridable at run time
 
 Requirement REQ-ODOM-003 asks that forward robot motion be positive on both wheels. The two
 wheels face opposite ways on the chassis, so one encoder would otherwise count down while the

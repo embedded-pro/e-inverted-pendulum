@@ -218,3 +218,25 @@ TEST_F(MotionActuationImplTest, an_inverted_motor_is_restored)
     EXPECT_CALL(motors, Drive(Inputs(100, 70), Inputs(100, 30)));
     actuation->Apply(0.3f, 0.7f);
 }
+
+TEST_F(MotionActuationImplTest, inverting_the_right_motor_leaves_the_left_motor_alone)
+{
+    ConstructReady();
+    actuation->SetMotorInverted(motion::WheelSide::right, true);
+
+    EXPECT_CALL(motors, Drive(Inputs(100, 70), Inputs(30, 100)));
+    actuation->Apply(0.3f, 0.7f);
+}
+
+TEST_F(MotionActuationImplTest, inversion_leaves_the_brake_and_the_tristate_unchanged)
+{
+    ConstructReady();
+    actuation->SetMotorInverted(motion::WheelSide::left, true);
+    actuation->SetMotorInverted(motion::WheelSide::right, true);
+
+    EXPECT_CALL(motors, Drive(Inputs(100, 100), Inputs(100, 100)));
+    actuation->Disable(motion::DisableState::brake);
+
+    EXPECT_CALL(motors, Drive(released, released));
+    actuation->Disable(motion::DisableState::tristate);
+}

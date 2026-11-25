@@ -79,10 +79,10 @@ Putting all four inputs on one timer has three consequences the rest of the desi
 Which two states a bridge alternates between is the decay mode, and it is a firmware choice
 made per command, not a wiring choice:
 
-| Decay | Forward effort *e*                    | Reverse effort *e*             | Off-time state |
-|-------|---------------------------------------|--------------------------------|----------------|
-| Slow  | input 1 held high, input 2 at 1 − *e* | input 1 at 1 − \               | *e*\           |
-| Fast  | input 1 at *e*, input 2 held low      | input 1 held low, input 2 at \ | *e*\           |
+| Decay | Forward effort *e*                    | Reverse effort *e*                        | Off-time state        |
+|-------|---------------------------------------|-------------------------------------------|-----------------------|
+| Slow  | input 1 held high, input 2 at 1 − *e* | input 1 at 1 − \|*e*\|, input 2 held high | both legs low (brake) |
+| Fast  | input 1 at *e*, input 2 held low      | input 1 held low, input 2 at \|*e*\|      | released (tri-state)  |
 
 Slow decay is the default. It keeps the motor current continuous down to small efforts, so
 torque stays proportional to effort through the zero crossing a balancer lives around, and
@@ -123,8 +123,8 @@ a property the control strategies rely on and none of them verify. Duty is carri
 timer's resolution, not rounded to whole percent.
 
 A motor wired the other way round turns backwards for a positive effort. The operator can invert
-each motor's effort at run time (`calibration.md`). The inversion is off by default and applies
-to the next effort.
+each motor's effort at run time (`calibration.md`). The inversion is off by default, applies to
+the next effort, and leaves the tri-state and brake unchanged.
 
 Switching frequency sits above the audible band and is matched to the motor's electrical
 time constant: too low and the robot whines and the current ripples; too high and switching
@@ -160,7 +160,8 @@ of bringing up the platform, so it is described here beside the timer budget it 
 Two decisions made at that configuration are contracts the wheel odometry component relies on
 and must not repeat. The counter resolution bounds the wrap that odometry reconstructs. And
 because the two wheels are mirrored physically, one encoder is configured with an inverted
-phase, so both count up for forward robot motion and no sign correction is applied downstream.
+phase, so both count up for forward robot motion. Odometry applies no sign correction unless the
+operator sets one (`wheel-odometry.md`, Part E).
 
 Everything past the counter — accumulation across wrap, wheel velocity, chassis motion — is
 the wheel odometry component's, and is described in `documentation/design/wheel-odometry.md`.
