@@ -27,7 +27,7 @@ ctest --preset host -R inverted_pendulum_bot.integration_tests
 `support/SafetyFixture` builds the same components as `targets/cli/Main.cpp`. It replaces the
 hardware with fakes and the clock with `infra::ClockFixture`, so a step moves time forward on demand.
 
-```
+```text
 InertialSensorFake ─► InertialSensingImpl ─► ControlLoopImpl ─► SafetySupervisorImpl ─► BalanceControlImpl
                                               AttitudeEstimationImpl                          │
 WheelEncodersStub ─► WheelOdometryImpl ──────────────────────────────────────────────────────┤
