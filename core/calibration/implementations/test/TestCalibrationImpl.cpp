@@ -2,11 +2,13 @@
 #include "core/calibration/implementations/CalibrationImpl.hpp"
 #include "hal/interfaces/test_doubles/EepromStub.hpp"
 #include "infra/timer/test_helper/ClockFixture.hpp"
+#include "infra/util/Crc.hpp"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
 #include <array>
 #include <chrono>
 #include <optional>
+#include <vector>
 
 namespace
 {
@@ -113,6 +115,27 @@ namespace
             EXPECT_EQ(calibration::Result::accepted, calibration->SetAxisMap(tilted));
             ExpectCapture();
             ForwardTime(2s);
+        }
+
+        void StorePayload(std::vector<uint8_t> payload)
+        {
+            std::vector<uint8_t> copy{ 0x52, 0x53, 1, 0, static_cast<uint8_t>(payload.size()), 0 };
+            copy.insert(copy.end(), payload.begin(), payload.end());
+            infra::Crc16CcittFalse crc;
+            crc.Update(infra::MakeRange(copy));
+            copy.insert(copy.begin() + 6, { static_cast<uint8_t>(crc.Result()), static_cast<uint8_t>(crc.Result() >> 8) });
+            eeprom.WriteBuffer(infra::MakeRange(copy), calibration::CalibrationImpl::baseAddress, [] {});
+            ExecuteAllActions();
+        }
+
+        void Store(std::initializer_list<std::pair<const char*, float>> values)
+        {
+            persistence::TuningRecord record;
+            for (const auto& [name, value] : values)
+                record.entries.push_back({ persistence::KeyOf("cal", name), value });
+            std::array<uint8_t, persistence::TuningRecord::maxSize> payload{};
+            const auto size = persistence::Encode(record, infra::MakeRange(payload));
+            StorePayload(std::vector<uint8_t>(payload.begin(), payload.begin() + static_cast<std::ptrdiff_t>(size)));
         }
 
         bool RegionErased(uint32_t address)
@@ -245,6 +268,7 @@ TEST_F(CalibrationImplTest, a_saved_calibration_is_restored_after_a_reset)
     SaveAxisMap();
     calibration.reset();
 
+    testing::InSequence order;
     EXPECT_CALL(sensing, SetAxisMap(AxisMapIs(tilted))).WillOnce(testing::Return(true));
     EXPECT_CALL(sensing, SetStillnessThreshold(0.05f)).WillOnce(testing::Return(true));
     EXPECT_CALL(estimation, SetUprightOffset(0.02f)).WillOnce(testing::Return(true));
@@ -257,5 +281,63 @@ TEST_F(CalibrationImplTest, a_saved_calibration_is_restored_after_a_reset)
     Start();
 
     EXPECT_EQ(persistence::RestoreResult::restored, calibration->Restore());
+    EXPECT_TRUE(calibration->Satisfied());
+}
+
+TEST_F(CalibrationImplTest, missing_keys_keep_their_defaults)
+{
+    Store({ { "still", 0.05f }, { "wheel.radius", 0.04f } });
+
+    EXPECT_CALL(sensing, SetStillnessThreshold(0.05f)).WillOnce(testing::Return(true));
+    EXPECT_CALL(odometry, CurrentGeometry()).WillOnce(testing::Return(odometry::Geometry{}));
+    EXPECT_CALL(odometry, SetGeometry(GeometryIs(odometry::Geometry{ 0.04f, 0.145f, 1.0f }))).WillOnce(testing::Return(true));
+    Start();
+
+    EXPECT_EQ(persistence::RestoreResult::restored, calibration->Restore());
+}
+
+TEST_F(CalibrationImplTest, an_incomplete_axis_map_is_not_applied_and_reported_as_corrupt)
+{
+    Store({ { "axis.x", -1.0f }, { "axis.y", -3.0f } });
+
+    EXPECT_CALL(odometry, CurrentGeometry()).WillOnce(testing::Return(odometry::Geometry{}));
+    EXPECT_CALL(odometry, SetGeometry(testing::_)).WillOnce(testing::Return(true));
+    Start();
+
+    EXPECT_EQ(persistence::RestoreResult::corrupt, calibration->Restore());
+}
+
+TEST_F(CalibrationImplTest, an_axis_map_with_every_axis_inverted_is_restored)
+{
+    Store({ { "axis.x", -2.0f }, { "axis.y", -1.0f }, { "axis.z", -3.0f } });
+
+    EXPECT_CALL(sensing, SetAxisMap(AxisMapIs(platform::AxisMap{ 1, 0, 2, -1.0f, -1.0f, -1.0f }))).WillOnce(testing::Return(true));
+    EXPECT_CALL(odometry, CurrentGeometry()).WillOnce(testing::Return(odometry::Geometry{}));
+    EXPECT_CALL(odometry, SetGeometry(testing::_)).WillOnce(testing::Return(true));
+    Start();
+
+    EXPECT_EQ(persistence::RestoreResult::restored, calibration->Restore());
+}
+
+TEST_F(CalibrationImplTest, a_rejected_restored_value_is_reported_as_corrupt)
+{
+    Store({ { "upright", 1.0f } });
+
+    EXPECT_CALL(estimation, SetUprightOffset(1.0f)).WillOnce(testing::Return(false));
+    EXPECT_CALL(odometry, CurrentGeometry()).WillOnce(testing::Return(odometry::Geometry{}));
+    EXPECT_CALL(odometry, SetGeometry(testing::_)).WillOnce(testing::Return(true));
+    Start();
+
+    EXPECT_EQ(persistence::RestoreResult::corrupt, calibration->Restore());
+    EXPECT_TRUE(calibration->Satisfied());
+}
+
+TEST_F(CalibrationImplTest, an_undecodable_record_is_reported_as_corrupt)
+{
+    StorePayload({ 0x7f, 0x00, 0x00, 0x00 });
+
+    Start();
+
+    EXPECT_EQ(persistence::RestoreResult::corrupt, calibration->Restore());
     EXPECT_TRUE(calibration->Satisfied());
 }

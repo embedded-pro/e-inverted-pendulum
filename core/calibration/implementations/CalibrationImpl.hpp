@@ -67,15 +67,15 @@ namespace calibration
 
         Result Accept(bool accepted);
         persistence::TuningRecord Record() const;
-        void Apply(const persistence::TuningRecord& record);
-        void ApplyAxisMap(const persistence::TuningRecord& record);
+        bool Apply(const persistence::TuningRecord& record);
+        bool ApplyAxisMap(const persistence::TuningRecord& record);
         void ApplySigns(const persistence::TuningRecord& record);
-        void ApplyGeometry(const persistence::TuningRecord& record);
+        bool ApplyGeometry(const persistence::TuningRecord& record);
 
         Components components;
         services::NvmEepromRegion first;
         services::NvmEepromRegion second;
-        bool undecodable{ false };
+        bool restoreFailed{ false };
         services::NvmRecordStore::WithRegionSize<regionSize> store;
     };
 }

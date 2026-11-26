@@ -2,6 +2,7 @@
 #include "core/persistence/implementations/StoreStatus.hpp"
 #include "infra/util/ReallyAssert.hpp"
 #include <algorithm>
+#include <array>
 #include <cmath>
 
 namespace calibration
@@ -12,6 +13,9 @@ namespace calibration
         constexpr std::array<const char*, 3> axisKeys{ "axis.x", "axis.y", "axis.z" };
         constexpr std::array<const char*, 2> motorKeys{ "motor.left", "motor.right" };
         constexpr std::array<const char*, 2> encoderKeys{ "encoder.left", "encoder.right" };
+        constexpr const char* stillKey{ "still" };
+        constexpr const char* uprightKey{ "upright" };
+        constexpr std::array<const char*, 3> wheelKeys{ "wheel.radius", "wheel.track", "wheel.gear" };
 
         services::NvmRecordStore::Config StoreConfig(const CalibrationImpl::Config& config)
         {
@@ -119,7 +123,7 @@ namespace calibration
 
     persistence::RestoreResult CalibrationImpl::Restore() const
     {
-        return persistence::RestoreOf(store.Restore(), undecodable);
+        return persistence::RestoreOf(store.Restore(), restoreFailed);
     }
 
     persistence::SaveResult CalibrationImpl::LastSave() const
@@ -135,11 +139,7 @@ namespace calibration
     void CalibrationImpl::Restored(infra::ConstByteRange payload)
     {
         const auto record = persistence::Decode(payload);
-
-        if (record.has_value())
-            Apply(*record);
-        else
-            undecodable = true;
+        restoreFailed = !record.has_value() || !Apply(*record);
     }
 
     std::size_t CalibrationImpl::Capture(infra::ByteRange payload)
@@ -168,40 +168,43 @@ namespace calibration
         Add(record, axisKeys[0], AxisValue(map.xFrom, map.xSign));
         Add(record, axisKeys[1], AxisValue(map.yFrom, map.ySign));
         Add(record, axisKeys[2], AxisValue(map.zFrom, map.zSign));
-        Add(record, "still", components.sensing.StillnessThreshold());
-        Add(record, "upright", components.estimation.UprightOffset());
+        Add(record, stillKey, components.sensing.StillnessThreshold());
+        Add(record, uprightKey, components.estimation.UprightOffset());
         Add(record, motorKeys[0], SignOf(components.actuation.MotorInverted(motion::WheelSide::left)));
         Add(record, motorKeys[1], SignOf(components.actuation.MotorInverted(motion::WheelSide::right)));
         Add(record, encoderKeys[0], SignOf(components.odometry.EncoderInverted(odometry::WheelSide::left)));
         Add(record, encoderKeys[1], SignOf(components.odometry.EncoderInverted(odometry::WheelSide::right)));
         const auto geometry = components.odometry.CurrentGeometry();
-        Add(record, "wheel.radius", geometry.wheelRadius);
-        Add(record, "wheel.track", geometry.trackWidth);
-        Add(record, "wheel.gear", geometry.gearRatio);
+        Add(record, wheelKeys[0], geometry.wheelRadius);
+        Add(record, wheelKeys[1], geometry.trackWidth);
+        Add(record, wheelKeys[2], geometry.gearRatio);
         return record;
     }
 
-    void CalibrationImpl::Apply(const persistence::TuningRecord& record)
+    bool CalibrationImpl::Apply(const persistence::TuningRecord& record)
     {
-        ApplyAxisMap(record);
+        bool applied = ApplyAxisMap(record);
 
-        if (const auto still = Find(record, "still"))
-            components.sensing.SetStillnessThreshold(*still);
-        if (const auto upright = Find(record, "upright"))
-            components.estimation.SetUprightOffset(*upright);
+        if (const auto still = Find(record, stillKey))
+            applied = components.sensing.SetStillnessThreshold(*still) && applied;
+        if (const auto upright = Find(record, uprightKey))
+            applied = components.estimation.SetUprightOffset(*upright) && applied;
 
         ApplySigns(record);
-        ApplyGeometry(record);
+        return ApplyGeometry(record) && applied;
     }
 
-    void CalibrationImpl::ApplyAxisMap(const persistence::TuningRecord& record)
+    bool CalibrationImpl::ApplyAxisMap(const persistence::TuningRecord& record)
     {
         std::array<std::optional<float>, 3> axes{ Find(record, axisKeys[0]), Find(record, axisKeys[1]), Find(record, axisKeys[2]) };
         if (!std::ranges::all_of(axes, [](const std::optional<float>& axis)
                 {
-                    return axis.has_value() && std::fabs(*axis) >= 1.0f && std::fabs(*axis) <= 3.0f;
+                    return axis.has_value() && (std::fabs(*axis) == 1.0f || std::fabs(*axis) == 2.0f || std::fabs(*axis) == 3.0f);
                 }))
-            return;
+            return std::ranges::none_of(axes, [](const std::optional<float>& axis)
+                {
+                    return axis.has_value();
+                });
 
         const auto from = [](float value)
         {
@@ -212,7 +215,7 @@ namespace calibration
             return value < 0.0f ? -1.0f : 1.0f;
         };
 
-        components.sensing.SetAxisMap(platform::AxisMap{ from(*axes[0]), from(*axes[1]), from(*axes[2]), sign(*axes[0]), sign(*axes[1]), sign(*axes[2]) });
+        return components.sensing.SetAxisMap(platform::AxisMap{ from(*axes[0]), from(*axes[1]), from(*axes[2]), sign(*axes[0]), sign(*axes[1]), sign(*axes[2]) });
     }
 
     void CalibrationImpl::ApplySigns(const persistence::TuningRecord& record)
@@ -227,12 +230,12 @@ namespace calibration
             components.odometry.SetEncoderInverted(odometry::WheelSide::right, *right < 0.0f);
     }
 
-    void CalibrationImpl::ApplyGeometry(const persistence::TuningRecord& record)
+    bool CalibrationImpl::ApplyGeometry(const persistence::TuningRecord& record)
     {
         auto geometry = components.odometry.CurrentGeometry();
-        geometry.wheelRadius = Find(record, "wheel.radius").value_or(geometry.wheelRadius);
-        geometry.trackWidth = Find(record, "wheel.track").value_or(geometry.trackWidth);
-        geometry.gearRatio = Find(record, "wheel.gear").value_or(geometry.gearRatio);
-        components.odometry.SetGeometry(geometry);
+        geometry.wheelRadius = Find(record, wheelKeys[0]).value_or(geometry.wheelRadius);
+        geometry.trackWidth = Find(record, wheelKeys[1]).value_or(geometry.trackWidth);
+        geometry.gearRatio = Find(record, wheelKeys[2]).value_or(geometry.gearRatio);
+        return components.odometry.SetGeometry(geometry);
     }
 }

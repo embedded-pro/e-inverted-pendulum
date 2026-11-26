@@ -67,6 +67,8 @@ supervisor then count from the true upright.
 
 ### Part C — Console commands
 
+Delivery step 5 adds these commands. `cal` reads each value from its component.
+
 | Command                     | Effect                                                       |
 |-----------------------------|--------------------------------------------------------------|
 | `cal`                       | Print every value                                            |
@@ -82,11 +84,13 @@ supervisor then count from the true upright.
 
 The calibration record uses the tuning record format (`persistence.md`, Part A) with its own
 keys. It has two copies of its own at EEPROM offsets 256 and 384, so a calibration save never
-touches the tuning copies. Each record has its own `services::NvmRecordStore` (`persistence.md`,
+touches the tuning copies. The tuning store and the calibration store each have their own
+`services::NvmRecordStore` (`persistence.md`,
 Part B). The two stores share one EEPROM claim.
 
 The restore applies each stored value through the same setters as the console. A value that a
-component rejects keeps its default. The safety supervisor holds its self-test until the restore
+component rejects keeps its default, and the store reports the restore as corrupt. A missing key
+keeps its default. The three axis keys apply together, or not at all. The safety supervisor holds its self-test until the restore
 ends (`safety-supervisor.md`, Part F). A restored axis map therefore never interrupts the bias
 calibration at power-on.
 
@@ -109,7 +113,7 @@ Each key is hashed with the strategy name `cal`, as in `persistence.md`, Part A.
 
 | Interface          | Purpose                      | Contract                                                      |
 |--------------------|------------------------------|---------------------------------------------------------------|
-| Calibration access | Read and set each value      | Writes refused while armed; an axis map must be a permutation |
+| Calibration access | Set each value               | Writes refused while armed; each component checks its range   |
 | Store status       | Restore and last save result | As the tuning store                                           |
 | Start-up condition | Restore finished             | Ready once the restore ends, with or without a stored record  |
 
