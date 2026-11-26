@@ -6,6 +6,7 @@
 #include <algorithm>
 #include <cmath>
 #include <cstdlib>
+#include <functional>
 #include <limits>
 #include <map>
 
@@ -20,7 +21,7 @@ namespace tools
         constexpr float maximumPeriod{ 0.1f };
         constexpr float unusedTrackWidth{ 0.1f };
 
-        const std::map<std::string, float RobotParameters::*> scalarOptions{
+        const std::map<std::string, float RobotParameters::*, std::less<>> scalarOptions{
             { "--body-mass", &RobotParameters::bodyMass },
             { "--wheels-mass", &RobotParameters::wheelsMass },
             { "--height", &RobotParameters::height },
@@ -31,7 +32,7 @@ namespace tools
             { "--period", &RobotParameters::period },
         };
 
-        const std::map<std::string, std::size_t> limitOptions{
+        const std::map<std::string, std::size_t, std::less<>> limitOptions{
             { "--limit-pitch", 0 },
             { "--limit-pitch-rate", 1 },
             { "--limit-position", 2 },
@@ -147,7 +148,7 @@ namespace tools
     LqrDesign DesignLqr(const RobotParameters& parameters)
     {
         LqrDesign design;
-        const mobile::WheeledInvertedPendulum<float> model{ ModelParameters(parameters) };
+        const mobile::WheeledInvertedPendulum model{ ModelParameters(parameters) };
         const auto discrete = control_analysis::ContinuousToDiscrete<float, 4, 1, 4>{}.Convert(model.Pitch(), parameters.period, control_analysis::DiscretizationMethod::ZeroOrderHold);
         if (!discrete.has_value())
         {
