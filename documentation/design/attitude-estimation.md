@@ -246,6 +246,7 @@ graph LR
 | Part-agnostic          | Does not choose which sensor part is fitted                                                                                          |
 | Wheel motion           | Does not estimate wheel motion or chassis velocity; wheel odometry does                                                              |
 | Vibration              | Strong structural vibration raises accelerometer noise and effectively pushes the crossover; not compensated                         |
+
 ---
 
 ## Decisions
