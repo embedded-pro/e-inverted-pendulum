@@ -75,9 +75,13 @@ pitch gains come out positive and the wheel gains negative, as `balance-control.
 
 ### Part D — Output
 
-The tool prints the plant, the gains and the checks, then the commands to type: `strategy lqr`
-and one `param` command per state gain. It stops with a failure status if the Riccati solution does
-not converge, the closed loop is not stable, or a gain is outside its parameter range.
+The tool prints the plant, the gains and the checks. When every check passes, it prints the
+commands to type: `strategy lqr` and one `param` command per state gain. Otherwise it prints the
+failed check instead and stops with a failure status. The checks: the Riccati solution converges,
+the closed loop settles, and each gain fits its parameter range.
+
+The tool rejects a value that is not a finite number, a limit that is not positive, and a loop
+period outside 0.1 ms to 100 ms.
 
 The closed-loop check runs the discrete closed loop from a 0.05 rad pitch for 5 seconds. It passes
 when the state ends below 1 % of its start. Tight limits on one state can leave another too slow
