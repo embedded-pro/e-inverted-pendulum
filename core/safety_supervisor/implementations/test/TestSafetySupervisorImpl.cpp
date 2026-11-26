@@ -50,6 +50,13 @@ namespace
         MOCK_METHOD(void, Disengage, (), (override));
     };
 
+    class StartupConditionMock
+        : public safety::StartupCondition
+    {
+    public:
+        MOCK_METHOD(bool, Satisfied, (), (const, override));
+    };
+
     estimation::Estimate EstimateAt(float pitch, bool valid = true)
     {
         return estimation::Estimate{ pitch, 0.0f, valid, valid ? estimation::InvalidCause::none : estimation::InvalidCause::converging };
@@ -66,11 +73,12 @@ namespace
             EXPECT_CALL(actuation, Fault()).WillRepeatedly(testing::ReturnPointee(&driverFault));
             EXPECT_CALL(sensing, Cause()).WillRepeatedly(testing::ReturnPointee(&sensingCause));
             EXPECT_CALL(sensing, Calibration()).WillRepeatedly(testing::ReturnPointee(&calibration));
+            EXPECT_CALL(startup, Satisfied()).WillRepeatedly(testing::ReturnPointee(&startupReady));
         }
 
         void Construct()
         {
-            supervisor.emplace(actuation, sensing, strategy);
+            supervisor.emplace(actuation, sensing, strategy, startup);
         }
 
         void BringToIdle()
@@ -118,12 +126,14 @@ namespace
         testing::StrictMock<MotionActuationMock> actuation;
         testing::StrictMock<InertialSensingMock> sensing;
         testing::StrictMock<SupervisedControlMock> strategy;
+        testing::StrictMock<StartupConditionMock> startup;
         std::optional<safety::SafetySupervisorImpl> supervisor;
 
         motion::DriverState driverState{ motion::DriverState::ready };
         motion::FaultCause driverFault{ motion::FaultCause::none };
         sensing::InvalidCause sensingCause{ sensing::InvalidCause::uncalibrated };
         sensing::CalibrationState calibration{ sensing::CalibrationState::calibrating };
+        bool startupReady{ true };
         std::optional<safety::Mode> modeWhenDisabled;
     };
 }
@@ -159,6 +169,31 @@ TEST_F(SafetySupervisorImplTest, waits_for_the_driver_until_the_self_test_deadli
     ForwardTime(2ms);
 
     EXPECT_EQ(safety::Mode::fault, supervisor->Current());
+    EXPECT_EQ(safety::FaultCause::selfTestFailed, supervisor->LatchedCause());
+}
+
+TEST_F(SafetySupervisorImplTest, calibration_waits_for_the_startup_condition)
+{
+    startupReady = false;
+    Construct();
+
+    ForwardTime(100ms);
+    EXPECT_EQ(safety::Mode::init, supervisor->Current());
+
+    startupReady = true;
+    EXPECT_CALL(sensing, StartCalibration());
+    ForwardTime(2ms);
+    EXPECT_EQ(safety::Mode::calibrating, supervisor->Current());
+}
+
+TEST_F(SafetySupervisorImplTest, a_startup_condition_that_never_holds_fails_the_self_test)
+{
+    startupReady = false;
+    Construct();
+
+    ExpectTristate();
+    ForwardTime(1s);
+
     EXPECT_EQ(safety::FaultCause::selfTestFailed, supervisor->LatchedCause());
 }
 

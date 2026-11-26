@@ -7,4 +7,5 @@ target_include_directories(inverted_pendulum_bot.safety_supervisor.interfaces IN
 
 target_sources(inverted_pendulum_bot.safety_supervisor.interfaces PRIVATE
     SafetySupervisor.hpp
+    StartupCondition.hpp
 )

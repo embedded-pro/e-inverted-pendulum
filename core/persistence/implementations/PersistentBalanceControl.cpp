@@ -1,4 +1,5 @@
 #include "core/persistence/implementations/PersistentBalanceControl.hpp"
+#include "core/persistence/implementations/StoreStatus.hpp"
 #include "infra/util/ReallyAssert.hpp"
 #include <algorithm>
 
@@ -95,35 +96,12 @@ namespace persistence
 
     RestoreResult PersistentBalanceControl::Restore() const
     {
-        if (undecodable)
-            return RestoreResult::corrupt;
-
-        switch (store.Restore())
-        {
-            case services::NvmRecordStore::RestoreResult::restored:
-                return RestoreResult::restored;
-            case services::NvmRecordStore::RestoreResult::defaults:
-                return RestoreResult::defaults;
-            case services::NvmRecordStore::RestoreResult::corrupt:
-                return RestoreResult::corrupt;
-            default:
-                return RestoreResult::pending;
-        }
+        return RestoreOf(store.Restore(), undecodable);
     }
 
     SaveResult PersistentBalanceControl::LastSave() const
     {
-        switch (store.LastSave())
-        {
-            case services::NvmRecordStore::SaveResult::pending:
-                return SaveResult::pending;
-            case services::NvmRecordStore::SaveResult::saved:
-                return SaveResult::saved;
-            case services::NvmRecordStore::SaveResult::failed:
-                return SaveResult::failed;
-            default:
-                return SaveResult::none;
-        }
+        return SaveOf(store.LastSave());
     }
 
     void PersistentBalanceControl::Restored(infra::ConstByteRange payload)

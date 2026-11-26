@@ -2,7 +2,7 @@
 title: "Runtime Calibration Design"
 type: design
 status: draft
-version: 0.1.0
+version: 0.2.0
 component: "calibration"
 date: 2026-11-25
 ---
@@ -12,7 +12,7 @@ date: 2026-11-25
 | Title     | Runtime Calibration Design |
 | Type      | design                     |
 | Status    | draft                      |
-| Version   | 0.1.0                      |
+| Version   | 0.2.0                      |
 | Component | calibration                |
 | Date      | 2026-11-25                 |
 
@@ -85,6 +85,22 @@ keys. It has two copies of its own at EEPROM offsets 256 and 384, so a calibrati
 touches the tuning copies. Each record has its own `services::NvmRecordStore` (`persistence.md`,
 Part B). The two stores share one EEPROM claim.
 
+The restore applies each stored value through the same setters as the console. A value that a
+component rejects keeps its default. The safety supervisor holds its self-test until the restore
+ends (`safety-supervisor.md`, Part F). A restored axis map therefore never interrupts the bias
+calibration at power-on.
+
+| Key                       | Value                                                 |
+|---------------------------|-------------------------------------------------------|
+| `axis.x/y/z`              | Signed sensor axis: ±1, ±2 or ±3 for sensor x, y or z |
+| `still`                   | Stillness limit in rad/s                              |
+| `upright`                 | Upright offset in rad                                 |
+| `motor.left/right`        | −1 when inverted, else +1                             |
+| `encoder.left/right`      | −1 when inverted, else +1                             |
+| `wheel.radius/track/gear` | Wheel geometry                                        |
+
+Each key is hashed with the strategy name `cal`, as in `persistence.md`, Part A.
+
 ---
 
 ## Interfaces
@@ -95,6 +111,7 @@ Part B). The two stores share one EEPROM claim.
 |--------------------|------------------------------|---------------------------------------------------------------|
 | Calibration access | Read and set each value      | Writes refused while armed; an axis map must be a permutation |
 | Store status       | Restore and last save result | As the tuning store                                           |
+| Start-up condition | Restore finished             | Ready once the restore ends, with or without a stored record  |
 
 ### Required
 
@@ -104,7 +121,7 @@ Part B). The two stores share one EEPROM claim.
 | Attitude estimation | Set the upright offset         | Applied to every estimate after the change |
 | Motion actuation    | Set the motor signs            | Applied to the next effort                 |
 | Wheel odometry      | Set encoder signs and geometry | Applied to the next sample                 |
-| Safety supervisor   | Read the mode                  | Writes refused while ARMED                 |
+| Balance control     | Read the engagement            | Writes refused while engaged (ARMED)       |
 | EEPROM role         | Storage                        | Offsets 256 to 511                         |
 
 ---
@@ -153,12 +170,13 @@ sequenceDiagram
 
 ## Delivery
 
-Four pull requests, each one built and tested on its own:
+Five pull requests, each one built and tested on its own:
 
 1. Inertial sensing and attitude estimation: axis map, stillness limit and upright offset setters.
 2. Motion actuation and wheel odometry: sign and geometry setters.
 3. Persistence: the shared record store, with the tuning store moved onto it.
-4. The calibration component, its persistence, the `cal` command and the wiring.
+4. The calibration component, its persistence and the supervisor start-up condition.
+5. The `cal` command and the wiring.
 
 ---
 

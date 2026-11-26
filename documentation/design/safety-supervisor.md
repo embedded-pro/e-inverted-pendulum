@@ -2,7 +2,7 @@
 title: "Safety Supervisor Design"
 type: design
 status: draft
-version: 0.4.0
+version: 0.5.0
 component: "safety-supervisor"
 date: 2026-11-25
 ---
@@ -12,7 +12,7 @@ date: 2026-11-25
 | Title     | Safety Supervisor Design |
 | Type      | design                   |
 | Status    | draft                    |
-| Version   | 0.4.0                    |
+| Version   | 0.5.0                    |
 | Component | safety-supervisor        |
 | Date      | 2026-11-25               |
 
@@ -102,8 +102,10 @@ behaviour never depends on history from a previous session.
 ### Part F — Self-test and calibration
 
 After reset the supervisor waits in INIT for the self-test: the motor driver must report its
-configuration verified, and inertial sensing must have delivered at least one sample. Either failing
-to happen within 1 second is a self-test fault. On success the supervisor starts gyroscope bias
+configuration verified, inertial sensing must have delivered at least one sample, and the start-up
+condition must hold. Any of them failing to happen within 1 second is a self-test fault. The start-up
+condition is the restore of the calibration record (`calibration.md`, Part D), so bias calibration
+always runs with the restored axis map. On success the supervisor starts gyroscope bias
 calibration and waits in CALIBRATING; a failed calibration — typically because the robot moved — is
 a calibration fault. From IDLE the operator may request a recalibration, which re-enters
 CALIBRATING; clearing a calibration fault returns to IDLE, from which arming is refused until a
@@ -133,6 +135,7 @@ calibration succeeds, because the uncalibrated estimate is invalid.
 | Strategy lifecycle  | Engage balance control on arming, disengage on every exit from ARMED | Engagement completes before the drive is permitted                               |
 | Calibration         | Start and observe gyroscope bias calibration                         | Reports calibrating, calibrated or failed                                        |
 | Timebase            | Drive liveness monitoring                                            | Independent of the balance loop it supervises                                    |
+| Start-up condition  | Hold the self-test until the saved calibration is in force           | Reports ready once; stays ready                                                  |
 
 ---
 

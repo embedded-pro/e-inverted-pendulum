@@ -6,10 +6,11 @@ namespace safety
 {
     SafetySupervisorImpl::Config::Config() = default;
 
-    SafetySupervisorImpl::SafetySupervisorImpl(motion::MotionActuation& actuation, sensing::InertialSensing& sensing, control::SupervisedControl& control, const Config& config)
+    SafetySupervisorImpl::SafetySupervisorImpl(motion::MotionActuation& actuation, sensing::InertialSensing& sensing, control::SupervisedControl& control, const StartupCondition& startup, const Config& config)
         : actuation(actuation)
         , sensing(sensing)
         , control(control)
+        , startup(startup)
         , config(config)
         , missedServices(config.missedServiceLimit)
         , started(infra::Now())
@@ -163,7 +164,7 @@ namespace safety
         const auto sensingCause = sensing.Cause();
         const bool sampling = sensingCause == sensing::InvalidCause::none || sensingCause == sensing::InvalidCause::uncalibrated;
 
-        return actuation.State() == motion::DriverState::ready && sampling;
+        return actuation.State() == motion::DriverState::ready && sampling && startup.Satisfied();
     }
 
     bool SafetySupervisorImpl::LoopServiced() const
