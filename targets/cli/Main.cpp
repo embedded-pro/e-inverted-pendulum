@@ -27,7 +27,8 @@ int main()
     static balance::LqrStrategy lqr;
     static std::array<balance::ControlStrategy*, 2> strategies{ &cascadedPid, &lqr };
     static balance::BalanceControlImpl balanceControl{ infra::MakeRange(strategies), motionActuation, wheelOdometry };
-    static persistence::PersistentBalanceControl persistentBalanceControl{ balanceControl, platform.Eeprom() };
+    static infra::ClaimableResource eepromAccess;
+    static persistence::PersistentBalanceControl persistentBalanceControl{ balanceControl, platform.Eeprom(), eepromAccess };
     static safety::SafetySupervisorImpl supervisor{ motionActuation, inertialSensing, balanceControl };
     static telemetry::TelemetryRecorder telemetryRecorder{ supervisor, balanceControl, wheelOdometry, supervisor };
     static control::ControlLoopImpl controlLoop{ inertialSensing, attitudeEstimation, telemetryRecorder, supervisor };

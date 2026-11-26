@@ -82,9 +82,8 @@ supervisor then count from the true upright.
 
 The calibration record uses the tuning record format (`persistence.md`, Part A) with its own
 keys. It has two copies of its own at EEPROM offsets 256 and 384, so a calibration save never
-touches the tuning copies. Calibration and tuning share one record store. It holds the two-copy
-logic, the save delay and the restore. The tuning store moves onto it without a change in
-behaviour.
+touches the tuning copies. Each record has its own `services::NvmRecordStore` (`persistence.md`,
+Part B). The two stores share one EEPROM claim.
 
 ---
 

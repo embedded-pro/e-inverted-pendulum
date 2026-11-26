@@ -1,13 +1,16 @@
 #include "core/balance_control/test_doubles/BalanceControlMock.hpp"
 #include "core/persistence/implementations/PersistentBalanceControl.hpp"
 #include "hal/interfaces/test_doubles/EepromStub.hpp"
+#include "infra/event/ClaimableResource.hpp"
 #include "infra/event/EventDispatcher.hpp"
 #include "infra/timer/test_helper/ClockFixture.hpp"
+#include "infra/util/Crc.hpp"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
 #include <array>
 #include <chrono>
 #include <optional>
+#include <vector>
 
 namespace
 {
@@ -59,10 +62,8 @@ namespace
 
         void WriteBuffer(infra::ConstByteRange buffer, uint32_t address, infra::Function<void()> onDone) override
         {
-            if (!dropWrites)
-                std::copy(buffer.begin(), buffer.end(), storage.begin() + address);
-
-            Complete(holdWrites, onDone);
+            std::copy(buffer.begin(), buffer.end(), storage.begin() + address);
+            Complete(false, onDone);
         }
 
         void ReadBuffer(infra::ByteRange buffer, uint32_t address, infra::Function<void()> onDone) override
@@ -84,8 +85,6 @@ namespace
             infra::EventDispatcher::Instance().Schedule(onDone);
         }
 
-        bool dropWrites{ false };
-        bool holdWrites{ false };
         bool holdReads{ false };
 
     private:
@@ -120,12 +119,21 @@ namespace
             EXPECT_CALL(control, StrategyParameters(1)).WillRepeatedly(testing::Return(infra::MakeRange(lqrDescriptors)));
         }
 
-        void Store(uint32_t address, const persistence::TuningRecord& record)
+        void Store(uint32_t address, const persistence::TuningRecord& record, uint16_t sequence = 1)
         {
-            std::array<uint8_t, persistence::PersistentBalanceControl::regionSize> buffer{};
-            buffer.fill(0xff);
-            persistence::Encode(record, infra::MakeRange(buffer));
-            eeprom.WriteBuffer(infra::MakeConstByteRange(buffer), address, [] {});
+            std::array<uint8_t, persistence::TuningRecord::maxSize> payload{};
+            const auto size = persistence::Encode(record, infra::MakeRange(payload));
+            StorePayload(address, std::vector<uint8_t>(payload.begin(), payload.begin() + static_cast<std::ptrdiff_t>(size)), sequence);
+        }
+
+        void StorePayload(uint32_t address, std::vector<uint8_t> payload, uint16_t sequence = 1)
+        {
+            std::vector<uint8_t> copy{ 0x52, 0x53, static_cast<uint8_t>(sequence), static_cast<uint8_t>(sequence >> 8), static_cast<uint8_t>(payload.size()), 0 };
+            copy.insert(copy.end(), payload.begin(), payload.end());
+            infra::Crc16CcittFalse crc;
+            crc.Update(infra::MakeRange(copy));
+            copy.insert(copy.begin() + 6, { static_cast<uint8_t>(crc.Result()), static_cast<uint8_t>(crc.Result() >> 8) });
+            eeprom.WriteBuffer(infra::MakeRange(copy), address, [] {});
             ExecuteAllActions();
         }
 
@@ -134,13 +142,14 @@ namespace
             std::array<uint8_t, persistence::PersistentBalanceControl::regionSize> buffer{};
             eeprom.ReadBuffer(infra::MakeRange(buffer), address, [] {});
             ExecuteAllActions();
-            return persistence::Decode(infra::MakeConstByteRange(buffer));
+            if (buffer[0] != 0x52 || buffer[1] != 0x53)
+                return std::nullopt;
+            return persistence::Decode(infra::Head(infra::DiscardHead(infra::MakeConstByteRange(buffer), 8), buffer[4]));
         }
 
-        persistence::TuningRecord Record(uint16_t sequence, float a)
+        persistence::TuningRecord Record(float a)
         {
             persistence::TuningRecord record;
-            record.sequence = sequence;
             record.activeStrategy = persistence::KeyOf("pid", "");
             record.entries.push_back({ persistence::KeyOf("pid", "a"), a });
             return record;
@@ -148,13 +157,13 @@ namespace
 
         void Start(hal::Eeprom& storage)
         {
-            store.emplace(control, storage);
+            store.emplace(control, storage, access);
             ExecuteAllActions();
         }
 
         void ExpectCapture(float a, float b, float c)
         {
-            EXPECT_CALL(control, Engaged()).WillOnce(testing::Return(false));
+            EXPECT_CALL(control, Engaged()).Times(2).WillRepeatedly(testing::Return(false));
             EXPECT_CALL(control, ActiveStrategy()).WillOnce(testing::Return(1));
             EXPECT_CALL(control, StrategyParameter(0, 0)).WillOnce(testing::Return(a));
             EXPECT_CALL(control, StrategyParameter(0, 1)).WillOnce(testing::Return(b));
@@ -169,6 +178,7 @@ namespace
 
         testing::StrictMock<balance::BalanceControlMock> control;
         hal::EepromStub eeprom{ 512 };
+        infra::ClaimableResource access;
         std::optional<persistence::PersistentBalanceControl> store;
     };
 }
@@ -183,7 +193,7 @@ TEST_F(PersistentBalanceControlTest, blank_storage_keeps_the_defaults)
 
 TEST_F(PersistentBalanceControlTest, a_stored_record_is_restored)
 {
-    auto record = Record(1, 0.25f);
+    auto record = Record(0.25f);
     record.activeStrategy = persistence::KeyOf("lqr", "");
     record.entries.push_back({ persistence::KeyOf("lqr", "c"), -1.0f });
     Store(0, record);
@@ -198,26 +208,12 @@ TEST_F(PersistentBalanceControlTest, a_stored_record_is_restored)
 
 TEST_F(PersistentBalanceControlTest, the_newer_copy_is_restored)
 {
-    Store(0, Record(1, 0.1f));
-    Store(persistence::PersistentBalanceControl::regionSize, Record(2, 0.2f));
+    Store(0, Record(0.1f), 1);
+    Store(persistence::PersistentBalanceControl::regionSize, Record(0.2f), 2);
 
     EXPECT_CALL(control, SetStrategyParameter(0, 0, 0.2f)).WillOnce(testing::Return(true));
     EXPECT_CALL(control, Select(0)).WillOnce(testing::Return(true));
     Start(eeprom);
-}
-
-TEST_F(PersistentBalanceControlTest, a_torn_newer_copy_falls_back_to_the_older_copy)
-{
-    Store(0, Record(1, 0.1f));
-    Store(persistence::PersistentBalanceControl::regionSize, Record(2, 0.2f));
-    std::array<uint8_t, 1> torn{ 0x00 };
-    eeprom.WriteBuffer(infra::MakeConstByteRange(torn), persistence::PersistentBalanceControl::regionSize + 9, [] {});
-
-    EXPECT_CALL(control, SetStrategyParameter(0, 0, 0.1f)).WillOnce(testing::Return(true));
-    EXPECT_CALL(control, Select(0)).WillOnce(testing::Return(true));
-    Start(eeprom);
-
-    EXPECT_EQ(persistence::RestoreResult::restored, store->Restore());
 }
 
 TEST_F(PersistentBalanceControlTest, unreadable_copies_are_reported_as_corrupt)
@@ -230,9 +226,18 @@ TEST_F(PersistentBalanceControlTest, unreadable_copies_are_reported_as_corrupt)
     EXPECT_EQ(persistence::RestoreResult::corrupt, store->Restore());
 }
 
+TEST_F(PersistentBalanceControlTest, a_valid_copy_with_an_unknown_format_is_reported_as_corrupt)
+{
+    StorePayload(0, { 0x7f, 0x00, 0x00, 0x00 });
+
+    Start(eeprom);
+
+    EXPECT_EQ(persistence::RestoreResult::corrupt, store->Restore());
+}
+
 TEST_F(PersistentBalanceControlTest, unknown_keys_are_ignored)
 {
-    auto record = Record(1, 0.1f);
+    auto record = Record(0.1f);
     record.entries.push_back({ persistence::KeyOf("gone", "x"), 9.0f });
     Store(0, record);
 
@@ -255,28 +260,26 @@ TEST_F(PersistentBalanceControlTest, an_accepted_change_is_saved_after_the_delay
 
     const auto saved = Stored(0);
     ASSERT_TRUE(saved.has_value());
-    EXPECT_EQ(1, saved->sequence);
     EXPECT_EQ(persistence::KeyOf("lqr", ""), saved->activeStrategy);
     ASSERT_EQ(3u, saved->entries.size());
     EXPECT_FLOAT_EQ(-1.5f, saved->entries[2].value);
     EXPECT_EQ(persistence::SaveResult::saved, store->LastSave());
 }
 
-TEST_F(PersistentBalanceControlTest, a_burst_of_changes_makes_one_save)
+TEST_F(PersistentBalanceControlTest, a_saved_record_is_restored_after_a_reset)
 {
     Start(eeprom);
     AcceptParameter();
-    ForwardTime(1s);
-    AcceptParameter();
+    ExpectCapture(0.5f, 0.75f, -1.5f);
+    ForwardTime(2s);
 
-    ForwardTime(1999ms);
-    ExpectCapture(0.5f, 0.5f, 0.0f);
-    ForwardTime(1ms);
-    ForwardTime(5s);
-
-    ASSERT_TRUE(Stored(0).has_value());
-    EXPECT_EQ(1, Stored(0)->sequence);
-    EXPECT_FALSE(Stored(persistence::PersistentBalanceControl::regionSize).has_value());
+    store.reset();
+    EXPECT_CALL(control, SetStrategyParameter(0, 0, 0.5f)).WillOnce(testing::Return(true));
+    EXPECT_CALL(control, SetStrategyParameter(0, 1, 0.75f)).WillOnce(testing::Return(true));
+    EXPECT_CALL(control, SetStrategyParameter(1, 0, -1.5f)).WillOnce(testing::Return(true));
+    EXPECT_CALL(control, Select(1)).WillOnce(testing::Return(true));
+    Start(eeprom);
+    EXPECT_EQ(persistence::RestoreResult::restored, store->Restore());
 }
 
 TEST_F(PersistentBalanceControlTest, a_rejected_change_is_not_saved)
@@ -304,21 +307,26 @@ TEST_F(PersistentBalanceControlTest, the_save_waits_while_the_drive_is_engaged)
     EXPECT_TRUE(Stored(0).has_value());
 }
 
-TEST_F(PersistentBalanceControlTest, saves_alternate_between_the_copies)
+TEST_F(PersistentBalanceControlTest, the_save_waits_for_shared_access)
 {
     Start(eeprom);
+    infra::ClaimableResource::Claimer other{ access };
+    other.Claim([] {});
+    ExecuteAllActions();
     AcceptParameter();
-    ExpectCapture(0.5f, 0.0f, 0.0f);
-    ForwardTime(2s);
 
-    EXPECT_CALL(control, Select(0)).WillOnce(testing::Return(true));
-    EXPECT_TRUE(store->Select(0));
-    ExpectCapture(0.5f, 0.0f, 0.0f);
+    EXPECT_CALL(control, Engaged()).WillOnce(testing::Return(false));
     ForwardTime(2s);
+    EXPECT_FALSE(Stored(0).has_value());
 
-    ASSERT_TRUE(Stored(0).has_value());
-    ASSERT_TRUE(Stored(persistence::PersistentBalanceControl::regionSize).has_value());
-    EXPECT_EQ(2, Stored(persistence::PersistentBalanceControl::regionSize)->sequence);
+    EXPECT_CALL(control, Engaged()).WillOnce(testing::Return(false));
+    EXPECT_CALL(control, ActiveStrategy()).WillOnce(testing::Return(0));
+    EXPECT_CALL(control, StrategyParameter(0, 0)).WillOnce(testing::Return(0.5f));
+    EXPECT_CALL(control, StrategyParameter(0, 1)).WillOnce(testing::Return(0.0f));
+    EXPECT_CALL(control, StrategyParameter(1, 0)).WillOnce(testing::Return(0.0f));
+    other.Release();
+    ExecuteAllActions();
+    EXPECT_TRUE(Stored(0).has_value());
 }
 
 TEST_F(PersistentBalanceControlTest, a_save_that_does_not_read_back_is_reported_as_failed)
@@ -350,28 +358,6 @@ TEST_F(PersistentBalanceControlTest, other_calls_are_forwarded)
     EXPECT_FLOAT_EQ(0.3f, store->Parameter(1));
 }
 
-TEST_F(PersistentBalanceControlTest, a_change_during_a_save_starts_another_save)
-{
-    ControllableEeprom controllable;
-    Start(controllable);
-    AcceptParameter();
-    controllable.holdWrites = true;
-    ExpectCapture(0.5f, 0.0f, 0.0f);
-    ForwardTime(2s);
-
-    AcceptParameter();
-    ForwardTime(2s);
-
-    controllable.holdWrites = false;
-    controllable.Release();
-    ExecuteAllActions();
-    EXPECT_EQ(persistence::SaveResult::pending, store->LastSave());
-
-    ExpectCapture(0.5f, 0.0f, 0.0f);
-    ForwardTime(2s);
-    EXPECT_EQ(persistence::SaveResult::saved, store->LastSave());
-}
-
 TEST_F(PersistentBalanceControlTest, the_save_waits_for_the_restore)
 {
     ControllableEeprom controllable;
@@ -392,28 +378,4 @@ TEST_F(PersistentBalanceControlTest, the_save_waits_for_the_restore)
     ExpectCapture(0.5f, 0.0f, 0.0f);
     ForwardTime(2s);
     EXPECT_EQ(persistence::SaveResult::saved, store->LastSave());
-}
-
-TEST_F(PersistentBalanceControlTest, after_a_failed_save_the_next_change_saves_to_the_same_copy)
-{
-    ControllableEeprom controllable;
-    Start(controllable);
-    controllable.dropWrites = true;
-    AcceptParameter();
-    ExpectCapture(0.5f, 0.0f, 0.0f);
-    ForwardTime(2s);
-    EXPECT_EQ(persistence::SaveResult::failed, store->LastSave());
-
-    controllable.dropWrites = false;
-    AcceptParameter();
-    ExpectCapture(0.5f, 0.0f, 0.0f);
-    ForwardTime(2s);
-    EXPECT_EQ(persistence::SaveResult::saved, store->LastSave());
-
-    std::array<uint8_t, persistence::PersistentBalanceControl::regionSize> buffer{};
-    controllable.ReadBuffer(infra::MakeRange(buffer), 0, [] {});
-    ExecuteAllActions();
-    const auto saved = persistence::Decode(infra::MakeConstByteRange(buffer));
-    ASSERT_TRUE(saved.has_value());
-    EXPECT_EQ(1, saved->sequence);
 }

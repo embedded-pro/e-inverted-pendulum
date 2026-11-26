@@ -9,6 +9,7 @@ target_link_libraries(inverted_pendulum_bot.persistence.implementations PUBLIC
     inverted_pendulum_bot.persistence.interfaces
     inverted_pendulum_bot.balance_control.interfaces
     hal.interfaces
+    infra.event
     infra.timer
     infra.util
     services.util

@@ -4,20 +4,19 @@
 #include "core/persistence/implementations/TuningRecord.hpp"
 #include "core/persistence/interfaces/TuningStore.hpp"
 #include "hal/interfaces/Eeprom.hpp"
-#include "infra/timer/Timer.hpp"
+#include "infra/event/ClaimableResource.hpp"
 #include "services/util/NvmEepromRegion.hpp"
-#include "services/util/NvmImage.hpp"
-#include <array>
+#include "services/util/NvmRecordStore.hpp"
 #include <chrono>
 #include <cstddef>
 #include <cstdint>
-#include <optional>
 
 namespace persistence
 {
     class PersistentBalanceControl final
         : public balance::BalanceControl
         , public TuningStore
+        , private services::NvmRecordStore::Client
     {
     public:
         static constexpr uint32_t regionSize{ 128 };
@@ -29,7 +28,7 @@ namespace persistence
             infra::Duration saveDelay{ std::chrono::seconds(2) };
         };
 
-        PersistentBalanceControl(balance::BalanceControl& control, hal::Eeprom& eeprom, const Config& config = Config());
+        PersistentBalanceControl(balance::BalanceControl& control, hal::Eeprom& eeprom, infra::ClaimableResource& access, const Config& config = Config());
 
         std::size_t StrategyCount() const override;
         const char* StrategyName(std::size_t index) const override;
@@ -53,35 +52,21 @@ namespace persistence
         SaveResult LastSave() const override;
 
     private:
-        static_assert(TuningRecord::maxSize <= regionSize);
+        static_assert(services::NvmRecordStore::headerSize + TuningRecord::maxSize <= regionSize);
 
-        void ReadCopy(std::size_t copy);
-        void CopyRead(infra::ConstByteRange data);
-        void CopiesRead();
-        std::optional<std::size_t> NewestCopy() const;
+        void Restored(infra::ConstByteRange payload) override;
+        std::size_t Capture(infra::ByteRange payload) override;
+        bool Busy() const override;
+
         void Apply(const TuningRecord& record);
         void ApplyStrategy(const TuningRecord& record, std::size_t strategy);
         bool Changed(bool accepted);
-        void ScheduleSave();
-        void SaveWhenIdle();
-        void Save();
-        void Saved(bool verified);
         TuningRecord Capture() const;
 
         balance::BalanceControl& control;
-        Config config;
-        std::array<services::NvmEepromRegion, 2> regions;
-        std::array<services::NvmImage<regionSize>, 2> images;
-        std::array<std::optional<TuningRecord>, 2> copies;
-        std::array<bool, 2> erased{};
-        uint16_t sequence{ 0 };
-        uint16_t writing{ 0 };
-        std::size_t reading{ 0 };
-        std::size_t nextCopy{ 0 };
-        bool saving{ false };
-        bool dirty{ false };
-        RestoreResult restore{ RestoreResult::pending };
-        SaveResult lastSave{ SaveResult::none };
-        infra::TimerSingleShot saveTimer;
+        services::NvmEepromRegion first;
+        services::NvmEepromRegion second;
+        bool undecodable{ false };
+        services::NvmRecordStore::WithRegionSize<regionSize> store;
     };
 }

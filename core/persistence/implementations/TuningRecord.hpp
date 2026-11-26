@@ -18,12 +18,10 @@ namespace persistence
     struct TuningRecord
     {
         static constexpr std::size_t maxEntries{ 16 };
-        static constexpr std::size_t headerSize{ 8 };
+        static constexpr std::size_t headerSize{ 4 };
         static constexpr std::size_t entrySize{ 6 };
-        static constexpr std::size_t crcSize{ 2 };
-        static constexpr std::size_t maxSize{ headerSize + maxEntries * entrySize + crcSize };
+        static constexpr std::size_t maxSize{ headerSize + maxEntries * entrySize };
 
-        uint16_t sequence{ 0 };
         uint16_t activeStrategy{ 0 };
         infra::BoundedVector<TuningEntry>::WithMaxSize<maxEntries> entries;
     };

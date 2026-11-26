@@ -2,7 +2,7 @@
 title: "Tuning Persistence Design"
 type: design
 status: draft
-version: 0.1.0
+version: 0.2.0
 component: "persistence"
 date: 2026-11-25
 ---
@@ -12,7 +12,7 @@ date: 2026-11-25
 | Title     | Tuning Persistence Design |
 | Type      | design                    |
 | Status    | draft                     |
-| Version   | 0.1.0                     |
+| Version   | 0.2.0                     |
 | Component | persistence               |
 | Date      | 2026-11-25                |
 
@@ -49,25 +49,24 @@ by its position. Restore then survives added, removed and reordered parameters: 
 ignored, and a missing key keeps its default. A stored value that is now out of range is rejected
 by balance control and keeps its default too.
 
-| Field           | Size    | Notes                                                 |
-|-----------------|---------|-------------------------------------------------------|
-| Magic           | 2 bytes | Marks a written record; an erased EEPROM reads 0xFFFF |
-| Format version  | 1 byte  | A record with an unknown version is rejected          |
-| Sequence number | 2 bytes | Increments on each save; selects the newer copy       |
-| Active strategy | 2 bytes | Hash of the strategy name                             |
-| Entry count     | 1 byte  | At most 16                                            |
-| Entries         | 6 bytes | Key hash and IEEE-754 value, one per parameter        |
-| CRC             | 2 bytes | CRC-16/CCITT over every byte before it                |
+| Field           | Size    | Notes                                          |
+|-----------------|---------|------------------------------------------------|
+| Format version  | 1 byte  | A record with an unknown version is rejected   |
+| Active strategy | 2 bytes | Hash of the strategy name                      |
+| Entry count     | 1 byte  | At most 16                                     |
+| Entries         | 6 bytes | Key hash and IEEE-754 value, one per parameter |
 
-With the two current strategies (16 parameters) a record is 106 bytes.
+With the two current strategies (16 parameters) a record is 100 bytes. The record store adds its own
+header to mark, order and check each copy.
 
 ### Part B — Two copies
 
-The EEPROM holds two copies of the record in two 128-byte regions. A save writes the copy that is
-not the newest valid one, and then reads it back. A reset during a save therefore tears one copy
-at most, and the other copy stays valid. At power-on the store reads both copies and restores the
-valid copy with the higher sequence number. When neither copy is valid, the defaults stay in force
-and the store reports it.
+`services::NvmRecordStore` from embedded-infra-lib keeps the record in two regions (Data Model,
+`regionSize`). Its document `docs/NvmRecordStore.md` gives the copy format, the restore and the
+save. A valid copy whose record does not decode is reported as corrupt, and the defaults stay in force.
+
+The 24C04 driver runs one operation at a time. Every store on the EEPROM shares one
+`infra::ClaimableResource`, which `Main.cpp` owns.
 
 ### Part C — When to save
 
@@ -91,7 +90,7 @@ the existing write.
 
 The EEPROM driver does not report bus errors. The store therefore reads back each copy after it
 writes it, and treats a mismatch as a failed save. A failed read returns erased data, which the
-magic and CRC reject. The store keeps the result of the last restore and the last save. The
+record store rejects. The store keeps the result of the last restore and the last save. The
 console command `store` shows both. A failed save is not retried at once: the next accepted change
 starts a new save to the same copy.
 
@@ -172,7 +171,7 @@ sequenceDiagram
 | Constraint      | Value / Description                                                                                    |
 |-----------------|--------------------------------------------------------------------------------------------------------|
 | No writes armed | No EEPROM write starts while the drive is engaged. A save in progress finishes if the drive arms       |
-| Write time      | The whole 128-byte copy: 8 page writes of 5 ms, 40 ms per save, then a read-back; asynchronous         |
+| Write time      | Header and record (Part A): 7 page writes of 5 ms, 35 ms per save, then a read-back; asynchronous    |
 | Endurance       | 1 million writes per cell; the save delay keeps tuning far below that                                  |
 | Record size     | 16 parameters fit in a 128-byte copy; more parameters stop the firmware with an assertion              |
 | No flash        | The store never writes internal flash, so the watchdog limits in `platform-abstraction.md` Part H hold |
