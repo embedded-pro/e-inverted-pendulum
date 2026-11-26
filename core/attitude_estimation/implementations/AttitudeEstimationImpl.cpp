@@ -18,6 +18,11 @@ namespace estimation
         return -angularRate.y;
     }
 
+    float AccelerometerPitch(const platform::InertialAxes& acceleration)
+    {
+        return math::Atan2(-acceleration.x, -acceleration.z);
+    }
+
     filters::GravityTilt<float> AccelerometerTilt(const platform::InertialAxes& acceleration, float accelerationBand)
     {
         return filters::TiltFromGravity(-acceleration.x, -acceleration.z, acceleration.y, standardGravity, accelerationBand);
@@ -95,7 +100,7 @@ namespace estimation
 
     Estimate AttitudeEstimationImpl::Restart(const sensing::Measurement& measurement)
     {
-        const auto pitch = AccelerometerTilt(measurement.acceleration, config.accelerationBand).angle;
+        const auto pitch = AccelerometerPitch(measurement.acceleration);
 
         Active().Restart(pitch);
         running = true;

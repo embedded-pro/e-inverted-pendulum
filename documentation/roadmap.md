@@ -106,8 +106,6 @@ the previous one merges.
 Steps T1 to T5 are done. The wrapped counter delta stays in wheel odometry: it is integer arithmetic, and
 numerical-toolbox is float only.
 
-T3 to T5 change no behaviour and can wait until after a first balance.
-
 ## Backlog
 
 Not needed for a first balance. Each item links to where it is recorded.

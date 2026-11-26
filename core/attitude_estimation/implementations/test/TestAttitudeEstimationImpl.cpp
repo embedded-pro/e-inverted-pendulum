@@ -92,6 +92,13 @@ TEST_F(AttitudeEstimationImplTest, first_measurement_starts_at_the_accelerometer
     EXPECT_EQ(estimation::InvalidCause::converging, estimate.cause);
 }
 
+TEST_F(AttitudeEstimationImplTest, a_restart_takes_the_accelerometer_pitch_even_outside_the_acceleration_band)
+{
+    const auto estimate = estimation.Update(Sample(0.2f, 0.0f, 1.5f));
+
+    EXPECT_NEAR(0.2f, estimate.pitch, 1e-5f);
+}
+
 TEST_F(AttitudeEstimationImplTest, becomes_valid_after_the_convergence_interval)
 {
     Settle(0.1f, 500);

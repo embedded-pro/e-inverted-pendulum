@@ -9,6 +9,7 @@
 namespace estimation
 {
     float PitchRateAboutBodyY(const platform::InertialAxes& angularRate);
+    float AccelerometerPitch(const platform::InertialAxes& acceleration);
     filters::GravityTilt<float> AccelerometerTilt(const platform::InertialAxes& acceleration, float accelerationBand);
 
     class AttitudeEstimationImpl final

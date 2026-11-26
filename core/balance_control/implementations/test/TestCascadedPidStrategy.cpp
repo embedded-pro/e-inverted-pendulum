@@ -150,3 +150,24 @@ TEST_F(CascadedPidStrategyTest, reset_forgets_accumulated_state_and_setpoints)
 
     EXPECT_EQ((balance::Effort{ 0.0f, 0.0f }), strategy.Balance(Attitude(0.0f), balanceInterval));
 }
+
+TEST_F(CascadedPidStrategyTest, the_first_outer_step_after_a_reset_has_no_derivative_kick)
+{
+    OnlyGain(Pid::yawKd, 0.5f);
+    strategy.Reset();
+
+    strategy.Steer(balance::Setpoints{ 0.0f, 1.0f }, odometry::ChassisMotion{}, outerInterval);
+
+    EXPECT_NEAR(0.0f, strategy.Balance(Attitude(0.0f), balanceInterval).right, 1e-6f);
+}
+
+TEST_F(CascadedPidStrategyTest, an_outer_step_with_a_bad_interval_leaves_the_loops_unchanged)
+{
+    OnlyGain(Pid::yawKp, 0.1f);
+    strategy.Steer(balance::Setpoints{ 0.0f, 1.0f }, odometry::ChassisMotion{}, outerInterval);
+    const auto before = strategy.Balance(Attitude(0.0f), balanceInterval);
+
+    strategy.Steer(balance::Setpoints{ 0.0f, -1.0f }, odometry::ChassisMotion{}, 0.0f);
+
+    EXPECT_NEAR(before.right, strategy.Balance(Attitude(0.0f), balanceInterval).right, 1e-6f);
+}

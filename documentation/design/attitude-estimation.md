@@ -72,8 +72,8 @@ It accepts a little drift in exchange for not being pulled off by the robot's ow
 This is what keeps a commanded acceleration from producing a sustained attitude error.
 
 The trust in the correction falls linearly from one, at one gravity, to zero at the acceleration
-band. At zero trust the accelerometer angle reads zero and has no effect. A restart at such a sample
-therefore begins from zero pitch. The tilt and trust come from numerical-toolbox
+band. At zero trust the accelerometer angle has no effect. A restart still begins from the
+accelerometer angle, whatever the trust. The tilt and trust come from numerical-toolbox
 (`doc/filters/active/GravityTilt.md` there).
 
 ### Part E — Validity
