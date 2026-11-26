@@ -1,5 +1,6 @@
 #pragma once
 
+#include "core/platform_abstraction/InertialFrame.hpp"
 #include "core/platform_abstraction/InertialSensor.hpp"
 #include "infra/util/Function.hpp"
 
@@ -45,6 +46,11 @@ namespace sensing
         virtual void StartCalibration() = 0;
         virtual CalibrationState Calibration() const = 0;
         virtual platform::InertialAxes GyroscopeBias() const = 0;
+
+        virtual bool SetAxisMap(const platform::AxisMap& map) = 0;
+        virtual platform::AxisMap CurrentAxisMap() const = 0;
+        virtual bool SetStillnessThreshold(float threshold) = 0;
+        virtual float StillnessThreshold() const = 0;
 
     protected:
         ~InertialSensing() = default;

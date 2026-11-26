@@ -7,6 +7,7 @@ namespace estimation
     namespace
     {
         constexpr float standardGravity{ 9.80665f };
+        constexpr float maximumUprightOffset{ 0.35f };
 
         float Seconds(infra::Duration interval)
         {
@@ -79,6 +80,21 @@ namespace estimation
         return selected;
     }
 
+    bool AttitudeEstimationImpl::SetUprightOffset(float offset)
+    {
+        if (!(std::fabs(offset) <= maximumUprightOffset))
+            return false;
+
+        latest.pitch += uprightOffset - offset;
+        uprightOffset = offset;
+        return true;
+    }
+
+    float AttitudeEstimationImpl::UprightOffset() const
+    {
+        return uprightOffset;
+    }
+
     PitchFilter& AttitudeEstimationImpl::Active()
     {
         if (selected == Filter::kalman)
@@ -95,7 +111,7 @@ namespace estimation
         running = true;
         convergenceStarted = measurement.sampledAt;
 
-        return Estimate{ pitch, PitchRateAboutBodyY(measurement.angularRate), false, InvalidCause::converging };
+        return Estimate{ pitch - uprightOffset, PitchRateAboutBodyY(measurement.angularRate), false, InvalidCause::converging };
     }
 
     Estimate AttitudeEstimationImpl::Fuse(const sensing::Measurement& measurement, infra::Duration interval)
@@ -104,6 +120,6 @@ namespace estimation
         const auto pitch = Active().Update(pitchRate, AccelerometerPitch(measurement.acceleration), AccelerometerTrust(measurement.acceleration, config.accelerationBand), Seconds(interval));
         const bool converged = measurement.sampledAt - convergenceStarted >= config.convergenceInterval;
 
-        return Estimate{ pitch, pitchRate, converged, converged ? InvalidCause::none : InvalidCause::converging };
+        return Estimate{ pitch - uprightOffset, pitchRate, converged, converged ? InvalidCause::none : InvalidCause::converging };
     }
 }

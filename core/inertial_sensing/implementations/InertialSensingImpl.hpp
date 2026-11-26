@@ -33,16 +33,24 @@ namespace sensing
         CalibrationState Calibration() const override;
         platform::InertialAxes GyroscopeBias() const override;
 
+        bool SetAxisMap(const platform::AxisMap& map) override;
+        platform::AxisMap CurrentAxisMap() const override;
+        bool SetStillnessThreshold(float threshold) override;
+        float StillnessThreshold() const override;
+
     private:
         void OnSample(const platform::InertialSample& sample);
         void Accumulate(const platform::InertialSample& sample);
         void ConcludeCalibration();
+        void ClearBias();
+        platform::InertialSample ToBody(const platform::InertialSample& sample) const;
         bool Still(const platform::InertialAxes& rate) const;
         bool Stale() const;
         bool GapSince(infra::TimePoint previous, infra::TimePoint now) const;
 
         platform::InertialSensor& sensor;
         Config config;
+        platform::AxisMap axisMap;
 
         platform::InertialSample lastSample;
         bool sampled{ false };

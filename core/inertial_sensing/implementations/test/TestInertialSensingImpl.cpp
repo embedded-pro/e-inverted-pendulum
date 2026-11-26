@@ -3,6 +3,7 @@
 #include "infra/timer/test_helper/ClockFixture.hpp"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
+#include <limits>
 #include <optional>
 #include <vector>
 
@@ -276,4 +277,98 @@ TEST_F(InertialSensingImplTest, reported_measurements_are_bias_corrected_once_ca
     ASSERT_TRUE(reported.has_value());
     EXPECT_TRUE(reported->valid);
     EXPECT_NEAR(0.10f, reported->angularRate.y, 1e-5f);
+}
+
+TEST_F(InertialSensingImplTest, the_axis_map_remaps_and_inverts_sensor_axes)
+{
+    EXPECT_TRUE(Sensing().SetAxisMap(platform::AxisMap{ 0, 2, 1, 1.0f, -1.0f, 1.0f }));
+    Sensing().StartCalibration();
+    DeliverForWindow(0.0f, 0.0f, 0.0f);
+
+    Deliver(0.1f, 0.2f, 0.3f);
+
+    EXPECT_NEAR(0.1f, Sensing().Latest().angularRate.x, 1e-5f);
+    EXPECT_NEAR(-0.3f, Sensing().Latest().angularRate.y, 1e-5f);
+    EXPECT_NEAR(0.2f, Sensing().Latest().angularRate.z, 1e-5f);
+    EXPECT_NEAR(9.80665f, Sensing().Latest().acceleration.y, 1e-5f);
+    EXPECT_NEAR(0.0f, Sensing().Latest().acceleration.z, 1e-5f);
+}
+
+TEST_F(InertialSensingImplTest, an_axis_map_that_is_not_a_permutation_is_rejected)
+{
+    EXPECT_FALSE(Sensing().SetAxisMap(platform::AxisMap{ 0, 0, 1, 1.0f, 1.0f, 1.0f }));
+    EXPECT_FALSE(Sensing().SetAxisMap(platform::AxisMap{ 0, 1, 3, 1.0f, 1.0f, 1.0f }));
+    EXPECT_FALSE(Sensing().SetAxisMap(platform::AxisMap{ 0, 1, 2, 0.5f, 1.0f, 1.0f }));
+
+    EXPECT_EQ(1, Sensing().CurrentAxisMap().yFrom);
+}
+
+TEST_F(InertialSensingImplTest, changing_the_axis_map_clears_the_bias)
+{
+    Sensing().StartCalibration();
+    DeliverForWindow(0.02f, 0.0f, 0.0f);
+    ASSERT_EQ(sensing::CalibrationState::calibrated, Sensing().Calibration());
+
+    EXPECT_TRUE(Sensing().SetAxisMap(platform::AxisMap{ 1, 0, 2, 1.0f, 1.0f, 1.0f }));
+
+    EXPECT_EQ(sensing::CalibrationState::uncalibrated, Sensing().Calibration());
+    EXPECT_NEAR(0.0f, Sensing().GyroscopeBias().x, 1e-6f);
+    Deliver(0.0f, 0.0f, 0.0f);
+    EXPECT_EQ(sensing::InvalidCause::uncalibrated, Sensing().Cause());
+}
+
+TEST_F(InertialSensingImplTest, the_stillness_limit_is_set_within_its_range)
+{
+    EXPECT_TRUE(Sensing().SetStillnessThreshold(0.2f));
+    EXPECT_NEAR(0.2f, Sensing().StillnessThreshold(), 1e-6f);
+
+    EXPECT_FALSE(Sensing().SetStillnessThreshold(0.005f));
+    EXPECT_FALSE(Sensing().SetStillnessThreshold(1.5f));
+    EXPECT_NEAR(0.2f, Sensing().StillnessThreshold(), 1e-6f);
+}
+
+TEST_F(InertialSensingImplTest, a_larger_stillness_limit_accepts_more_motion_during_calibration)
+{
+    EXPECT_TRUE(Sensing().SetStillnessThreshold(0.5f));
+    Sensing().StartCalibration();
+    DeliverForWindow(0.3f, 0.0f, 0.0f);
+
+    EXPECT_EQ(sensing::CalibrationState::calibrated, Sensing().Calibration());
+}
+
+TEST_F(InertialSensingImplTest, changing_the_stillness_limit_clears_the_bias)
+{
+    Sensing().StartCalibration();
+    DeliverForWindow(0.02f, 0.0f, 0.0f);
+    ASSERT_EQ(sensing::CalibrationState::calibrated, Sensing().Calibration());
+
+    EXPECT_TRUE(Sensing().SetStillnessThreshold(0.1f));
+
+    EXPECT_EQ(sensing::CalibrationState::uncalibrated, Sensing().Calibration());
+    EXPECT_NEAR(0.0f, Sensing().GyroscopeBias().x, 1e-6f);
+}
+
+TEST_F(InertialSensingImplTest, a_stillness_limit_that_is_not_a_number_is_rejected)
+{
+    EXPECT_FALSE(Sensing().SetStillnessThreshold(std::numeric_limits<float>::quiet_NaN()));
+    EXPECT_FALSE(Sensing().SetStillnessThreshold(std::numeric_limits<float>::infinity()));
+}
+
+TEST_F(InertialSensingImplTest, a_change_during_calibration_fails_the_attempt)
+{
+    Sensing().StartCalibration();
+    Deliver(0.0f, 0.0f, 0.0f);
+
+    EXPECT_TRUE(Sensing().SetAxisMap(platform::AxisMap{ 1, 0, 2, 1.0f, 1.0f, 1.0f }));
+
+    EXPECT_EQ(sensing::CalibrationState::failed, Sensing().Calibration());
+}
+
+TEST_F(InertialSensingImplTest, a_new_axis_map_discards_the_sample_taken_in_the_old_frame)
+{
+    Deliver(0.1f, 0.2f, 0.3f);
+
+    EXPECT_TRUE(Sensing().SetAxisMap(platform::AxisMap{ 1, 0, 2, 1.0f, 1.0f, 1.0f }));
+
+    EXPECT_EQ(sensing::InvalidCause::neverSampled, Sensing().Cause());
 }
