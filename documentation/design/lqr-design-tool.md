@@ -89,6 +89,24 @@ to settle; the remedy is a looser limit.
 
 ---
 
+## Interfaces
+
+### Provided
+
+| Interface    | Purpose                             | Contract                                                       |
+|--------------|-------------------------------------|----------------------------------------------------------------|
+| Command line | Parameters in, gains and checks out | Exit status 0 only when every check passes and the gains print |
+
+### Required
+
+| Interface              | Purpose                         | Contract                                                     |
+|------------------------|---------------------------------|--------------------------------------------------------------|
+| Pendulum model         | Continuous pitch plant          | robotics-toolbox, model pitch positive top forward           |
+| Discretisation and LQR | Zero-order hold, discrete gains | numerical-toolbox; the Riccati iteration reports convergence |
+| LQR strategy           | Parameter names and ranges      | `balance-control.md`                                         |
+
+---
+
 ## Constraints & Limitations
 
 | Constraint   | Value / Description                                                                |
