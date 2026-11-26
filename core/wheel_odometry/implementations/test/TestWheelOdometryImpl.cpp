@@ -4,6 +4,7 @@
 #include "infra/timer/test_helper/ClockFixture.hpp"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
+#include <limits>
 #include <numbers>
 #include <optional>
 
@@ -195,7 +196,7 @@ TEST_F(WheelOdometryImplTest, velocity_returns_to_zero_once_the_wheels_stop)
 
 TEST_F(WheelOdometryImplTest, a_gear_ratio_scales_the_wheel_down_from_the_encoder)
 {
-    config.gearRatio = 30.0f;
+    config.geometry.gearRatio = 30.0f;
 
     Sample(0, 0);
     Sample(300, 300);
@@ -226,7 +227,7 @@ TEST_F(WheelOdometryImplTest, equal_wheel_speeds_drive_straight_ahead)
 
     const auto chassis = Odometry().Chassis();
 
-    EXPECT_NEAR(config.wheelRadius * AngularVelocityOf(40), chassis.forwardVelocity, 1e-4f);
+    EXPECT_NEAR(config.geometry.wheelRadius * AngularVelocityOf(40), chassis.forwardVelocity, 1e-4f);
     EXPECT_NEAR(0.0f, chassis.yawRate, 1e-4f);
 }
 
@@ -238,7 +239,7 @@ TEST_F(WheelOdometryImplTest, opposed_wheel_speeds_spin_in_place)
     const auto chassis = Odometry().Chassis();
 
     EXPECT_NEAR(0.0f, chassis.forwardVelocity, 1e-4f);
-    EXPECT_NEAR(2.0f * config.wheelRadius * AngularVelocityOf(40) / config.trackWidth, chassis.yawRate, 1e-4f);
+    EXPECT_NEAR(2.0f * config.geometry.wheelRadius * AngularVelocityOf(40) / config.geometry.trackWidth, chassis.yawRate, 1e-4f);
 }
 
 TEST_F(WheelOdometryImplTest, forward_velocity_is_the_mean_of_the_two_wheels)
@@ -246,7 +247,7 @@ TEST_F(WheelOdometryImplTest, forward_velocity_is_the_mean_of_the_two_wheels)
     Sample(0, 0);
     Sample(40, 80);
 
-    EXPECT_NEAR(config.wheelRadius * AngularVelocityOf(60), Odometry().Chassis().forwardVelocity, 1e-4f);
+    EXPECT_NEAR(config.geometry.wheelRadius * AngularVelocityOf(60), Odometry().Chassis().forwardVelocity, 1e-4f);
 }
 
 TEST_F(WheelOdometryImplTest, the_right_wheel_running_ahead_yaws_positively)
@@ -267,7 +268,7 @@ TEST_F(WheelOdometryImplTest, the_left_wheel_running_ahead_yaws_negatively)
 
 TEST_F(WheelOdometryImplTest, a_larger_wheel_covers_more_ground_per_turn)
 {
-    config.wheelRadius = 0.068f;
+    config.geometry.wheelRadius = 0.068f;
 
     Sample(0, 0);
     Sample(40, 40);
@@ -277,10 +278,74 @@ TEST_F(WheelOdometryImplTest, a_larger_wheel_covers_more_ground_per_turn)
 
 TEST_F(WheelOdometryImplTest, a_wider_track_yaws_more_slowly_for_the_same_wheel_difference)
 {
-    config.trackWidth = 0.290f;
+    config.geometry.trackWidth = 0.290f;
 
     Sample(0, 0);
     Sample(40, 80);
 
-    EXPECT_NEAR(config.wheelRadius * (AngularVelocityOf(80) - AngularVelocityOf(40)) / 0.290f, Odometry().Chassis().yawRate, 1e-4f);
+    EXPECT_NEAR(config.geometry.wheelRadius * (AngularVelocityOf(80) - AngularVelocityOf(40)) / 0.290f, Odometry().Chassis().yawRate, 1e-4f);
+}
+
+TEST_F(WheelOdometryImplTest, an_inverted_encoder_counts_the_other_way)
+{
+    Odometry().SetEncoderInverted(odometry::WheelSide::right, true);
+    Sample(1000, 2000);
+    Sample(1100, 2100);
+
+    EXPECT_EQ(100, Odometry().Left().position);
+    EXPECT_EQ(-100, Odometry().Right().position);
+    EXPECT_NEAR(-AngularVelocityOf(100), Odometry().Right().angularVelocity, 1e-3f);
+    EXPECT_TRUE(Odometry().EncoderInverted(odometry::WheelSide::right));
+    EXPECT_FALSE(Odometry().EncoderInverted(odometry::WheelSide::left));
+}
+
+TEST_F(WheelOdometryImplTest, a_new_geometry_scales_the_chassis_motion)
+{
+    EXPECT_TRUE(Odometry().SetGeometry(odometry::Geometry{ 0.05f, 0.2f, 2.0f }));
+    Sample(1000, 1000);
+    Sample(1100, 1100);
+
+    EXPECT_NEAR(AngularVelocityOf(100) / 2.0f, Odometry().Left().angularVelocity, 1e-3f);
+    EXPECT_NEAR(0.05f * AngularVelocityOf(100) / 2.0f, Odometry().Chassis().forwardVelocity, 1e-4f);
+    EXPECT_NEAR(0.2f, Odometry().CurrentGeometry().trackWidth, 1e-6f);
+}
+
+TEST_F(WheelOdometryImplTest, a_geometry_outside_its_ranges_is_rejected)
+{
+    EXPECT_FALSE(Odometry().SetGeometry(odometry::Geometry{ 0.005f, 0.145f, 1.0f }));
+    EXPECT_FALSE(Odometry().SetGeometry(odometry::Geometry{ 0.034f, 0.6f, 1.0f }));
+    EXPECT_FALSE(Odometry().SetGeometry(odometry::Geometry{ 0.034f, 0.145f, 0.05f }));
+    EXPECT_FALSE(Odometry().SetGeometry(odometry::Geometry{ std::numeric_limits<float>::quiet_NaN(), 0.145f, 1.0f }));
+
+    EXPECT_NEAR(0.034f, Odometry().CurrentGeometry().wheelRadius, 1e-6f);
+}
+
+TEST_F(WheelOdometryImplTest, an_inverted_left_encoder_counts_back_across_a_wrap)
+{
+    Odometry().SetEncoderInverted(odometry::WheelSide::left, true);
+    Sample(resolution - 10, 0);
+    Sample(5, 0);
+
+    EXPECT_EQ(-15, Odometry().Left().position);
+    EXPECT_EQ(0, Odometry().Right().position);
+}
+
+TEST_F(WheelOdometryImplTest, toggling_the_inversion_mid_run_keeps_the_position_continuous)
+{
+    Sample(1000, 1000);
+    Sample(1100, 1000);
+    ASSERT_EQ(100, Odometry().Left().position);
+
+    Odometry().SetEncoderInverted(odometry::WheelSide::left, true);
+    Sample(1150, 1000);
+
+    EXPECT_EQ(50, Odometry().Left().position);
+}
+
+TEST_F(WheelOdometryImplTest, the_geometry_range_limits_are_accepted_and_nan_is_rejected)
+{
+    EXPECT_TRUE(Odometry().SetGeometry(odometry::Geometry{ 0.01f, 0.05f, 0.1f }));
+    EXPECT_TRUE(Odometry().SetGeometry(odometry::Geometry{ 0.2f, 0.5f, 100.0f }));
+    EXPECT_FALSE(Odometry().SetGeometry(odometry::Geometry{ 0.034f, std::numeric_limits<float>::quiet_NaN(), 1.0f }));
+    EXPECT_FALSE(Odometry().SetGeometry(odometry::Geometry{ 0.034f, 0.145f, std::numeric_limits<float>::quiet_NaN() }));
 }

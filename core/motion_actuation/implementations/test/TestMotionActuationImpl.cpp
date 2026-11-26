@@ -196,3 +196,47 @@ TEST_F(MotionActuationImplTest, switching_frequency_is_configurable)
 
     Construct(config);
 }
+
+TEST_F(MotionActuationImplTest, an_inverted_motor_is_driven_the_other_way)
+{
+    ConstructReady();
+    actuation->SetMotorInverted(motion::WheelSide::left, true);
+
+    EXPECT_CALL(motors, Drive(Inputs(70, 100), Inputs(100, 30)));
+    actuation->Apply(0.3f, 0.7f);
+
+    EXPECT_TRUE(actuation->MotorInverted(motion::WheelSide::left));
+    EXPECT_FALSE(actuation->MotorInverted(motion::WheelSide::right));
+}
+
+TEST_F(MotionActuationImplTest, an_inverted_motor_is_restored)
+{
+    ConstructReady();
+    actuation->SetMotorInverted(motion::WheelSide::right, true);
+    actuation->SetMotorInverted(motion::WheelSide::right, false);
+
+    EXPECT_CALL(motors, Drive(Inputs(100, 70), Inputs(100, 30)));
+    actuation->Apply(0.3f, 0.7f);
+}
+
+TEST_F(MotionActuationImplTest, inverting_the_right_motor_leaves_the_left_motor_alone)
+{
+    ConstructReady();
+    actuation->SetMotorInverted(motion::WheelSide::right, true);
+
+    EXPECT_CALL(motors, Drive(Inputs(100, 70), Inputs(30, 100)));
+    actuation->Apply(0.3f, 0.7f);
+}
+
+TEST_F(MotionActuationImplTest, inversion_leaves_the_brake_and_the_tristate_unchanged)
+{
+    ConstructReady();
+    actuation->SetMotorInverted(motion::WheelSide::left, true);
+    actuation->SetMotorInverted(motion::WheelSide::right, true);
+
+    EXPECT_CALL(motors, Drive(Inputs(100, 100), Inputs(100, 100)));
+    actuation->Disable(motion::DisableState::brake);
+
+    EXPECT_CALL(motors, Drive(released, released));
+    actuation->Disable(motion::DisableState::tristate);
+}

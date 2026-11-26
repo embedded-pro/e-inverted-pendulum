@@ -2,9 +2,9 @@
 title: "Motion Actuation Design"
 type: design
 status: draft
-version: 0.2.0
+version: 0.3.0
 component: "motion-actuation"
-date: 2026-09-24
+date: 2026-11-25
 ---
 
 | Field     | Value                   |
@@ -12,9 +12,9 @@ date: 2026-09-24
 | Title     | Motion Actuation Design |
 | Type      | design                  |
 | Status    | draft                   |
-| Version   | 0.2.0                   |
+| Version   | 0.3.0                   |
 | Component | motion-actuation        |
-| Date      | 2026-09-24              |
+| Date      | 2026-11-25              |
 
 > Turns an abstract effort command into current through two motors. The one component that
 > must always be able to stop, whatever else has failed. What the wheels then did is measured
@@ -122,6 +122,10 @@ that a change in commanded effort always produces a change in the same direction
 a property the control strategies rely on and none of them verify. Duty is carried at the
 timer's resolution, not rounded to whole percent.
 
+A motor wired the other way round turns backwards for a positive effort. The operator can invert
+each motor's effort at run time (`calibration.md`). The inversion is off by default, applies to
+the next effort, and leaves the tri-state and brake unchanged.
+
 Switching frequency sits above the audible band and is matched to the motor's electrical
 time constant: too low and the robot whines and the current ripples; too high and switching
 losses dominate.
@@ -156,7 +160,8 @@ of bringing up the platform, so it is described here beside the timer budget it 
 Two decisions made at that configuration are contracts the wheel odometry component relies on
 and must not repeat. The counter resolution bounds the wrap that odometry reconstructs. And
 because the two wheels are mirrored physically, one encoder is configured with an inverted
-phase, so both count up for forward robot motion and no sign correction is applied downstream.
+phase, so both count up for forward robot motion. Odometry applies no sign correction unless the
+operator sets one (`wheel-odometry.md`, Part E).
 
 Everything past the counter — accumulation across wrap, wheel velocity, chassis motion — is
 the wheel odometry component's, and is described in `documentation/design/wheel-odometry.md`.
@@ -172,6 +177,7 @@ the wheel odometry component's, and is described in `documentation/design/wheel-
 | Effort application | Apply a signed effort to each motor     | Monotonic mapping to duty and direction; ignored unless the drive is permitted              |
 | Drive disable      | Tri-state or brake both bridges         | The tri-state must succeed without a healthy control loop; safety disables always tri-state |
 | Driver health      | Report driver-asserted faults           | Latched on assertion, even if the condition clears immediately                              |
+| Motor inversion    | Invert the effort of one motor          | Off by default; applies to the next effort                                                  |
 | Wheel encoders     | Access to both decoded encoder counters | Already sign-corrected for the mirrored mounting; consumed by wheel odometry                |
 
 ### Required

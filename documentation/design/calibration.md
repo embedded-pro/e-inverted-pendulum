@@ -41,14 +41,14 @@ date: 2026-11-25
 
 ### Part A — The values
 
-| Value           | Default            | Used by             | Effect                                        |
-|-----------------|--------------------|---------------------|-----------------------------------------------|
-| IMU axis map    | identity           | Inertial sensing    | Maps sensor axes and signs to the body frame  |
-| Stillness limit | 0.09 rad/s         | Inertial sensing    | Largest rate on any axis that counts as still |
-| Upright offset  | 0 rad              | Attitude estimation | Subtracted from the estimated pitch           |
-| Motor sign      | + per wheel        | Motion actuation    | Inverts the effort of one wheel               |
-| Encoder sign    | + per wheel        | Wheel odometry      | Inverts the counts of one wheel               |
-| Wheel geometry  | 34 mm, 145 mm, 1.0 | Wheel odometry      | Wheel radius, track width and gear ratio      |
+| Value           | Default               | Used by             | Effect                                        |
+|-----------------|-----------------------|---------------------|-----------------------------------------------|
+| IMU axis map    | identity              | Inertial sensing    | Maps sensor axes and signs to the body frame  |
+| Stillness limit | 0.09 rad/s            | Inertial sensing    | Largest rate on any axis that counts as still |
+| Upright offset  | 0 rad                 | Attitude estimation | Subtracted from the estimated pitch           |
+| Motor sign      | + per wheel           | Motion actuation    | Inverts the effort of one wheel               |
+| Encoder sign    | + per wheel           | Wheel odometry      | Inverts the counts of one wheel               |
+| Wheel geometry  | 0.034 m, 0.145 m, 1.0 | Wheel odometry      | Wheel radius, track width and gear ratio      |
 
 The board keeps an identity axis map. The calibrated map is applied in inertial sensing, so it is
 portable and tested on the host.
