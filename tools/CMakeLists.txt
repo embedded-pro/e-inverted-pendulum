@@ -9,3 +9,5 @@
 #     qt_standard_project_setup()
 #     add_subdirectory(simulator)
 # endif()
+
+add_subdirectory(lqr_design)

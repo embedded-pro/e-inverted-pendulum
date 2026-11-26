@@ -94,6 +94,11 @@ endif()
 
 add_subdirectory(infra/numerical-toolbox)
 
+if (NOT INVERTED_PENDULUM_BOT_EMBEDDED_BUILD)
+    add_subdirectory(infra/robotics-toolbox)
+    emil_exclude_directory_from_coverage(infra/robotics-toolbox)
+endif()
+
 # Ordering is load-bearing. Both calls must sit after every submodule and FetchContent
 # addition -- otherwise dependencies such as cucumber_cpp are missed -- and before
 # add_subdirectory(core), or this project's own targets get marked SYSTEM and the warnings

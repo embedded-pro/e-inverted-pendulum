@@ -7,3 +7,6 @@
 [submodule "infra/numerical-toolbox"]
 	path = infra/numerical-toolbox
 	url = https://github.com/embedded-pro/embedded-numerical-toolbox.git
+[submodule "infra/robotics-toolbox"]
+	path = infra/robotics-toolbox
+	url = https://github.com/embedded-pro/robotics-toolbox-cpp.git

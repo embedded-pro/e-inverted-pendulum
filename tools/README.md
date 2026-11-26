@@ -5,6 +5,12 @@ develop and validate the firmware. They build only for the host platform.
 
 A tool links the same `core/` libraries the firmware uses. It does not duplicate them.
 
+## Tools
+
+| Tool         | Purpose                                        | Design                                    |
+|--------------|------------------------------------------------|-------------------------------------------|
+| `lqr_design` | LQR state gains from the measured robot values | `documentation/design/lqr-design-tool.md` |
+
 ## Qt GUI tools
 
 The devcontainer ships Qt6, so GUI tools (e.g. a simulator) are supported. See
