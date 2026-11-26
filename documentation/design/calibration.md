@@ -111,11 +111,11 @@ Each key is hashed with the strategy name `cal`, as in `persistence.md`, Part A.
 
 ### Provided
 
-| Interface          | Purpose                      | Contract                                                      |
-|--------------------|------------------------------|---------------------------------------------------------------|
-| Calibration access | Set each value               | Writes refused while armed; each component checks its range   |
-| Store status       | Restore and last save result | As the tuning store                                           |
-| Start-up condition | Restore finished             | Ready once the restore ends, with or without a stored record  |
+| Interface          | Purpose                      | Contract                                                     |
+|--------------------|------------------------------|--------------------------------------------------------------|
+| Calibration access | Set each value               | Writes refused while armed; each component checks its range  |
+| Store status       | Restore and last save result | As the tuning store                                          |
+| Start-up condition | Restore finished             | Ready once the restore ends, with or without a stored record |
 
 ### Required
 
