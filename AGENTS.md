@@ -138,7 +138,7 @@ Scope: host tools that people install and run, GUI or console.
 - `tools/` — host-only tools on `core/` libraries. `tools/README.md` tells how to add one.
 - `integration_tests/` — cucumber-cpp: `features/`, `steps/`, `support/`, `hooks/`, `main/`. Steps bind Gherkin
   lines with `GIVEN`/`WHEN`/`THEN`/`STEP` and share state through the cucumber `context`.
-- `infra/` — submodules: `embedded-infra-lib`, `numerical-toolbox`, `hal/st`, and `robotics-toolbox` for host builds only.
+- `infra/` — submodules: `embedded-infra-lib`, `numerical-toolbox`, `hal/st`, `robotics-toolbox`.
   Reuse `numerical-toolbox` for PID, filters and math.
 - *Memory* also covers `targets/` and every ISR-reachable path.
 - Timing-critical loop: state its cycle budget; check it with `arm-none-eabi-objdump -d -C`.

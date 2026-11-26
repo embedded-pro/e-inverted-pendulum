@@ -2,7 +2,7 @@
 title: "Wheel Odometry Design"
 type: design
 status: draft
-version: 0.2.0
+version: 0.3.0
 component: "wheel-odometry"
 date: 2026-11-25
 ---
@@ -12,7 +12,7 @@ date: 2026-11-25
 | Title     | Wheel Odometry Design |
 | Type      | design                |
 | Status    | draft                 |
-| Version   | 0.2.0                 |
+| Version   | 0.3.0                 |
 | Component | wheel-odometry        |
 | Date      | 2026-11-25            |
 
@@ -137,7 +137,9 @@ The two wheel velocities are combined into the chassis motion the outer loop act
 on. Forward velocity is the mean of the two wheel velocities scaled by the wheel radius; yaw
 rate is their difference scaled by the radius over the track width. Driving both wheels
 equally gives a pure forward velocity and no yaw; driving them equally and oppositely gives a
-pure yaw and no forward velocity.
+pure yaw and no forward velocity. The forward kinematics come from the differential-drive model in
+robotics-toolbox (`infra/robotics-toolbox`, `doc/mobile/DifferentialDrive.md`). The model's wheel speed
+limit is set to the trackable rate of Part B; the forward kinematics do not use it.
 
 Yaw is positive when the right wheel runs ahead of the left, which is the robot turning to
 its left. Both are derived here, beside the geometry they depend on, so that a consumer never

@@ -46,7 +46,7 @@ date: 2026-11-26
 The plant comes from the wheeled inverted pendulum model in robotics-toolbox-cpp
 (`doc/mobile/WheeledInvertedPendulum.md` there). The zero-order-hold discretisation and the
 discrete Riccati solution come from numerical-toolbox. robotics-toolbox becomes a submodule in
-`infra/robotics-toolbox`. Only host builds add it, because only the tool uses it.
+`infra/robotics-toolbox`. Wheel odometry uses it too (`wheel-odometry.md`, Part D).
 
 ### Part B — Inputs
 
@@ -111,7 +111,7 @@ to settle; the remedy is a looser limit.
 
 | Constraint   | Value / Description                                                                |
 |--------------|------------------------------------------------------------------------------------|
-| Host only    | The submodule and the tool are not part of the firmware build                      |
+| Host only    | The tool is not part of the firmware build                                         |
 | Linear model | Valid near upright only; see the model's limits                                    |
 | Torque       | Effort maps to torque open-loop (`motion-actuation.md`); the wheel torque is a fit |
 | No state     | The tool keeps no settings and writes no files, so it needs no log or safe start   |
