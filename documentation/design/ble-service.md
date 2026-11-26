@@ -270,23 +270,23 @@ Connect, pair, arm, drive.
 ```mermaid
 sequenceDiagram
     participant Op as Operator client
-    participant Link as BLE service
+    participant Ble as BLE service
     participant Sup as Safety supervisor
     participant Ctrl as Balance control
 
-    Op->>Link: Connect
-    Op->>Link: Pair
-    Link-->>Op: Paired
-    Op->>Link: Subscribe to telemetry
-    Op->>Link: Arm
-    Link->>Sup: Arm request
-    Sup-->>Link: Mode = ARMED
-    Link-->>Op: Mode notification
+    Op->>Ble: Connect
+    Op->>Ble: Pair
+    Ble-->>Op: Paired
+    Op->>Ble: Subscribe to telemetry
+    Op->>Ble: Arm
+    Ble->>Sup: Arm request
+    Sup-->>Ble: Mode = ARMED
+    Ble-->>Op: Mode notification
     loop While driving
-        Op->>Link: Velocity and yaw setpoint
-        Link->>Ctrl: Setpoints
-        Ctrl-->>Link: State sample
-        Link-->>Op: Telemetry notification
+        Op->>Ble: Velocity and yaw setpoint
+        Ble->>Ctrl: Setpoints
+        Ctrl-->>Ble: State sample
+        Ble-->>Op: Telemetry notification
     end
 ```
 
@@ -295,16 +295,16 @@ Operator falls silent, then the link drops.
 ```mermaid
 sequenceDiagram
     participant Op as Operator client
-    participant Link as BLE service
+    participant Ble as BLE service
     participant Ctrl as Balance control
 
-    Note over Op,Link: No motion command for 500 ms
-    Link->>Ctrl: Decay setpoints towards zero
+    Note over Op,Ble: No motion command for 500 ms
+    Ble->>Ctrl: Decay setpoints towards zero
     Note over Ctrl: Robot slows, keeps balancing
-    Note over Op,Link: Connection lost
-    Link->>Ctrl: Setpoints = zero
+    Note over Op,Ble: Connection lost
+    Ble->>Ctrl: Setpoints = zero
     Note over Ctrl: Mode remains ARMED, robot balances in place
-    Link->>Link: Resume advertising
+    Ble->>Ble: Resume advertising
 ```
 
 ---

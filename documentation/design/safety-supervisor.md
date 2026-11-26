@@ -186,7 +186,7 @@ sequenceDiagram
     participant Sup as Safety supervisor
     participant Act as Motion actuation
     participant Ctrl as Balance control
-    participant Link as Connectivity
+    participant Ble as Connectivity
 
     Est->>Sup: Pitch estimate, valid
     Note over Sup: Magnitude exceeds fall threshold
@@ -194,7 +194,7 @@ sequenceDiagram
     Act-->>Sup: Bridges disabled
     Sup->>Ctrl: Disable, drop effort to zero
     Sup->>Sup: Latch cause = Fall
-    Sup-->>Link: Mode = FAULT, cause = Fall
+    Sup-->>Ble: Mode = FAULT, cause = Fall
 ```
 
 Recovery — two deliberate operator acts, never one.
@@ -202,22 +202,22 @@ Recovery — two deliberate operator acts, never one.
 ```mermaid
 sequenceDiagram
     participant Op as Operator
-    participant Link as Connectivity
+    participant Ble as Connectivity
     participant Sup as Safety supervisor
     participant Est as Attitude estimation
     participant Ctrl as Balance control
 
-    Op->>Link: Clear fault
-    Link->>Sup: Clear-fault request
+    Op->>Ble: Clear fault
+    Ble->>Sup: Clear-fault request
     Sup->>Sup: Release latch
-    Sup-->>Link: Mode = IDLE
+    Sup-->>Ble: Mode = IDLE
     Note over Sup: Motors stay de-energised
-    Op->>Link: Arm
-    Link->>Sup: Arm request
+    Op->>Ble: Arm
+    Ble->>Sup: Arm request
     Sup->>Est: Attitude and validity
     Est-->>Sup: Within 5 degrees, valid
     Sup->>Ctrl: Reset strategy state
-    Sup-->>Link: Mode = ARMED
+    Sup-->>Ble: Mode = ARMED
 ```
 
 ---

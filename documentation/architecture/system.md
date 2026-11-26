@@ -179,31 +179,31 @@ The arming, balancing and fault path — the sequence the whole architecture exi
 ```mermaid
 sequenceDiagram
     participant Op as Operator (BLE client)
-    participant Link as Connectivity
+    participant Ble as Connectivity
     participant Safety as Safety supervision
     participant Est as Attitude estimation
     participant Ctrl as Balance control
     participant Act as Motion actuation
 
-    Op->>Link: Arm
-    Link->>Safety: Arm request
+    Op->>Ble: Arm
+    Ble->>Safety: Arm request
     Safety->>Est: Query attitude and validity
     Est-->>Safety: Upright, valid
     Safety->>Ctrl: Reset strategy state, enable
-    Safety-->>Link: Mode = ARMED
+    Safety-->>Ble: Mode = ARMED
 
     loop Every balance period
         Est->>Ctrl: Pitch, pitch rate, validity
         Ctrl->>Act: Per-wheel effort
         Act-->>Safety: Driver health
-        Ctrl-->>Link: Telemetry sample
+        Ctrl-->>Ble: Telemetry sample
     end
 
     Note over Est,Safety: Body tips beyond the fall threshold
     Est->>Safety: Pitch exceeds limit
     Safety->>Act: Tri-state both bridges
     Safety->>Ctrl: Disable
-    Safety-->>Link: Mode = FAULT, cause latched
+    Safety-->>Ble: Mode = FAULT, cause latched
 ```
 
 ---

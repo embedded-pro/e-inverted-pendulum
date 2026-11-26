@@ -103,19 +103,19 @@ One balance iteration.
 ```mermaid
 sequenceDiagram
     participant Sense as Inertial sensing
-    participant Loop as Control loop
+    participant Ctl as Control loop
     participant Est as Attitude estimation
     participant Bal as Balance stage
     participant Out as Outer stage
 
-    Sense->>Loop: Measurement
-    Loop->>Est: Update with measurement
-    Est-->>Loop: Estimate
+    Sense->>Ctl: Measurement
+    Ctl->>Est: Update with measurement
+    Est-->>Ctl: Estimate
     alt Nth sample
-        Loop->>Loop: Measure interval, update statistics
-        Loop->>Bal: Estimate, measured interval
+        Ctl->>Ctl: Measure interval, update statistics
+        Ctl->>Bal: Estimate, measured interval
         alt Mth balance iteration
-            Loop->>Out: Measured interval
+            Ctl->>Out: Measured interval
         end
     end
 ```

@@ -264,22 +264,22 @@ Selecting a different strategy, and being refused while flying.
 ```mermaid
 sequenceDiagram
     participant Op as Operator
-    participant Link as Connectivity
+    participant Ble as Connectivity
     participant Ctrl as Balance control
     participant Sup as Safety supervisor
 
-    Op->>Link: Select strategy B
-    Link->>Ctrl: Selection request
+    Op->>Ble: Select strategy B
+    Ble->>Ctrl: Selection request
     Note over Ctrl: Disengaged since the last disarm
     Ctrl->>Ctrl: Activate strategy B
-    Ctrl-->>Link: Accepted, descriptor changed
-    Link-->>Op: New parameter descriptor
+    Ctrl-->>Ble: Accepted, descriptor changed
+    Ble-->>Op: New parameter descriptor
 
     Note over Op,Sup: Later, while balancing
-    Op->>Link: Select strategy A
-    Link->>Ctrl: Selection request
+    Op->>Ble: Select strategy A
+    Ble->>Ctrl: Selection request
     Note over Ctrl,Sup: Engaged by the supervisor on arming
-    Ctrl-->>Link: Rejected
+    Ctrl-->>Ble: Rejected
     Note over Ctrl: Strategy B keeps running, undisturbed
 ```
 
