@@ -2,7 +2,7 @@
 title: "Roadmap"
 type: roadmap
 status: draft
-version: 0.2.0
+version: 0.2.1
 component: "system"
 date: 2026-11-26
 ---
@@ -12,7 +12,7 @@ date: 2026-11-26
 | Title     | Roadmap    |
 | Type      | roadmap    |
 | Status    | draft      |
-| Version   | 0.2.0      |
+| Version   | 0.2.1      |
 | Component | system     |
 | Date      | 2026-11-26 |
 
@@ -51,9 +51,9 @@ flowchart LR
 |------|--------------------|------------------------------------------------------------------------|-------|
 | 1    | this               | Inertial sensing and attitude estimation setters                       | done  |
 | 2    | this               | Motion actuation and wheel odometry setters                            | done  |
-| 3    | embedded-infra-lib | `services::NvmRecordStore`: two copies, save delay, read-back, restore | next  |
-| 4    | this               | Tuning store on `NvmRecordStore`, with a shared EEPROM claim           |       |
-| 5    | this               | The calibration component, its store and the `cal` command             |       |
+| 3    | embedded-infra-lib | `services::NvmRecordStore`: two copies, save delay, read-back, restore | done  |
+| 4    | this               | Tuning store on `NvmRecordStore`, with a shared EEPROM claim           | done  |
+| 5    | this               | The calibration component, its store and the `cal` command             | next  |
 
 The record store holds an opaque payload, so it is not tied to the tuning or calibration format.
 It uses an `NvmRegion`, so it also works on flash.
