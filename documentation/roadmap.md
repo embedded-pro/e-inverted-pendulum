@@ -2,9 +2,9 @@
 title: "Roadmap"
 type: roadmap
 status: draft
-version: 0.1.0
+version: 0.2.0
 component: "system"
-date: 2026-11-25
+date: 2026-11-26
 ---
 
 | Field     | Value      |
@@ -12,9 +12,9 @@ date: 2026-11-25
 | Title     | Roadmap    |
 | Type      | roadmap    |
 | Status    | draft      |
-| Version   | 0.1.0      |
+| Version   | 0.2.0      |
 | Component | system     |
-| Date      | 2026-11-25 |
+| Date      | 2026-11-26 |
 
 > The path from the current firmware to a robot that balances and drives. Each milestone links to
 > the document that owns its detail. Update this page when a milestone changes state.
@@ -47,12 +47,16 @@ flowchart LR
 
 ## M6 — Runtime calibration
 
-Four pull requests, in order:
+| Step | Repository         | Change                                                                 | State |
+|------|--------------------|------------------------------------------------------------------------|-------|
+| 1    | this               | Inertial sensing and attitude estimation setters                       | done  |
+| 2    | this               | Motion actuation and wheel odometry setters                            | done  |
+| 3    | embedded-infra-lib | `services::NvmRecordStore`: two copies, save delay, read-back, restore | next  |
+| 4    | this               | Tuning store on `NvmRecordStore`, with a shared EEPROM claim           |       |
+| 5    | this               | The calibration component, its store and the `cal` command             |       |
 
-1. Inertial sensing and attitude estimation setters.
-2. Motion actuation and wheel odometry setters.
-3. A shared record store for the tuning and calibration records.
-4. The calibration component, its persistence and the `cal` command.
+The record store holds an opaque payload, so it is not tied to the tuning or calibration format.
+It uses an `NvmRegion`, so it also works on flash.
 
 ## M7 — Bench bring-up
 
@@ -70,12 +74,12 @@ Work on the robot, with the wheels off the ground.
 
 ## M8 — First balance
 
-| Step | Action                                                                          | Exit condition                    |
-|------|---------------------------------------------------------------------------------|-----------------------------------|
-| 1    | Derive LQR gains from the measured mass and geometry (`theory/control-laws.md`) | A first gain set to start from    |
-| 2    | Tune the inner pitch loop with the robot on a tether                            | The robot holds upright for 60 s  |
-| 3    | Raise the outer velocity loop gains                                             | The robot holds its position      |
-| 4    | Check a fall on the robot                                                       | FAULT within 20 ms (REQ-SAFE-002) |
+| Step | Action                                                                              | Exit condition                    |
+|------|-------------------------------------------------------------------------------------|-----------------------------------|
+| 1    | Compute LQR gains from the measured mass and geometry (see [Toolboxes](#toolboxes)) | A first gain set to start from    |
+| 2    | Tune the inner pitch loop with the robot on a tether                                | The robot holds upright for 60 s  |
+| 3    | Raise the outer velocity loop gains                                                 | The robot holds its position      |
+| 4    | Check a fall on the robot                                                           | FAULT within 20 ms (REQ-SAFE-002) |
 
 ## M9 — Driving
 
@@ -86,16 +90,33 @@ Work on the robot, with the wheels off the ground.
 
 ---
 
+## Toolboxes
+
+Generic algorithms move to the shared toolboxes. Each step is one pull request, opened after
+the previous one merges.
+
+| Step | Repository            | Change                                                                          | Needed by |
+|------|-----------------------|---------------------------------------------------------------------------------|-----------|
+| T1   | robotics-toolbox-cpp  | Linearised wheeled inverted pendulum model (`theory/pendulum-dynamics.md`)      | M8 step 1 |
+| T2   | this                  | Add robotics-toolbox; `tools/lqr_design` prints LQR gains from measured values  | M8 step 1 |
+| T3   | this                  | Wheel odometry uses `robotics::DifferentialDrive`                               | —         |
+| T4   | numerical-toolbox-cpp | Wrapped counter delta; PID with continuous gains; gravity-vector tilt and trust | T5        |
+| T5   | this                  | Use the T4 algorithms in place of the local copies                              | —         |
+
+T3 to T5 change no behaviour and can wait until after a first balance.
+
 ## Backlog
 
 Not needed for a first balance. Each item links to where it is recorded.
 
-| Item                                        | Where it is recorded                      |
-|---------------------------------------------|-------------------------------------------|
-| Scenarios for REQ-LINK-009 and REQ-LINK-010 | `use-cases/README.md`, Traceability       |
-| Encoder index events (REQ-ODOM-005)         | `design/wheel-odometry.md`, question 1    |
-| Motor current rating (REQ-DRIVE-005)        | `use-cases/safety.feature`                |
-| Battery voltage supervision                 | `design/safety-supervisor.md`, question 3 |
-| Motor current measurement                   | `design/motion-actuation.md`, question 3  |
-| Persistent Bluetooth bonds                  | `design/ble-service.md`                   |
-| More scenarios on the host                  | `use-cases/README.md`                     |
+| Item                                         | Where it is recorded                      |
+|----------------------------------------------|-------------------------------------------|
+| Scenarios for REQ-LINK-009 and REQ-LINK-010  | `use-cases/README.md`, Traceability       |
+| Encoder index events (REQ-ODOM-005)          | `design/wheel-odometry.md`, question 1    |
+| Motor current rating (REQ-DRIVE-005)         | `use-cases/safety.feature`                |
+| Battery voltage supervision                  | `design/safety-supervisor.md`, question 3 |
+| Motor current measurement                    | `design/motion-actuation.md`, question 3  |
+| Persistent Bluetooth bonds                   | `design/ble-service.md`                   |
+| More scenarios on the host                   | `use-cases/README.md`                     |
+| Rate limiter with a variable time step       | This page, [Toolboxes](#toolboxes)        |
+| Signed axis permutation in numerical-toolbox | This page, [Toolboxes](#toolboxes)        |
