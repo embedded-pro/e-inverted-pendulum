@@ -2,9 +2,9 @@
 title: "Two-Wheeled Inverted Pendulum Dynamics"
 type: theory
 status: draft
-version: 0.1.0
+version: 0.1.1
 component: "balance-control"
-date: 2026-09-16
+date: 2026-11-26
 ---
 
 | Field     | Value                                  |
@@ -12,9 +12,9 @@ date: 2026-09-16
 | Title     | Two-Wheeled Inverted Pendulum Dynamics |
 | Type      | theory                                 |
 | Status    | draft                                  |
-| Version   | 0.1.0                                  |
+| Version   | 0.1.1                                  |
 | Component | balance-control                        |
-| Date      | 2026-09-16                             |
+| Date      | 2026-11-26                             |
 
 > The plant model every control strategy is designed against. This document derives it and
 > establishes *why* the robot is unstable, which sets the loop rate and latency budgets the
@@ -37,7 +37,7 @@ $$
 \tau = \sqrt{\frac{J + m\ell^{2}}{m g \ell}}
 $$
 
-which is the number that justifies the 500 Hz loop rate and the 3 ms latency budget: a
+This is the number that justifies the 500 Hz loop rate and the 3 ms latency budget. A
 controller must act many times within $\tau$ to have authority over the fall.
 
 This document is deliberately law-agnostic. It produces the plant; `control-laws.md` derives
@@ -78,14 +78,19 @@ right-half-plane pole implies.
 
 ### Model / Setup
 
-The robot is modelled as two rigid bodies: a body of mass $m$ pivoting freely about the
-wheel axle, and a wheel pair of combined mass $M$ rolling without slipping on flat ground.
+The robot is modelled as two rigid bodies:
 
-Three assumptions make the problem tractable, and each is a real limitation recorded below:
-the wheels roll without slipping, so wheel rotation and ground travel are related by
-$x = r\phi$; the ground is flat and rigid; and the longitudinal (pitch) and rotational (yaw)
-dynamics decouple, so the two-wheeled robot can be treated as a planar cart-pole driven by
-the common-mode torque $\tau_c$, with yaw driven separately by $\tau_d$.
+- A body of mass $m$ pivoting freely about the wheel axle.
+- A wheel pair of combined mass $M$ rolling without slipping on flat ground.
+
+Three assumptions make the problem tractable. Each is a real limitation recorded below:
+
+- The wheels roll without slipping, so wheel rotation and ground travel are related by
+  $x = r\phi$.
+- The ground is flat and rigid.
+- The longitudinal (pitch) and rotational (yaw) dynamics decouple. The two-wheeled robot can
+  thus be treated as a planar cart-pole driven by the common-mode torque $\tau_c$, with yaw
+  driven separately by $\tau_d$.
 
 ```text
                     ● centre of mass (m, J)
@@ -121,7 +126,7 @@ T = \tfrac{1}{2}\left(M + \tfrac{2J_w}{r^{2}}\right)\dot{x}^{2}
 $$
 
 and, taking the axle as the datum, the potential energy $V = m g \ell \cos\theta$. Note that
-$V$ is at a *maximum* at $\theta = 0$ — the upright state is an energy peak, which is the
+$V$ is at a *maximum* at $\theta = 0$. The upright state is an energy peak, which is the
 formal statement that it is unstable.
 
 **Step 2 — Lagrange's equations.** With $L = T - V$, applying
@@ -180,7 +185,7 @@ constant $\tau$. No amount of tuning removes it — it can only be moved by feed
 if that feedback acts fast relative to $\tau$.
 
 **Step 6 — Yaw.** Yaw is driven by the differential torque against the wheels' moment arm
-$b/2$, and is a simple integrator chain rather than an unstable mode:
+$b/2$. It is a simple integrator chain rather than an unstable mode:
 
 $$
 \left(J_\psi + \frac{J_w b^{2}}{2r^{2}}\right)\ddot{\psi} = \frac{b}{2r}\,\tau_d
@@ -200,10 +205,10 @@ M_t &= M + m + \frac{2J_w}{r^{2}}, \qquad J_t = J + m\ell^{2}, \qquad \Delta = M
 $$
 
 The sign structure carries the control intuition: positive $\theta$ produces positive
-$\ddot{\theta}$ (the fall accelerates itself), while a positive $\tau_c$ produces negative
-$\ddot{\theta}$ and positive $\ddot{x}$ — driving forwards pushes the body back upright, at
+$\ddot{\theta}$ (the fall accelerates itself). A positive $\tau_c$ produces negative
+$\ddot{\theta}$ and positive $\ddot{x}$. Driving forwards pushes the body back upright, at
 the cost of moving. **Holding attitude and holding position are competing objectives through
-one input**, which is why every strategy in `control-laws.md` needs a cascade or a
+one input.** This is why every strategy in [control laws](control-laws.md) needs a cascade or a
 full-state gain rather than a single loop.
 
 ---
@@ -247,8 +252,8 @@ it is what makes the plant unstable.
 | Range      | Linearisation holds to roughly 15°; at 35° the small-angle error in $\sin\theta$ exceeds 6% and the model is no longer trustworthy                   |
 
 **Sensitivities.** The fall time constant $\tau$ depends on $\ell$ and $J$, and is what every
-timing budget derives from. A taller robot — larger $\ell$ and larger $J$ — falls *more
-slowly*, so height is a friend of stability even though it feels precarious; this is the same
+timing budget derives from. A taller robot, with larger $\ell$ and larger $J$, falls *more
+slowly*. Height is thus a friend of stability even though it feels precarious. This is the same
 reason a broom balances on a fingertip more easily than a pencil.
 
 For a representative small balancer ($m = 0.8$ kg, $\ell = 0.10$ m, $J \approx 0.004$ kg·m²):
@@ -259,13 +264,13 @@ $$
 
 A 500 Hz loop gives roughly 65 control actions inside one fall time constant, and the 3 ms
 latency budget is about 2% of $\tau$. Both are comfortable. At 50 Hz there would be only
-6 actions per time constant, and the robot would be visibly marginal — this is the
+6 actions per time constant, and the robot would be visibly marginal. This is the
 calculation that sets the rate, not a convention.
 
-The parameters that dominate everything else are $\ell$ (directly in $\tau$ and in every
-coupling term) and $r$ (which scales torque into linear acceleration and enters $M_t$
-quadratically through $J_w/r^{2}$). $m$ and $M$ matter much less, because they appear in both
-the driving and the resisting terms.
+The parameters that dominate everything else are $\ell$ and $r$. The height $\ell$ appears directly
+in $\tau$ and in every coupling term. The radius $r$ scales torque into linear acceleration and
+enters $M_t$ quadratically through $J_w/r^{2}$. The masses $m$ and $M$ matter much less, because
+they appear in both the driving and the resisting terms.
 
 ---
 

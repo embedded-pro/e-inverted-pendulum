@@ -2,9 +2,9 @@
 title: "System Architecture"
 type: architecture
 status: draft
-version: 0.2.1
+version: 0.2.2
 component: "system"
-date: 2026-11-25
+date: 2026-11-26
 ---
 
 | Field     | Value               |
@@ -12,9 +12,9 @@ date: 2026-11-25
 | Title     | System Architecture |
 | Type      | architecture        |
 | Status    | draft               |
-| Version   | 0.2.1               |
+| Version   | 0.2.2               |
 | Component | system              |
-| Date      | 2026-11-25          |
+| Date      | 2026-11-26          |
 
 > Architecture of a two-wheeled self-balancing inverted pendulum robot. This document
 > describes *what* the system is composed of and *why*; component-level behaviour is in
@@ -56,9 +56,9 @@ above all of it and owns the single decision that matters — whether the motors
 energised at all.
 
 Two seams give the system its shape. The **platform abstraction** separates portable logic
-from any particular board, so the whole control stack builds and runs on the host. The
+from any particular board. The whole control stack thus builds and runs on the host. The
 **controller strategy interface** separates the balancing policy from everything that
-feeds it, so the control law is a runtime choice rather than an architectural commitment.
+feeds it. The control law is thus a runtime choice rather than an architectural commitment.
 
 ```mermaid
 graph TD
@@ -222,14 +222,14 @@ sequenceDiagram
 
 ---
 
-## Open Questions & Decisions
+## Decisions
 
-| # | Question / Decision                                                | Status  | Options Considered                                                  | Rationale                                                                                                                                                                                                                                                                         |
+| # | Decision                                                           | Status  | Options Considered                                                  | Rationale                                                                                                                                                                                                                                                                         |
 |---|--------------------------------------------------------------------|---------|---------------------------------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | 1 | Which inertial sensor part                                         | decided | MPU6050; LSM303 + L3GD20; MPU9250                                   | An MPU9250, on SPI2 with its data-ready line interrupting. Chosen partly because a tested driver is already vendored. Its AK8963 magnetometer is deliberately unused. The deferral did its job — the estimator and controller were specified against the role and neither changes |
-| 2 | Which control strategy ships as the default                        | decided | Cascaded PID; LQR                                                   | Both strategies are implemented and selected at run time. The factory default is cascaded PID; see balance-control.md, question 1                                                                                                                                                 |
+| 2 | Which control strategy ships as the default                        | decided | Cascaded PID; LQR                                                   | Both strategies are implemented and selected at run time. The factory default is cascaded PID; see balance-control.md, decision 1                                                                                                                                                 |
 | 3 | Motor driver operating mode                                        | decided | Internal step sequencer; external commutation                       | One DRV8711 drives two brushed DC motors by bypassing its indexer and driving both full bridges directly — the part supplies two bridges, current regulation and fault reporting for one SPI configuration channel                                                                |
 | 4 | Runtime strategy dispatch versus the no-virtual-dispatch rule      | decided | Compile-time selection; runtime interface                           | Runtime selection is required by the product. Dispatch is once per balance iteration in task context, never in an interrupt path, and the strategy cannot change while ARMED, so the armed cost is fixed                                                                          |
-| 5 | Whether the estimator is a complementary filter or a Kalman filter | decided | Complementary; single-axis Kalman                                   | Both filters are implemented and the operator selects one at run time; see attitude-estimation.md, question 1                                                                                                                                                                     |
-| 6 | Pairing and bonding policy                                         | decided | Just-works pairing; passkey                                         | Just Works pairing with encryption; see ble-service.md, question 1                                                                                                                                                                                                                |
+| 5 | Whether the estimator is a complementary filter or a Kalman filter | decided | Complementary; single-axis Kalman                                   | Both filters are implemented and the operator selects one at run time; see attitude-estimation.md, decision 1                                                                                                                                                                     |
+| 6 | Pairing and bonding policy                                         | decided | Just-works pairing; passkey                                         | Just Works pairing with encryption; see ble-service.md, decision 1                                                                                                                                                                                                                |
 | 7 | Where specification scenarios execute                              | decided | `integration_tests/features/`; staged in `documentation/use-cases/` | Scenarios are staged under `documentation/use-cases/` until they have step definitions. The executable suite runs everything in `integration_tests/features/`. A scenario migrates when the host can run it; see `use-cases/README.md`                                            |

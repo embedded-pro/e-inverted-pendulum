@@ -2,9 +2,9 @@
 title: "Pitch Estimation from Inertial Measurements"
 type: theory
 status: draft
-version: 0.1.0
+version: 0.1.1
 component: "attitude-estimation"
-date: 2026-09-16
+date: 2026-11-26
 ---
 
 | Field     | Value                                       |
@@ -12,9 +12,9 @@ date: 2026-09-16
 | Title     | Pitch Estimation from Inertial Measurements |
 | Type      | theory                                      |
 | Status    | draft                                       |
-| Version   | 0.1.0                                       |
+| Version   | 0.1.1                                       |
 | Component | attitude-estimation                         |
-| Date      | 2026-09-16                                  |
+| Date      | 2026-11-26                                  |
 
 > Why neither inertial sensor can measure pitch on its own, and how combining them produces
 > an estimate good enough to balance on.
@@ -33,8 +33,8 @@ lean is real tilt, the acceleration is fake tilt, and they have the same sign. A
 accelerometer-only estimate would see roughly double the true lean and command a correction
 that makes it worse.
 
-Fusion resolves this in the frequency domain: trust the gyroscope at high frequency where
-drift has not accumulated, and the accelerometer at low frequency where body acceleration
+Fusion resolves this in the frequency domain. It trusts the gyroscope at high frequency, where
+drift has not accumulated. It trusts the accelerometer at low frequency, where body acceleration
 averages out. The main result is the complementary filter
 
 $$
@@ -111,15 +111,15 @@ $$
 $$
 
 With $a_{\text{body}} = 0$ this is exact and drift-free. With $a_{\text{body}} \neq 0$ it is
-wrong — and for small angles the error is approximately $a_{\text{body},x}/g$, meaning a
+wrong. For small angles the error is approximately $a_{\text{body},x}/g$, so a
 modest 1 m/s² acceleration produces a 5.8° false tilt.
 
 ### Derivation
 
-**Step 1 — The complementary decomposition.** The two errors are complementary in frequency:
-gyroscope error is concentrated at low frequency (a ramp), accelerometer error at high
+**Step 1 — The complementary decomposition.** The two errors are complementary in frequency.
+Gyroscope error is concentrated at low frequency (a ramp). Accelerometer error is at high
 frequency (vibration and transient acceleration). So high-pass the gyroscope path and
-low-pass the accelerometer path with the *same* cutoff, so the two transfer functions sum to
+low-pass the accelerometer path with the *same* cutoff. The two transfer functions then sum to
 unity:
 
 $$
@@ -141,8 +141,8 @@ $$
 \lambda = \frac{\tau_c}{\tau_c + \Delta t}
 $$
 
-At 500 Hz with $\tau_c = 0.5$ s, $\lambda = 0.5/(0.5+0.002) = 0.996$ — the estimate is
-dominated by integration, with the accelerometer applying a gentle 0.4% correction each
+At 500 Hz with $\tau_c = 0.5$ s, $\lambda = 0.5/(0.5+0.002) = 0.996$. The estimate is
+dominated by integration. The accelerometer applies a gentle 0.4% correction each
 sample that prevents unbounded drift.
 
 **Step 3 — Choosing the crossover.** $\tau_c$ trades the two error sources directly. Gyro
@@ -207,10 +207,10 @@ K_k = \frac{P_k^{-}H^{\top}}{HP_k^{-}H^{\top} + R}, \qquad
 $$
 
 The essential difference is that $K_k$ is computed from the covariance rather than fixed. It
-is large while uncertainty is high — giving fast initial convergence — and shrinks as the
-estimate settles. **In steady state the Kalman gain converges to a constant, at which point
-the filter is algebraically a complementary filter with an optimally chosen $\lambda$.** The
-two approaches are not rivals so much as the same filter with the crossover either tuned by
+is large while uncertainty is high, which gives fast initial convergence. It shrinks as the
+estimate settles. **In steady state the Kalman gain converges to a constant.** The filter is
+then algebraically a complementary filter with an optimally chosen $\lambda$. The
+two approaches are not rivals so much as the same filter. The crossover is either tuned by
 hand or derived from noise statistics.
 
 The Kalman filter's genuine advantage is tracking bias *online*, which removes the
@@ -278,7 +278,7 @@ The frequency split, drawn as magnitude against frequency:
 **Sensitivities.** The dominant one is **residual gyroscope bias**, which maps directly to
 steady-state error of roughly $\hat{b}\tau_c$. With $\tau_c = 0.5$ s, holding the 1°-per-60 s
 drift budget of `REQ-EST-003` requires the residual bias after calibration to stay below
-about 0.02 rad/s — achievable with a one-second averaging window, which is exactly why the
+about 0.02 rad/s. A one-second averaging window achieves this, which is exactly why the
 calibration window is specified as it is.
 
 Second is **$\tau_c$ itself**, the single knob trading drift against acceleration
@@ -289,8 +289,8 @@ timing jitter injects angle error in proportion. Using the *measured* interval r
 the nominal one removes most of this, which is why the timebase contract specifies measured
 intervals.
 
-Least sensitive is accelerometer noise, which the low-pass path attenuates heavily —
-structural vibration matters far more than the sensor's own noise floor, since vibration is
+Least sensitive is accelerometer noise, which the low-pass path attenuates heavily.
+Structural vibration matters far more than the sensor's own noise floor, since vibration is
 broadband and can alias into the passband.
 
 ---
@@ -306,7 +306,7 @@ $$
 \varepsilon = \frac{1.5}{9.81} \approx 0.153\ \text{rad} \approx 8.8^{\circ}
 $$
 
-on top of the true 8°, so $\theta_a \approx 16.8^{\circ}$ — more than double the truth, and
+on top of the true 8°, so $\theta_a \approx 16.8^{\circ}$. This is more than double the truth, and
 an unusable input to a controller whose fall threshold is 35°.
 
 The complementary filter admits this error only through the low-pass path. Over $N = 500$

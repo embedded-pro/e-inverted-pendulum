@@ -2,9 +2,9 @@
 title: "Control Loop Design"
 type: design
 status: draft
-version: 0.3.0
+version: 0.3.1
 component: "control-loop"
-date: 2026-09-24
+date: 2026-11-26
 ---
 
 | Field     | Value               |
@@ -12,9 +12,9 @@ date: 2026-09-24
 | Title     | Control Loop Design |
 | Type      | design              |
 | Status    | draft               |
-| Version   | 0.3.0               |
+| Version   | 0.3.1               |
 | Component | control-loop        |
-| Date      | 2026-09-24          |
+| Date      | 2026-11-26          |
 
 > Turns a stream of inertial samples into a paced sequence of estimation, balance and outer-loop
 > work, and measures how well that pace is kept.
@@ -23,20 +23,12 @@ date: 2026-09-24
 
 ## Responsibilities
 
-**Is responsible for:**
 - Running attitude estimation on every inertial sample.
-- Running the balance stage at the balance rate and the outer stage at the outer rate, both derived
-  from the sample stream rather than from a separate timer.
+- Running the balance stage at the balance rate and the outer stage at the outer rate. Both rates
+  come from the sample stream rather than from a separate timer.
 - Measuring the real interval between balance iterations and handing it to the stage that runs.
 - Keeping timing statistics: iterations run, the largest deviation of an iteration's start from its
   nominal period, and the number of late iterations.
-
-**Is NOT responsible for:**
-- Deciding whether the balance and outer stages may run — the safety supervisor sits in front of
-  both and forwards iterations only while ARMED.
-- Computing effort — that is balance control, which this component calls as its balance stage.
-- Deciding what a late iteration means — the safety supervisor owns liveness and faults.
-- Sampling the sensor or timestamping samples — that is inertial sensing.
 
 ---
 
@@ -44,12 +36,12 @@ date: 2026-09-24
 
 ### Part A — The sample is the clock
 
-The inertial part asserts data-ready at its own cadence, and the latency budget from sample to
-actuator is 3 ms. Driving the loop from a separate timer would add up to a whole timer period of
-waiting between a sample arriving and the loop using it, and would let the two clocks beat against
-each other. The loop is therefore driven by the samples themselves: every sample is estimated as it
-arrives, and every Nth sample also runs the balance stage, with N the ratio of the balance period
-to the sample period. At the configured 1 kHz sample rate and 500 Hz balance rate, N is 2.
+The inertial sensor signals data-ready at its own cadence. The latency budget from sample to
+actuator is 3 ms. A separate timer would add up to a whole timer period of waiting between a
+sample arriving and the loop using it. It would also let the two clocks beat
+against each other. The loop is therefore driven by the samples themselves. Every sample is
+estimated as it arrives. Every Nth sample also runs the balance stage, with N the ratio of the
+balance period to the sample period. At the configured 1 kHz sample rate and 500 Hz balance rate, N is 2.
 
 The outer stage runs every Mth balance iteration, with M the ratio of the outer period to the balance
 period — 10 at 50 Hz.
@@ -58,14 +50,14 @@ period — 10 at 50 Hz.
 
 Each stage receives the interval since its previous run as measured from sample timestamps. The
 first run of a stage after start has no previous run and receives the nominal period. A sample
-marked invalid still advances the pacing, so a missing estimate shows up downstream as an invalid
+marked invalid still advances the pacing. A missing estimate thus shows up downstream as an invalid
 estimate rather than as a silently stretched period.
 
 ### Part C — Timing statistics
 
 For every balance iteration after the first, the loop compares the measured interval with the
-nominal balance period. The largest absolute deviation seen is kept, and an iteration whose interval
-exceeds the nominal period by more than the jitter bound — 10 percent — is counted as late. These
+nominal balance period. The loop keeps the largest absolute deviation seen. An iteration whose interval
+exceeds the nominal period by more than the jitter bound (10 percent) counts as late. These
 are observations for the operator and the supervisor; the loop itself never skips or reorders work
 because of them.
 
@@ -83,9 +75,10 @@ because of them.
 
 | Interface           | Purpose                             | Contract                                                                                                                                                   |
 |---------------------|-------------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| Inertial sensing    | Per-sample measurement notification | Every sample is delivered once, in order, with its acquisition time                                                                                        |
+| Inertial sensing    | Per-sample measurement notification | Every sample is delivered once, in order, with its acquisition time; inertial sensing samples the sensor and timestamps each sample                         |
+| Safety supervisor   | Permission and liveness             | Sits in front of both stages and forwards iterations only while ARMED; decides what a late iteration means                                                 |
 | Attitude estimation | Estimate from one measurement       | Returns an estimate with explicit validity for every measurement                                                                                           |
-| Balance stage       | Balance control iteration           | Receives the estimate and the measured interval; bounded execution time; engaged on entry to ARMED so a session starts without history, disengaged on exit |
+| Balance stage       | Balance control iteration           | Computes the effort; receives the estimate and the measured interval; bounded execution time; engaged on entry to ARMED so a session starts without history, disengaged on exit |
 | Outer stage         | Velocity and yaw iteration          | Receives the measured interval; bounded execution time                                                                                                     |
 
 ---
@@ -139,8 +132,8 @@ sequenceDiagram
 
 ---
 
-## Open Questions
+## Decisions
 
-| # | Question                                                           | Options                                                    | Status |
+| # | Decision                                                           | Options                                                    | Status |
 |---|--------------------------------------------------------------------|------------------------------------------------------------|--------|
 | 1 | Should the balance stage run from the data-ready interrupt itself? | Event context, as now; interrupt context for lower latency | open   |

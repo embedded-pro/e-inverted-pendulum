@@ -2,9 +2,9 @@
 title: "Runtime Calibration Design"
 type: design
 status: draft
-version: 0.3.0
+version: 0.3.1
 component: "calibration"
-date: 2026-11-25
+date: 2026-11-26
 ---
 
 | Field     | Value                      |
@@ -12,9 +12,9 @@ date: 2026-11-25
 | Title     | Runtime Calibration Design |
 | Type      | design                     |
 | Status    | draft                      |
-| Version   | 0.3.0                      |
+| Version   | 0.3.1                      |
 | Component | calibration                |
-| Date      | 2026-11-25                 |
+| Date      | 2026-11-26                 |
 
 > Lets the operator set the robot's physical calibration from the console, test it at once, and
 > keep it across a reset. Until now each value was a constant in the source, so each change
@@ -24,16 +24,9 @@ date: 2026-11-25
 
 ## Responsibilities
 
-**Is responsible for:**
-
 - Holding the calibration values and applying them to the components that use them.
 - Refusing a change while the drive is armed.
-- Saving the values to the EEPROM and restoring them at power-on.
-
-**Is NOT responsible for:**
-
-- Measuring the values: the operator measures them on the bench.
-- Control gains: they are tuning (`persistence.md`), not calibration.
+- Saving the values to the non-volatile memory and restoring them at power-on.
 
 ---
 
@@ -50,7 +43,7 @@ date: 2026-11-25
 | Encoder sign    | + per wheel           | Wheel odometry      | Inverts the counts of one wheel               |
 | Wheel geometry  | 0.034 m, 0.145 m, 1.0 | Wheel odometry      | Wheel radius, track width and gear ratio      |
 
-The board keeps an identity axis map. The calibrated map is applied in inertial sensing, so it is
+The target platform keeps an identity axis map. The calibrated map is applied in inertial sensing, so it is
 portable and tested on the host.
 
 ### Part B — Applying a change
@@ -85,28 +78,28 @@ asks for `calibrate`. Values take a decimal point, for example `cal still 0.05`.
 
 ### Part D — Persistence
 
-The calibration record uses the tuning record format (`persistence.md`, Part A) with its own
-keys. It has two copies of its own at EEPROM offsets 256 and 384, so a calibration save never
-touches the tuning copies. The tuning store and the calibration store each have their own
-`services::NvmRecordStore` (`persistence.md`,
-Part B). The two stores share one EEPROM claim.
+The calibration record uses the tuning record format ([persistence](persistence.md), Part A) with its
+own keys. It has two copies of its own at non-volatile memory offsets 256 and 384. A calibration save
+thus never touches the tuning copies. The tuning store and the calibration store each have their own
+record store ([persistence](persistence.md), Part B). The two stores share one claim on the
+non-volatile memory.
 
 The restore applies each stored value through the same setters as the console. A value that a
 component rejects keeps its default, and the store reports the restore as corrupt. A missing key
-keeps its default. The three axis keys apply together, or not at all. The safety supervisor holds its self-test until the restore
-ends (`safety-supervisor.md`, Part F). A restored axis map therefore never interrupts the bias
+keeps its default. The three axis keys apply together, or not at all. The safety supervisor holds its self-test until
+the restore ends ([safety supervisor](safety-supervisor.md), Part F). A restored axis map therefore never interrupts the bias
 calibration at power-on.
 
 | Key                       | Value                                                 |
 |---------------------------|-------------------------------------------------------|
-| `axis.x/y/z`              | Signed sensor axis: ±1, ±2 or ±3 for sensor x, y or z |
-| `still`                   | Stillness limit in rad/s                              |
-| `upright`                 | Upright offset in rad                                 |
-| `motor.left/right`        | −1 when inverted, else +1                             |
-| `encoder.left/right`      | −1 when inverted, else +1                             |
-| `wheel.radius/track/gear` | Wheel geometry                                        |
+| Axis, one per body axis   | Signed sensor axis: ±1, ±2 or ±3 for sensor x, y or z |
+| Stillness                 | Stillness limit in rad/s                              |
+| Upright                   | Upright offset in rad                                 |
+| Motor, one per wheel      | −1 when inverted, else +1                             |
+| Encoder, one per wheel    | −1 when inverted, else +1                             |
+| Wheel radius, track, gear | Wheel geometry                                        |
 
-Each key is hashed with the strategy name `cal`, as in `persistence.md`, Part A.
+Each key is hashed with the strategy name `cal`, as in [persistence](persistence.md), Part A.
 
 ---
 
@@ -129,7 +122,8 @@ Each key is hashed with the strategy name `cal`, as in `persistence.md`, Part A.
 | Motion actuation    | Set the motor signs            | Applied to the next effort                 |
 | Wheel odometry      | Set encoder signs and geometry | Applied to the next sample                 |
 | Balance control     | Read the engagement            | Writes refused while engaged (ARMED)       |
-| EEPROM role         | Storage                        | Offsets 256 to 511                         |
+| Non-volatile memory | Storage                        | Offsets 256 to 511                         |
+| Operator            | Measure the values             | Measured on the bench                      |
 
 ---
 
@@ -171,7 +165,8 @@ sequenceDiagram
 |-----------------|-------------------------------------------------------------------------|
 | Not while armed | Every change is refused while the drive is armed                        |
 | Recalibrate     | An axis map or stillness change needs `calibrate` before the robot arms |
-| Storage         | Offsets 256 to 511 of the 24C04; the tuning store keeps 0 to 255        |
+| Storage         | Offsets 256 to 511 of the non-volatile memory; tuning keeps 0 to 255    |
+| Scope           | Control gains are tuning ([persistence](persistence.md)), not calibration |
 
 ---
 
@@ -187,8 +182,8 @@ Five pull requests, each one built and tested on its own:
 
 ---
 
-## Open Questions
+## Decisions
 
-| # | Question                                                    | Options                                           | Status |
+| # | Decision                                                    | Options                                           | Status |
 |---|-------------------------------------------------------------|---------------------------------------------------|--------|
-| 1 | Should the board's own axis map be removed once this works? | Keep as identity; remove the constructor argument | open   |
+| 1 | Should the target's own axis map be removed once this works? | Keep as identity; remove the platform axis map input | open   |

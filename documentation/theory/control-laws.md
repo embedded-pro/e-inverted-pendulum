@@ -2,9 +2,9 @@
 title: "Balancing Control Laws"
 type: theory
 status: draft
-version: 0.1.0
+version: 0.1.1
 component: "balance-control"
-date: 2026-09-16
+date: 2026-11-26
 ---
 
 | Field     | Value                  |
@@ -12,9 +12,9 @@ date: 2026-09-16
 | Title     | Balancing Control Laws |
 | Type      | theory                 |
 | Status    | draft                  |
-| Version   | 0.1.0                  |
+| Version   | 0.1.1                  |
 | Component | balance-control        |
-| Date      | 2026-09-16             |
+| Date      | 2026-11-26             |
 
 > Two ways to stabilise the same plant. This document derives both from the model in
 > `pendulum-dynamics.md` and states what *any* law must satisfy — which is the theoretical
@@ -25,8 +25,8 @@ date: 2026-09-16
 ## Overview
 
 The plant is open-loop unstable with a pole at $+1/\tau$. Stabilising it means placing every
-closed-loop pole in the left half plane using the one common-mode input available, while
-also regulating position — two objectives through one actuator.
+closed-loop pole in the left half plane using the one common-mode input available. The law must
+also regulate position: two objectives through one actuator.
 
 This document derives two laws that do it. **Cascaded PID** nests a fast pitch loop inside a
 slower velocity loop, exploiting a timescale separation. **LQR** feeds back all four states
@@ -34,8 +34,8 @@ through a single gain vector chosen to minimise a quadratic cost. They look diff
 produce the same kind of object: a map from measured state and setpoints to a common-mode
 effort.
 
-The main result is the **stabilisability condition** every law must meet — the closed-loop
-characteristic polynomial must be Hurwitz, which for this plant requires genuine feedback on
+The main result is the **stabilisability condition** every law must meet. The closed-loop
+characteristic polynomial must be Hurwitz. For this plant that requires genuine feedback on
 both $\theta$ and $\dot{\theta}$:
 
 $$
@@ -44,9 +44,9 @@ $$
 k_\theta > \frac{M_t\, m g \ell}{\beta}, \qquad k_{\dot\theta} > 0
 $$
 
-Because this condition is a property of the *plant*, not of any particular law, the
-requirements in `documentation/requirements/balance-control.yaml` are stated as outcomes and
-any conforming strategy may satisfy them.
+This condition is a property of the *plant*, not of any particular law. The
+requirements in `documentation/requirements/balance-control.yaml` are therefore stated as outcomes.
+Any conforming strategy may satisfy them.
 
 ---
 
@@ -141,8 +141,8 @@ u = K_p^{i}(\theta - \theta^\*) + K_i^{i}\!\int(\theta - \theta^\*)\,dt + K_d^{i
 $$
 
 with $K_p^{i} > \alpha/\beta$ inherited from Part 1. The derivative term uses the measured
-pitch rate directly rather than differentiating the angle — the estimator already provides
-$\dot{\theta}$, and differentiating a noisy angle would inject noise straight into the
+pitch rate directly rather than differentiating the angle. The estimator already provides
+$\dot{\theta}$. Differentiating a noisy angle would inject noise straight into the
 actuator.
 
 **Outer loop** produces $\theta^\*$ from the velocity error:
@@ -161,7 +161,7 @@ $$
 \omega_i \gtrsim 5\,\omega_o
 $$
 
-Violating it does not produce an obvious failure — it produces a slow oscillation as the two
+Violating it does not produce an obvious failure. It produces a slow oscillation as the two
 loops fight, which is easily mistaken for bad tuning. This is why the design fixes the loops
 at 500 Hz and 50 Hz, a decade apart.
 
@@ -196,7 +196,7 @@ the closed loop $A - BK$ is guaranteed Hurwitz. That guarantee is the LQR's real
 stability is not something to be verified after tuning, it is a property of the construction.
 
 Tuning moves from four coupled gains to the entries of $Q$ and $R$, which carry physical
-meaning — how much pitch error is worth how much position error is worth how much effort. A
+meaning. They say how much pitch error is worth how much position error is worth how much effort. A
 practical starting point is Bryson's rule, weighting each term by the reciprocal square of its
 acceptable deviation:
 
@@ -209,9 +209,9 @@ $u = -K\mathbf{z}$, four multiply-accumulates per iteration.
 
 #### Part 4 — What any law must satisfy
 
-Both laws produce a closed loop of the form $\dot{\mathbf{z}} = (A - BK_{\text{eff}})\mathbf{z}$ —
-the cascade's $K_{\text{eff}}$ is structured and derived from nested loops, the LQR's is dense
-and derived from the Riccati equation, but the stability question is identical. A conforming
+Both laws produce a closed loop of the form $\dot{\mathbf{z}} = (A - BK_{\text{eff}})\mathbf{z}$.
+The cascade's $K_{\text{eff}}$ is structured and derived from nested loops. The LQR's is dense
+and derived from the Riccati equation. But the stability question is identical. A conforming
 strategy must:
 
 1. place all closed-loop poles in the left half plane, requiring feedback on both $\theta$
@@ -221,8 +221,8 @@ strategy must:
 4. execute in bounded time within the loop period.
 
 Nothing beyond this is a property of the law. **That is precisely why the control law can be
-a runtime selection**: the interface in `documentation/design/balance-control.md` demands only
-these four properties, and the requirements are written as the outcomes they produce.
+a runtime selection.** The interface in [balance control](../design/balance-control.md) demands only
+these four properties. The requirements are written as the outcomes they produce.
 
 ### Key Results
 
@@ -295,16 +295,16 @@ Both reduce to the same closed-loop structure, which is what the strategy interf
 
 **Sensitivities.** The dominant sensitivity is to **loop rate and latency**, not to gains.
 A discrete implementation adds phase lag of approximately $\omega T_s/2$ radians from
-sampling plus the computation latency; at 500 Hz and a 3 ms sensor-to-actuator budget this
+sampling plus the computation latency. At 500 Hz and a 3 ms sensor-to-actuator budget this
 costs a few degrees of phase margin, which is affordable. Halving the rate roughly doubles
-the lag and can consume the entire margin of an otherwise well-tuned controller — a
-controller that works at 500 Hz and fails at 100 Hz has not been mistuned, it has run out of
+the lag. It can consume the entire margin of an otherwise well-tuned controller. A
+controller that works at 500 Hz and fails at 100 Hz has not been mistuned. It has run out of
 phase.
 
 The next most sensitive quantity is the **derivative path**. $K_d^{i}$ acts on the estimated
-pitch rate, so estimator noise is amplified directly into the actuator; this is the coupling
-that ties controller performance to the estimator quality specified in
-`attitude-estimation.md`.
+pitch rate, so estimator noise is amplified directly into the actuator. This coupling
+ties controller performance to the estimator quality specified in
+[attitude estimation](attitude-estimation.md).
 
 **Integral windup** is the classic practical failure. Holding the robot against a wall
 saturates the effort while the integral term keeps accumulating; on release the discharge
@@ -314,7 +314,7 @@ optimisation but a correctness requirement — hence `REQ-CTRL-009`.
 Both laws are **robust to modest parameter error**. Mass and inertia estimates within about
 20% are typically absorbed by the gain margin, which is fortunate because $J$ is difficult to
 measure directly. The LQR is the more sensitive of the two, since its optimality is defined
-against the model it was computed from; the cascade is tuned against the real robot and so
+against the model it was computed from. The cascade is tuned against the real robot and so
 absorbs model error implicitly.
 
 ---
@@ -372,7 +372,7 @@ fall by a healthy factor, which is the whole game.
   to the loop rate. Estimator lag is indistinguishable from actuator lag and consumes the
   same phase margin.
 - **Assumes**: torque is commanded directly. Effort actually maps to bridge duty open-loop,
-  so torque per unit effort varies with battery voltage and motor speed — absorbed as gain
+  so torque per unit effort varies with battery voltage and motor speed. This is absorbed as gain
   variation, not modelled.
 - **Assumes**: unsaturated effort. Every stability result above is void while the actuator is
   clamped, which is why anti-windup is a requirement rather than a refinement.
