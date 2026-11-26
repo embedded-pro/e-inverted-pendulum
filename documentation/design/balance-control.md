@@ -2,7 +2,7 @@
 title: "Balance Control Design"
 type: design
 status: draft
-version: 0.5.1
+version: 0.6.0
 component: "balance-control"
 date: 2026-11-26
 ---
@@ -12,7 +12,7 @@ date: 2026-11-26
 | Title     | Balance Control Design |
 | Type      | design                 |
 | Status    | draft                  |
-| Version   | 0.5.1                  |
+| Version   | 0.6.0                  |
 | Component | balance-control        |
 | Date      | 2026-11-26             |
 
@@ -75,6 +75,11 @@ discretised with the measured interval of every run. A stretched iteration there
 silently change the tuning. The inner loop takes its derivative from the measured pitch rate,
 not from the change in pitch error. The gyroscope already measures the rate directly.
 Differentiating the error would kick every time the outer loop moves the pitch setpoint.
+
+The velocity and yaw loops use the continuous-gain PID of numerical-toolbox
+(`doc/controllers/PidContinuous.md` there). Its first step after a reset has no derivative term,
+so engaging the strategy does not kick either loop. A step with an interval that is not positive and
+finite leaves the loop unchanged.
 
 The initial gains are conservative placeholders to be tuned on the bench.
 

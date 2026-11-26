@@ -63,17 +63,17 @@ TEST(AttitudeEstimationGeometryTest, nose_up_rotation_is_negative_rate_about_bod
 
 TEST(AttitudeEstimationGeometryTest, upright_is_zero_pitch_and_nose_up_is_positive)
 {
-    EXPECT_NEAR(0.0f, estimation::AccelerometerPitch(platform::InertialAxes{ 0.0f, 0.0f, -gravity }), 1e-6f);
-    EXPECT_NEAR(0.2f, estimation::AccelerometerPitch(GravityAtPitch(0.2f)), 1e-5f);
-    EXPECT_NEAR(-0.2f, estimation::AccelerometerPitch(GravityAtPitch(-0.2f)), 1e-5f);
+    EXPECT_NEAR(0.0f, estimation::AccelerometerTilt(platform::InertialAxes{ 0.0f, 0.0f, -gravity }, 0.15f).angle, 1e-6f);
+    EXPECT_NEAR(0.2f, estimation::AccelerometerTilt(GravityAtPitch(0.2f), 0.15f).angle, 1e-5f);
+    EXPECT_NEAR(-0.2f, estimation::AccelerometerTilt(GravityAtPitch(-0.2f), 0.15f).angle, 1e-5f);
 }
 
 TEST(AttitudeEstimationGeometryTest, trust_falls_off_linearly_across_the_acceleration_band)
 {
-    EXPECT_FLOAT_EQ(1.0f, estimation::AccelerometerTrust(GravityAtPitch(0.0f), 0.15f));
-    EXPECT_NEAR(0.5f, estimation::AccelerometerTrust(GravityAtPitch(0.0f, 1.075f), 0.15f), 1e-4f);
-    EXPECT_NEAR(0.5f, estimation::AccelerometerTrust(GravityAtPitch(0.0f, 0.925f), 0.15f), 1e-4f);
-    EXPECT_FLOAT_EQ(0.0f, estimation::AccelerometerTrust(GravityAtPitch(0.0f, 1.5f), 0.15f));
+    EXPECT_NEAR(1.0f, estimation::AccelerometerTilt(GravityAtPitch(0.0f), 0.15f).trust, 1e-5f);
+    EXPECT_NEAR(0.5f, estimation::AccelerometerTilt(GravityAtPitch(0.0f, 1.075f), 0.15f).trust, 1e-4f);
+    EXPECT_NEAR(0.5f, estimation::AccelerometerTilt(GravityAtPitch(0.0f, 0.925f), 0.15f).trust, 1e-4f);
+    EXPECT_NEAR(0.0f, estimation::AccelerometerTilt(GravityAtPitch(0.0f, 1.5f), 0.15f).trust, 1e-6f);
 }
 
 TEST_F(AttitudeEstimationImplTest, nothing_estimated_yet_is_invalid_for_sensing)

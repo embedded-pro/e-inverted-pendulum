@@ -2,7 +2,7 @@
 title: "Roadmap"
 type: roadmap
 status: draft
-version: 0.2.2
+version: 0.2.3
 component: "system"
 date: 2026-11-26
 ---
@@ -12,7 +12,7 @@ date: 2026-11-26
 | Title     | Roadmap    |
 | Type      | roadmap    |
 | Status    | draft      |
-| Version   | 0.2.2      |
+| Version   | 0.2.3      |
 | Component | system     |
 | Date      | 2026-11-26 |
 
@@ -95,13 +95,16 @@ Work on the robot, with the wheels off the ground.
 Generic algorithms move to the shared toolboxes. Each step is one pull request, opened after
 the previous one merges.
 
-| Step | Repository            | Change                                                                          | Needed by |
-|------|-----------------------|---------------------------------------------------------------------------------|-----------|
-| T1   | robotics-toolbox-cpp  | Linearised wheeled inverted pendulum model (`theory/pendulum-dynamics.md`)      | M8 step 1 |
-| T2   | this                  | Add robotics-toolbox; `tools/lqr_design` prints LQR gains from measured values  | M8 step 1 |
-| T3   | this                  | Wheel odometry uses `robotics::DifferentialDrive`                               | —         |
-| T4   | numerical-toolbox-cpp | Wrapped counter delta; PID with continuous gains; gravity-vector tilt and trust | T5        |
-| T5   | this                  | Use the T4 algorithms in place of the local copies                              | —         |
+| Step | Repository            | Change                                                                         | Needed by |
+|------|-----------------------|--------------------------------------------------------------------------------|-----------|
+| T1   | robotics-toolbox-cpp  | Linearised wheeled inverted pendulum model (`theory/pendulum-dynamics.md`)     | M8 step 1 |
+| T2   | this                  | Add robotics-toolbox; `tools/lqr_design` prints LQR gains from measured values | M8 step 1 |
+| T3   | this                  | Wheel odometry uses `robotics::DifferentialDrive`                              | —         |
+| T4   | numerical-toolbox-cpp | PID with continuous gains; gravity-vector tilt and trust                       | T5        |
+| T5   | this                  | Use the T4 algorithms in place of the local copies                             | —         |
+
+Steps T1 to T5 are done. The wrapped counter delta stays in wheel odometry: it is integer arithmetic, and
+numerical-toolbox is float only.
 
 T3 to T5 change no behaviour and can wait until after a first balance.
 
