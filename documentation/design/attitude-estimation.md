@@ -132,12 +132,12 @@ pitch plus the current offset.
 
 ### Required
 
-| Interface            | Purpose                                         | Contract                                                                      |
-|----------------------|-------------------------------------------------|-------------------------------------------------------------------------------|
-| Inertial measurement | Angular rate and acceleration in the body frame | Fixed axis convention; staleness and transfer failure are reported explicitly |
-| Timebase             | Integration interval between samples            | Monotonic; the actual interval is used rather than the nominal one            |
+| Interface            | Purpose                                         | Contract                                                                         |
+|----------------------|-------------------------------------------------|----------------------------------------------------------------------------------|
+| Inertial measurement | Angular rate and acceleration in the body frame | Fixed axis convention; staleness and transfer failure are reported explicitly    |
+| Timebase             | Integration interval between samples            | Monotonic; the actual interval is used rather than the nominal one               |
 | Inertial sensing     | Gyroscope bias and stillness judgement          | Publishes an already bias-corrected rate; see [inertial sensing](imu-sensing.md) |
-| Safety supervisor    | Reaction to an invalid estimate                 | Decides what an invalid estimate means for the drive                          |
+| Safety supervisor    | Reaction to an invalid estimate                 | Decides what an invalid estimate means for the drive                             |
 
 ---
 
@@ -254,5 +254,5 @@ graph LR
 |---|-----------------------------------------------------------------------------------------------------------------|------------------------------------------------------------------------------------------------------|------------------------------------------------------------------------------------------------------|
 | 1 | Complementary filter or single-axis Kalman filter?                                                              | Complementary — fewer cycles, one tuning constant; Kalman — principled weighting, tracks bias online | decided — both are provided and the operator selects one at run time (Part F)                        |
 | 2 | Should gyroscope bias be tracked continuously rather than fixed at calibration?                                 | Fixed per power-on; online estimation as part of a Kalman formulation                                | decided — the Kalman filter tracks the residual after calibration; the complementary filter does not |
-| 3 | Which inertial part is fitted, and does a separate accelerometer and gyroscope pair change the sampling design? | Six-axis single part; separate accelerometer and gyroscope pair; nine-axis single part                                    | decided — a nine-axis single part, sampled as one six-axis part on its data-ready interrupt                       |
+| 3 | Which inertial part is fitted, and does a separate accelerometer and gyroscope pair change the sampling design? | Six-axis single part; separate accelerometer and gyroscope pair; nine-axis single part               | decided — a nine-axis single part, sampled as one six-axis part on its data-ready interrupt          |
 | 4 | Should calibration be rejected outright if the robot is not near upright, not merely if it is moving?           | Stillness only; also require near-upright                                                            | open                                                                                                 |

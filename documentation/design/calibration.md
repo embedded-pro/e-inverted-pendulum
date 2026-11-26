@@ -161,11 +161,11 @@ sequenceDiagram
 
 ## Constraints & Limitations
 
-| Constraint      | Value / Description                                                     |
-|-----------------|-------------------------------------------------------------------------|
-| Not while armed | Every change is refused while the drive is armed                        |
-| Recalibrate     | An axis map or stillness change needs `calibrate` before the robot arms |
-| Storage         | Offsets 256 to 511 of the non-volatile memory; tuning keeps 0 to 255    |
+| Constraint      | Value / Description                                                       |
+|-----------------|---------------------------------------------------------------------------|
+| Not while armed | Every change is refused while the drive is armed                          |
+| Recalibrate     | An axis map or stillness change needs `calibrate` before the robot arms   |
+| Storage         | Offsets 256 to 511 of the non-volatile memory; tuning keeps 0 to 255      |
 | Scope           | Control gains are tuning ([persistence](persistence.md)), not calibration |
 
 ---
@@ -184,6 +184,6 @@ Five pull requests, each one built and tested on its own:
 
 ## Decisions
 
-| # | Decision                                                    | Options                                           | Status |
-|---|-------------------------------------------------------------|---------------------------------------------------|--------|
+| # | Decision                                                     | Options                                              | Status |
+|---|--------------------------------------------------------------|------------------------------------------------------|--------|
 | 1 | Should the target's own axis map be removed once this works? | Keep as identity; remove the platform axis map input | open   |

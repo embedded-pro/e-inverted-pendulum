@@ -94,21 +94,21 @@ to settle; the remedy is a looser limit.
 
 ### Required
 
-| Interface              | Purpose                         | Contract                                                     |
-|------------------------|---------------------------------|--------------------------------------------------------------|
-| Pendulum model         | Continuous pitch plant          | robotics-toolbox, model pitch positive top forward           |
-| Discretisation and LQR | Zero-order hold, discrete gains | numerical-toolbox; the Riccati iteration reports convergence |
-| LQR strategy           | Parameter names and ranges      | See [balance control](balance-control.md)                    |
+| Interface              | Purpose                          | Contract                                                        |
+|------------------------|----------------------------------|-----------------------------------------------------------------|
+| Pendulum model         | Continuous pitch plant           | robotics-toolbox, model pitch positive top forward              |
+| Discretisation and LQR | Zero-order hold, discrete gains  | numerical-toolbox; the Riccati iteration reports convergence    |
+| LQR strategy           | Parameter names and ranges       | See [balance control](balance-control.md)                       |
 | Operator               | Measure and enter the parameters | Types the printed commands; the tool does not talk to the robot |
-| Yaw loop               | Yaw gains                       | A PID that the operator tunes on the robot; not designed here |
+| Yaw loop               | Yaw gains                        | A PID that the operator tunes on the robot; not designed here   |
 
 ---
 
 ## Constraints & Limitations
 
-| Constraint   | Value / Description                                                                |
-|--------------|------------------------------------------------------------------------------------|
-| Host only    | The tool is not part of the firmware build                                         |
-| Linear model | Valid near upright only; see the model's limits                                    |
+| Constraint   | Value / Description                                                                                  |
+|--------------|------------------------------------------------------------------------------------------------------|
+| Host only    | The tool is not part of the firmware build                                                           |
+| Linear model | Valid near upright only; see the model's limits                                                      |
 | Torque       | Effort maps to torque open-loop ([motion actuation](motion-actuation.md)); the wheel torque is a fit |
-| No state     | The tool keeps no settings and writes no files, so it needs no log or safe start   |
+| No state     | The tool keeps no settings and writes no files, so it needs no log or safe start                     |

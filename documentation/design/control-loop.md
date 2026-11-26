@@ -73,13 +73,13 @@ because of them.
 
 ### Required
 
-| Interface           | Purpose                             | Contract                                                                                                                                                   |
-|---------------------|-------------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| Inertial sensing    | Per-sample measurement notification | Every sample is delivered once, in order, with its acquisition time; inertial sensing samples the sensor and timestamps each sample                         |
-| Safety supervisor   | Permission and liveness             | Sits in front of both stages and forwards iterations only while ARMED; decides what a late iteration means                                                 |
-| Attitude estimation | Estimate from one measurement       | Returns an estimate with explicit validity for every measurement                                                                                           |
+| Interface           | Purpose                             | Contract                                                                                                                                                                        |
+|---------------------|-------------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| Inertial sensing    | Per-sample measurement notification | Every sample is delivered once, in order, with its acquisition time; inertial sensing samples the sensor and timestamps each sample                                             |
+| Safety supervisor   | Permission and liveness             | Sits in front of both stages and forwards iterations only while ARMED; decides what a late iteration means                                                                      |
+| Attitude estimation | Estimate from one measurement       | Returns an estimate with explicit validity for every measurement                                                                                                                |
 | Balance stage       | Balance control iteration           | Computes the effort; receives the estimate and the measured interval; bounded execution time; engaged on entry to ARMED so a session starts without history, disengaged on exit |
-| Outer stage         | Velocity and yaw iteration          | Receives the measured interval; bounded execution time                                                                                                     |
+| Outer stage         | Velocity and yaw iteration          | Receives the measured interval; bounded execution time                                                                                                                          |
 
 ---
 

@@ -298,11 +298,11 @@ graph LR
 
 ## Decisions
 
-| #   | Decision                                                                            | Options                                                                                                                                       | Status                                                         |
-|-----|-------------------------------------------------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------|----------------------------------------------------------------|
-| 1   | How is the once-per-revolution index event exposed (REQ-ODOM-005)?                  | Extend the portable encoder interface with an index accessor; add an interrupt-driven index latch in the hardware layer; drop the requirement | open — see the note below                                      |
-| 2   | Are the wheel radius, track width and gear ratio defaults the built robot's values? | Measure on the assembled chassis; fit from a straight-line and a spin-in-place run                                                            | open — defaults are placeholders                               |
-| 3   | Should velocity be filtered before the outer loop sees it?                          | Leave raw and let balance control filter; add a configurable first-order filter here                                                          | open — raw for now, decided by the balance loop's noise budget |
+| # | Decision                                                                            | Options                                                                                                                                       | Status                                                         |
+|---|-------------------------------------------------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------|----------------------------------------------------------------|
+| 1 | How is the once-per-revolution index event exposed (REQ-ODOM-005)?                  | Extend the portable encoder interface with an index accessor; add an interrupt-driven index latch in the hardware layer; drop the requirement | open — see the note below                                      |
+| 2 | Are the wheel radius, track width and gear ratio defaults the built robot's values? | Measure on the assembled chassis; fit from a straight-line and a spin-in-place run                                                            | open — defaults are placeholders                               |
+| 3 | Should velocity be filtered before the outer loop sees it?                          | Leave raw and let balance control filter; add a configurable first-order filter here                                                          | open — raw for now, decided by the balance loop's noise budget |
 
 **On decision 1.** The requirement cannot be met through the interface this component consumes.
 The portable encoder abstraction exposes counter, resolution, direction and speed. It has no

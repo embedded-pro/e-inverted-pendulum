@@ -163,13 +163,13 @@ sequenceDiagram
 
 ## Constraints & Limitations
 
-| Constraint      | Value / Description                                                                                    |
-|-----------------|--------------------------------------------------------------------------------------------------------|
-| No writes armed | No memory write starts while the drive is engaged. A save in progress finishes if the drive arms       |
-| Write time      | Header and record (Part A): 7 page writes of 5 ms, 35 ms per save, then a read-back; asynchronous      |
-| Endurance       | 1 million writes per cell; the save delay keeps tuning far below that                                  |
-| Record size     | 16 parameters fit in a 128-byte copy; more parameters stop the firmware with an assertion              |
-| No flash        | The store never writes internal flash, so the watchdog limits in platform abstraction Part H hold      |
+| Constraint      | Value / Description                                                                                                   |
+|-----------------|-----------------------------------------------------------------------------------------------------------------------|
+| No writes armed | No memory write starts while the drive is engaged. A save in progress finishes if the drive arms                      |
+| Write time      | Header and record (Part A): 7 page writes of 5 ms, 35 ms per save, then a read-back; asynchronous                     |
+| Endurance       | 1 million writes per cell; the save delay keeps tuning far below that                                                 |
+| Record size     | 16 parameters fit in a 128-byte copy; more parameters stop the firmware with an assertion                             |
+| No flash        | The store never writes internal flash, so the watchdog limits in platform abstraction Part H hold                     |
 | Calibration     | Calibration values, such as the IMU axis map or the wheel geometry, are not tuning; see [calibration](calibration.md) |
 
 ---

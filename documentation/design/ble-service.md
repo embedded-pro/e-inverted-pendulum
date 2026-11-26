@@ -348,10 +348,10 @@ graph LR
 
 ## Decisions
 
-| #   | Decision                                                                                 | Options                                                                                      | Status                              |
-|-----|------------------------------------------------------------------------------------------|----------------------------------------------------------------------------------------------|-------------------------------------|
-| 1   | Which pairing association model?                                                         | Just-works — simplest, no authenticated protection; passkey — needs an input or display path | decided: Just Works with encryption |
-| 2   | Should the setpoint decay be a fixed ramp time or a fixed deceleration?                  | Fixed ramp; fixed deceleration matched to the balance envelope                               | decided: fixed deceleration         |
-| 3   | Should telemetry rate be negotiable by the client?                                       | Fixed at 25 per second; client-selectable within bounds                                      | decided: fixed at 25 per second     |
-| 4   | Should motion and mode commands share one characteristic to save a round trip?           | Separate — different rates and consequences; combined                                        | decided: separate                   |
-| 5   | Should the service expose a diagnostic log, or is telemetry plus fault cause sufficient? | Telemetry only; add a fault history                                                          | decided: telemetry only             |
+| # | Decision                                                                                 | Options                                                                                      | Status                              |
+|---|------------------------------------------------------------------------------------------|----------------------------------------------------------------------------------------------|-------------------------------------|
+| 1 | Which pairing association model?                                                         | Just-works — simplest, no authenticated protection; passkey — needs an input or display path | decided: Just Works with encryption |
+| 2 | Should the setpoint decay be a fixed ramp time or a fixed deceleration?                  | Fixed ramp; fixed deceleration matched to the balance envelope                               | decided: fixed deceleration         |
+| 3 | Should telemetry rate be negotiable by the client?                                       | Fixed at 25 per second; client-selectable within bounds                                      | decided: fixed at 25 per second     |
+| 4 | Should motion and mode commands share one characteristic to save a round trip?           | Separate — different rates and consequences; combined                                        | decided: separate                   |
+| 5 | Should the service expose a diagnostic log, or is telemetry plus fault cause sufficient? | Telemetry only; add a fault history                                                          | decided: telemetry only             |
