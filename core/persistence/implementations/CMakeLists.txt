@@ -18,6 +18,8 @@ target_link_libraries(inverted_pendulum_bot.persistence.implementations PUBLIC
 target_sources(inverted_pendulum_bot.persistence.implementations PRIVATE
     PersistentBalanceControl.hpp
     PersistentBalanceControl.cpp
+    StoreStatus.hpp
+    StoreStatus.cpp
     TuningRecord.hpp
     TuningRecord.cpp
 )

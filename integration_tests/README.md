@@ -35,11 +35,12 @@ MotorDriverFake ◄── MotionActuationImpl ◄──────────�
        └─ Drv8711Emulator (register read-back)
 ```
 
-| Fake                 | Steps can                                                                                |
-|----------------------|------------------------------------------------------------------------------------------|
-| `InertialSensorFake` | Tilt the body at a set rate; stop the samples; mark samples as failed transfers          |
-| `MotorDriverFake`    | Read the last bridge inputs; see energised bridges; raise a fault                        |
-| `WheelEncodersStub`  | Nothing: the wheels stay still (host stub from `targets/platform_implementations/host/`) |
+| Fake                  | Steps can                                                                                |
+|-----------------------|------------------------------------------------------------------------------------------|
+| `InertialSensorFake`  | Tilt the body at a set rate; stop the samples; mark samples as failed transfers          |
+| `MotorDriverFake`     | Read the last bridge inputs; see energised bridges; raise a fault                        |
+| `WheelEncodersStub`   | Nothing: the wheels stay still (host stub from `targets/platform_implementations/host/`) |
+| `NoStoredCalibration` | Nothing: the start-up condition holds at once, as with no saved calibration              |
 
 The IMU fake sends a sample every 1 ms. It reports the gravity vector and pitch rate of its
 body pitch in the body frame of `documentation/design/imu-sensing.md`.

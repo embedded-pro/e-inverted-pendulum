@@ -4,6 +4,7 @@
 #include "core/balance_control/implementations/CascadedPidStrategy.hpp"
 #include "core/balance_control/implementations/LqrStrategy.hpp"
 #include "core/ble_link/BleEndpoint.hpp"
+#include "core/calibration/implementations/CalibrationImpl.hpp"
 #include "core/cli/Cli.hpp"
 #include "core/control_loop/implementations/ControlLoopImpl.hpp"
 #include "core/inertial_sensing/implementations/InertialSensingImpl.hpp"
@@ -29,7 +30,8 @@ int main()
     static balance::BalanceControlImpl balanceControl{ infra::MakeRange(strategies), motionActuation, wheelOdometry };
     static infra::ClaimableResource eepromAccess;
     static persistence::PersistentBalanceControl persistentBalanceControl{ balanceControl, platform.Eeprom(), eepromAccess };
-    static safety::SafetySupervisorImpl supervisor{ motionActuation, inertialSensing, balanceControl };
+    static calibration::CalibrationImpl calibration{ { inertialSensing, attitudeEstimation, motionActuation, wheelOdometry, balanceControl }, platform.Eeprom(), eepromAccess };
+    static safety::SafetySupervisorImpl supervisor{ motionActuation, inertialSensing, balanceControl, calibration };
     static telemetry::TelemetryRecorder telemetryRecorder{ supervisor, balanceControl, wheelOdometry, supervisor };
     static control::ControlLoopImpl controlLoop{ inertialSensing, attitudeEstimation, telemetryRecorder, supervisor };
     static ble::BleEndpoint bleEndpoint{ platform, "inverted-pendulum", supervisor, persistentBalanceControl, telemetryRecorder };

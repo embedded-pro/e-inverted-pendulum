@@ -19,6 +19,16 @@
 
 namespace integration
 {
+    class NoStoredCalibration final
+        : public safety::StartupCondition
+    {
+    public:
+        bool Satisfied() const override
+        {
+            return true;
+        }
+    };
+
     struct SafetyFixture
     {
         void Forward(infra::Duration duration);
@@ -41,7 +51,8 @@ namespace integration
         balance::LqrStrategy lqr;
         std::array<balance::ControlStrategy*, 2> strategies{ &cascadedPid, &lqr };
         balance::BalanceControlImpl balanceControl{ infra::MakeRange(strategies), motionActuation, wheelOdometry };
-        safety::SafetySupervisorImpl supervisor{ motionActuation, inertialSensing, balanceControl };
+        NoStoredCalibration startup;
+        safety::SafetySupervisorImpl supervisor{ motionActuation, inertialSensing, balanceControl, startup };
         control::ControlLoopImpl controlLoop{ inertialSensing, attitudeEstimation, supervisor, supervisor };
         std::optional<infra::TimePoint> thresholdCrossed;
         std::optional<safety::FaultCause> expectedCause;

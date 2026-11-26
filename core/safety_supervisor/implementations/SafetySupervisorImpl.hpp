@@ -4,6 +4,7 @@
 #include "core/inertial_sensing/interfaces/InertialSensing.hpp"
 #include "core/motion_actuation/interfaces/MotionActuation.hpp"
 #include "core/safety_supervisor/interfaces/SafetySupervisor.hpp"
+#include "core/safety_supervisor/interfaces/StartupCondition.hpp"
 #include "infra/timer/Timer.hpp"
 #include <chrono>
 
@@ -26,7 +27,7 @@ namespace safety
             std::chrono::milliseconds selfTestDeadline{ 1000 };
         };
 
-        SafetySupervisorImpl(motion::MotionActuation& actuation, sensing::InertialSensing& sensing, control::SupervisedControl& control, const Config& config = Config());
+        SafetySupervisorImpl(motion::MotionActuation& actuation, sensing::InertialSensing& sensing, control::SupervisedControl& control, const StartupCondition& startup, const Config& config = Config());
 
         bool Arm() override;
         bool Disarm() override;
@@ -56,6 +57,7 @@ namespace safety
         motion::MotionActuation& actuation;
         sensing::InertialSensing& sensing;
         control::SupervisedControl& control;
+        const StartupCondition& startup;
         Config config;
 
         Mode mode{ Mode::init };
