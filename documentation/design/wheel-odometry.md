@@ -138,7 +138,8 @@ on. Forward velocity is the mean of the two wheel velocities scaled by the wheel
 rate is their difference scaled by the radius over the track width. Driving both wheels
 equally gives a pure forward velocity and no yaw; driving them equally and oppositely gives a
 pure yaw and no forward velocity. The forward kinematics come from the differential-drive model in
-robotics-toolbox (`infra/robotics-toolbox`, `doc/mobile/DifferentialDrive.md`).
+robotics-toolbox (`infra/robotics-toolbox`, `doc/mobile/DifferentialDrive.md`). The model's wheel speed
+limit is set to the trackable rate of Part B; the forward kinematics do not use it.
 
 Yaw is positive when the right wheel runs ahead of the left, which is the robot turning to
 its left. Both are derived here, beside the geometry they depend on, so that a consumer never
