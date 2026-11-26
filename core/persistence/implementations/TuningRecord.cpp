@@ -7,8 +7,7 @@ namespace persistence
 {
     namespace
     {
-        constexpr uint16_t magic{ 0x5455 };
-        constexpr uint8_t formatVersion{ 1 };
+        constexpr uint8_t formatVersion{ 2 };
         constexpr char keySeparator{ '/' };
 
         void Put16(infra::ByteRange buffer, std::size_t offset, uint16_t value)
@@ -33,21 +32,9 @@ namespace persistence
             return Get16(data, offset) | (static_cast<uint32_t>(Get16(data, offset + 2)) << 16);
         }
 
-        uint16_t CrcOf(infra::ConstByteRange data)
-        {
-            infra::Crc16CcittFalseBitwise crc;
-            crc.Update(data);
-            return crc.Result();
-        }
-
         std::size_t SizeFor(std::size_t entries)
         {
-            return TuningRecord::headerSize + entries * TuningRecord::entrySize + TuningRecord::crcSize;
-        }
-
-        bool Sealed(infra::ConstByteRange data, std::size_t size)
-        {
-            return CrcOf(infra::Head(data, size - TuningRecord::crcSize)) == Get16(data, size - TuningRecord::crcSize);
+            return TuningRecord::headerSize + entries * TuningRecord::entrySize;
         }
     }
 
@@ -65,11 +52,9 @@ namespace persistence
         const auto size = SizeFor(record.entries.size());
         really_assert(buffer.size() >= size);
 
-        Put16(buffer, 0, magic);
-        buffer[2] = formatVersion;
-        Put16(buffer, 3, record.sequence);
-        Put16(buffer, 5, record.activeStrategy);
-        buffer[7] = static_cast<uint8_t>(record.entries.size());
+        buffer[0] = formatVersion;
+        Put16(buffer, 1, record.activeStrategy);
+        buffer[3] = static_cast<uint8_t>(record.entries.size());
 
         for (std::size_t i = 0; i != record.entries.size(); ++i)
         {
@@ -78,24 +63,18 @@ namespace persistence
             Put32(buffer, offset + 2, std::bit_cast<uint32_t>(record.entries[i].value));
         }
 
-        Put16(buffer, size - TuningRecord::crcSize, CrcOf(infra::Head(infra::ConstByteRange(buffer), size - TuningRecord::crcSize)));
         return size;
     }
 
     std::optional<TuningRecord> Decode(infra::ConstByteRange data)
     {
-        if (data.size() < SizeFor(0) || Get16(data, 0) != magic || data[2] != formatVersion || data[7] > TuningRecord::maxEntries)
-            return std::nullopt;
-
-        const auto size = SizeFor(data[7]);
-        if (data.size() < size || !Sealed(data, size))
+        if (data.size() < SizeFor(0) || data[0] != formatVersion || data[3] > TuningRecord::maxEntries || data.size() != SizeFor(data[3]))
             return std::nullopt;
 
         TuningRecord record;
-        record.sequence = Get16(data, 3);
-        record.activeStrategy = Get16(data, 5);
+        record.activeStrategy = Get16(data, 1);
 
-        for (std::size_t i = 0; i != data[7]; ++i)
+        for (std::size_t i = 0; i != data[3]; ++i)
         {
             const auto offset = TuningRecord::headerSize + i * TuningRecord::entrySize;
             record.entries.push_back({ Get16(data, offset), std::bit_cast<float>(Get32(data, offset + 2)) });

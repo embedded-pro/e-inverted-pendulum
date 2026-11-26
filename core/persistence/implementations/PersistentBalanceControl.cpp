@@ -6,24 +6,22 @@ namespace persistence
 {
     namespace
     {
-        constexpr uint8_t erasedByte{ 0xff };
-
-        bool Newer(uint16_t candidate, uint16_t reference)
+        services::NvmRecordStore::Config StoreConfig(const PersistentBalanceControl::Config& config)
         {
-            return static_cast<int16_t>(candidate - reference) > 0;
+            services::NvmRecordStore::Config storeConfig;
+            storeConfig.saveDelay = config.saveDelay;
+            return storeConfig;
         }
     }
 
     PersistentBalanceControl::Config::Config() = default;
 
-    PersistentBalanceControl::PersistentBalanceControl(balance::BalanceControl& control, hal::Eeprom& eeprom, const Config& config)
+    PersistentBalanceControl::PersistentBalanceControl(balance::BalanceControl& control, hal::Eeprom& eeprom, infra::ClaimableResource& access, const Config& config)
         : control(control)
-        , config(config)
-        , regions{ { { eeprom, 0, regionSize }, { eeprom, regionSize, regionSize } } }
-        , images{ { services::NvmImage<regionSize>{ regions[0] }, services::NvmImage<regionSize>{ regions[1] } } }
-    {
-        ReadCopy(0);
-    }
+        , first(eeprom, 0, regionSize)
+        , second(eeprom, regionSize, regionSize)
+        , store(first, second, access, static_cast<services::NvmRecordStore::Client&>(*this), StoreConfig(config))
+    {}
 
     std::size_t PersistentBalanceControl::StrategyCount() const
     {
@@ -97,61 +95,55 @@ namespace persistence
 
     RestoreResult PersistentBalanceControl::Restore() const
     {
-        return restore;
+        if (undecodable)
+            return RestoreResult::corrupt;
+
+        switch (store.Restore())
+        {
+            case services::NvmRecordStore::RestoreResult::restored:
+                return RestoreResult::restored;
+            case services::NvmRecordStore::RestoreResult::defaults:
+                return RestoreResult::defaults;
+            case services::NvmRecordStore::RestoreResult::corrupt:
+                return RestoreResult::corrupt;
+            default:
+                return RestoreResult::pending;
+        }
     }
 
     SaveResult PersistentBalanceControl::LastSave() const
     {
-        return lastSave;
-    }
-
-    void PersistentBalanceControl::ReadCopy(std::size_t copy)
-    {
-        reading = copy;
-        images[copy].Read([this](infra::ConstByteRange data)
-            {
-                CopyRead(data);
-            });
-    }
-
-    void PersistentBalanceControl::CopyRead(infra::ConstByteRange data)
-    {
-        copies[reading] = Decode(data);
-        erased[reading] = std::ranges::all_of(data, [](uint8_t byte)
-            {
-                return byte == erasedByte;
-            });
-
-        if (reading == 0)
-            ReadCopy(1);
-        else
-            CopiesRead();
-    }
-
-    void PersistentBalanceControl::CopiesRead()
-    {
-        const auto newest = NewestCopy();
-
-        if (newest.has_value())
+        switch (store.LastSave())
         {
-            sequence = copies[*newest]->sequence;
-            nextCopy = 1 - *newest;
-            Apply(*copies[*newest]);
-            restore = RestoreResult::restored;
+            case services::NvmRecordStore::SaveResult::pending:
+                return SaveResult::pending;
+            case services::NvmRecordStore::SaveResult::saved:
+                return SaveResult::saved;
+            case services::NvmRecordStore::SaveResult::failed:
+                return SaveResult::failed;
+            default:
+                return SaveResult::none;
         }
-        else
-            restore = erased[0] && erased[1] ? RestoreResult::defaults : RestoreResult::corrupt;
     }
 
-    std::optional<std::size_t> PersistentBalanceControl::NewestCopy() const
+    void PersistentBalanceControl::Restored(infra::ConstByteRange payload)
     {
-        if (copies[0] && copies[1])
-            return Newer(copies[1]->sequence, copies[0]->sequence) ? 1 : 0;
-        if (copies[0])
-            return 0;
-        if (copies[1])
-            return 1;
-        return std::nullopt;
+        const auto record = Decode(payload);
+
+        if (record.has_value())
+            Apply(*record);
+        else
+            undecodable = true;
+    }
+
+    std::size_t PersistentBalanceControl::Capture(infra::ByteRange payload)
+    {
+        return Encode(Capture(), payload);
+    }
+
+    bool PersistentBalanceControl::Busy() const
+    {
+        return control.Engaged();
     }
 
     void PersistentBalanceControl::Apply(const TuningRecord& record)
@@ -186,63 +178,9 @@ namespace persistence
     bool PersistentBalanceControl::Changed(bool accepted)
     {
         if (accepted)
-            ScheduleSave();
+            store.ScheduleSave();
 
         return accepted;
-    }
-
-    void PersistentBalanceControl::ScheduleSave()
-    {
-        lastSave = SaveResult::pending;
-        saveTimer.Start(config.saveDelay, [this]()
-            {
-                SaveWhenIdle();
-            });
-    }
-
-    void PersistentBalanceControl::SaveWhenIdle()
-    {
-        if (saving)
-            dirty = true;
-        else if (restore == RestoreResult::pending || control.Engaged())
-            ScheduleSave();
-        else
-            Save();
-    }
-
-    void PersistentBalanceControl::Save()
-    {
-        auto record = Capture();
-        record.sequence = static_cast<uint16_t>(sequence + 1);
-        writing = record.sequence;
-
-        auto contents = images[nextCopy].Contents();
-        std::ranges::fill(contents, erasedByte);
-        Encode(record, contents);
-
-        saving = true;
-        images[nextCopy].Write([this](bool verified)
-            {
-                Saved(verified);
-            });
-    }
-
-    void PersistentBalanceControl::Saved(bool verified)
-    {
-        saving = false;
-        lastSave = verified ? SaveResult::saved : SaveResult::failed;
-
-        if (verified)
-        {
-            sequence = writing;
-            nextCopy = 1 - nextCopy;
-        }
-
-        if (dirty)
-        {
-            dirty = false;
-            ScheduleSave();
-        }
     }
 
     TuningRecord PersistentBalanceControl::Capture() const
