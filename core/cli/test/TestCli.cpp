@@ -1,6 +1,7 @@
 #include "core/attitude_estimation/interfaces/AttitudeEstimation.hpp"
 #include "core/balance_control/interfaces/BalanceControl.hpp"
 #include "core/ble_link/interfaces/LinkStatus.hpp"
+#include "core/calibration/interfaces/Calibration.hpp"
 #include "core/cli/Cli.hpp"
 #include "core/control_loop/interfaces/ControlLoop.hpp"
 #include "core/inertial_sensing/interfaces/InertialSensing.hpp"
@@ -176,6 +177,19 @@ namespace
         { "pitch.ki", 0.0f, 100.0f },
     } };
 
+    class CalibrationMock
+        : public calibration::Calibration
+    {
+    public:
+        MOCK_METHOD(calibration::Result, SetAxisMap, (const platform::AxisMap& map), (override));
+        MOCK_METHOD(calibration::Result, SetStillnessThreshold, (float threshold), (override));
+        MOCK_METHOD(calibration::Result, SetUprightOffset, (float offset), (override));
+        MOCK_METHOD(calibration::Result, CaptureUpright, (), (override));
+        MOCK_METHOD(calibration::Result, SetMotorInverted, (motion::WheelSide side, bool inverted), (override));
+        MOCK_METHOD(calibration::Result, SetEncoderInverted, (odometry::WheelSide side, bool inverted), (override));
+        MOCK_METHOD(calibration::Result, SetGeometry, (const odometry::Geometry& geometry), (override));
+    };
+
     class CliTest
         : public testing::Test
         , public infra::ClockFixture
@@ -223,7 +237,9 @@ namespace
         testing::StrictMock<BalanceControlMock> balanceControl;
         testing::StrictMock<LinkStatusMock> link;
         testing::StrictMock<TuningStoreMock> tuningStore;
-        application::Cli::Dependencies dependencies{ motionActuation, wheelOdometry, inertialSensing, attitudeEstimation, controlLoop, supervisor, balanceControl, link, tuningStore };
+        testing::StrictMock<CalibrationMock> calibration;
+        testing::StrictMock<TuningStoreMock> calibrationStore;
+        application::Cli::Dependencies dependencies{ motionActuation, wheelOdometry, inertialSensing, attitudeEstimation, controlLoop, supervisor, balanceControl, link, tuningStore, calibration, calibrationStore };
     };
 }
 
@@ -728,4 +744,15 @@ TEST_F(CliTest, store_reports_a_restore_in_progress_and_no_save)
     Send("store");
 
     EXPECT_THAT(Output(), testing::HasSubstr("store restore pending save none"));
+}
+
+TEST_F(CliTest, cal_routes_to_the_calibration_command)
+{
+    application::Cli cli{ platform, dependencies };
+
+    EXPECT_CALL(calibration, CaptureUpright()).WillOnce(testing::Return(calibration::Result::accepted));
+
+    Send("cal upright");
+
+    EXPECT_THAT(Output(), testing::HasSubstr("ok"));
 }

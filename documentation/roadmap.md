@@ -2,7 +2,7 @@
 title: "Roadmap"
 type: roadmap
 status: draft
-version: 0.2.1
+version: 0.2.2
 component: "system"
 date: 2026-11-26
 ---
@@ -12,7 +12,7 @@ date: 2026-11-26
 | Title     | Roadmap    |
 | Type      | roadmap    |
 | Status    | draft      |
-| Version   | 0.2.1      |
+| Version   | 0.2.2      |
 | Component | system     |
 | Date      | 2026-11-26 |
 
@@ -30,7 +30,7 @@ date: 2026-11-26
 | M3 | Safety scenarios on the host | done        | `integration_tests/README.md`, `use-cases/safety.feature` |
 | M4 | Hardware watchdog            | done        | `design/platform-abstraction.md`, Part H; REQ-SAFE-010    |
 | M5 | Tuning kept across a reset   | done        | `design/persistence.md`; REQ-TUNE-007                     |
-| M6 | Runtime calibration          | in progress | `design/calibration.md`                                   |
+| M6 | Runtime calibration          | done        | `design/calibration.md`                                   |
 | M7 | Bench bring-up               | next        | This page, [M7](#m7--bench-bring-up)                      |
 | M8 | First balance                | planned     | This page, [M8](#m8--first-balance)                       |
 | M9 | Driving                      | planned     | This page, [M9](#m9--driving)                             |
@@ -53,7 +53,7 @@ flowchart LR
 | 2    | this               | Motion actuation and wheel odometry setters                            | done  |
 | 3    | embedded-infra-lib | `services::NvmRecordStore`: two copies, save delay, read-back, restore | done  |
 | 4    | this               | Tuning store on `NvmRecordStore`, with a shared EEPROM claim           | done  |
-| 5    | this               | The calibration component, its store and the `cal` command             | next  |
+| 5    | this               | The calibration component, its store and the `cal` command             | done  |
 
 The record store holds an opaque payload, so it is not tied to the tuning or calibration format.
 It uses an `NvmRegion`, so it also works on flash.

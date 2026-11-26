@@ -11,7 +11,8 @@ namespace calibration
     {
         accepted,
         armed,
-        invalid
+        invalid,
+        restoring
     };
 
     class Calibration
