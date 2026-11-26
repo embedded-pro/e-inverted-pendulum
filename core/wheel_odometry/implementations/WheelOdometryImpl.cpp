@@ -1,5 +1,6 @@
 #include "core/wheel_odometry/implementations/WheelOdometryImpl.hpp"
 #include "infra/util/ReallyAssert.hpp"
+#include "robotics/mobile/DifferentialDrive.hpp"
 #include <numbers>
 
 namespace
@@ -10,6 +11,7 @@ namespace
     constexpr float maximumTrack{ 0.5f };
     constexpr float minimumGear{ 0.1f };
     constexpr float maximumGear{ 100.0f };
+    constexpr float maximumTrackableWheelRate{ 25.0f * 2.0f * std::numbers::pi_v<float> };
 
     bool Within(float value, float minimum, float maximum)
     {
@@ -107,12 +109,10 @@ namespace odometry
 
     ChassisMotion WheelOdometryImpl::Chassis() const
     {
-        ChassisMotion chassis;
+        const mobile::DifferentialDrive drive{ config.geometry.wheelRadius, config.geometry.trackWidth, maximumTrackableWheelRate };
+        const auto twist = drive.Forward(mobile::WheelSpeeds<float>{ left.motion.angularVelocity, right.motion.angularVelocity });
 
-        chassis.forwardVelocity = config.geometry.wheelRadius * (left.motion.angularVelocity + right.motion.angularVelocity) / 2.0f;
-        chassis.yawRate = config.geometry.wheelRadius * (right.motion.angularVelocity - left.motion.angularVelocity) / config.geometry.trackWidth;
-
-        return chassis;
+        return ChassisMotion{ twist[0], twist[2] };
     }
 
     void WheelOdometryImpl::SetEncoderInverted(WheelSide side, bool inverted)

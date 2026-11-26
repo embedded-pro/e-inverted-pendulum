@@ -9,6 +9,7 @@ target_link_libraries(inverted_pendulum_bot.wheel_odometry.implementations PUBLI
     inverted_pendulum_bot.wheel_odometry.interfaces
     inverted_pendulum_bot.platform_abstraction
     infra.timer
+    robotics.mobile
 )
 
 target_sources(inverted_pendulum_bot.wheel_odometry.implementations PRIVATE
