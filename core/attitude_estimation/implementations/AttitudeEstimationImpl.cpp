@@ -1,6 +1,4 @@
 #include "core/attitude_estimation/implementations/AttitudeEstimationImpl.hpp"
-#include <algorithm>
-#include <cmath>
 
 namespace estimation
 {
@@ -22,15 +20,12 @@ namespace estimation
 
     float AccelerometerPitch(const platform::InertialAxes& acceleration)
     {
-        return std::atan2(-acceleration.x, -acceleration.z);
+        return math::Atan2(-acceleration.x, -acceleration.z);
     }
 
-    float AccelerometerTrust(const platform::InertialAxes& acceleration, float accelerationBand)
+    filters::GravityTilt<float> AccelerometerTilt(const platform::InertialAxes& acceleration, float accelerationBand)
     {
-        const auto magnitude = std::sqrt(acceleration.x * acceleration.x + acceleration.y * acceleration.y + acceleration.z * acceleration.z);
-        const auto deviation = std::fabs(magnitude - standardGravity) / (accelerationBand * standardGravity);
-
-        return std::clamp(1.0f - deviation, 0.0f, 1.0f);
+        return filters::TiltFromGravity(-acceleration.x, -acceleration.z, acceleration.y, standardGravity, accelerationBand);
     }
 
     AttitudeEstimationImpl::Config::Config() = default;
@@ -117,7 +112,8 @@ namespace estimation
     Estimate AttitudeEstimationImpl::Fuse(const sensing::Measurement& measurement, infra::Duration interval)
     {
         const auto pitchRate = PitchRateAboutBodyY(measurement.angularRate);
-        const auto pitch = Active().Update(pitchRate, AccelerometerPitch(measurement.acceleration), AccelerometerTrust(measurement.acceleration, config.accelerationBand), Seconds(interval));
+        const auto tilt = AccelerometerTilt(measurement.acceleration, config.accelerationBand);
+        const auto pitch = Active().Update(pitchRate, tilt.angle, tilt.trust, Seconds(interval));
         const bool converged = measurement.sampledAt - convergenceStarted >= config.convergenceInterval;
 
         return Estimate{ pitch - uprightOffset, pitchRate, converged, converged ? InvalidCause::none : InvalidCause::converging };

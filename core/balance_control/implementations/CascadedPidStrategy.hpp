@@ -1,7 +1,7 @@
 #pragma once
 
-#include "core/balance_control/implementations/ContinuousPid.hpp"
 #include "core/balance_control/interfaces/ControlStrategy.hpp"
+#include "numerical/controllers/implementations/PidContinuous.hpp"
 #include "numerical/controllers/implementations/PidIncremental.hpp"
 #include <array>
 
@@ -49,12 +49,12 @@ namespace balance
 
     private:
         void Clear();
-        PidGains GainsFrom(std::size_t proportional) const;
+        controllers::PidContinuous<float>::Gains GainsFrom(std::size_t proportional) const;
 
         std::array<float, parameterCount> gains;
         controllers::PidIncrementalSynchronous<float> pitchLoop;
-        ContinuousPid velocityLoop;
-        ContinuousPid yawLoop;
+        controllers::PidContinuous<float> velocityLoop;
+        controllers::PidContinuous<float> yawLoop;
         float differential{ 0.0f };
         float damping{ 0.0f };
     };

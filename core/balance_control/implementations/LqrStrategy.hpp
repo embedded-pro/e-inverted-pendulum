@@ -1,8 +1,8 @@
 #pragma once
 
-#include "core/balance_control/implementations/ContinuousPid.hpp"
 #include "core/balance_control/interfaces/ControlStrategy.hpp"
 #include "numerical/controllers/implementations/Lqr.hpp"
+#include "numerical/controllers/implementations/PidContinuous.hpp"
 #include <array>
 
 namespace balance
@@ -54,7 +54,7 @@ namespace balance
         float maximumPositionDeviation;
         std::array<float, parameterCount> gains;
         Regulator regulator;
-        ContinuousPid yawLoop;
+        controllers::PidContinuous<float> yawLoop;
         float positionDeviation{ 0.0f };
         float velocityDeviation{ 0.0f };
         float differential{ 0.0f };
