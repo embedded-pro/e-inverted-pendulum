@@ -185,9 +185,9 @@ namespace calibration
     {
         bool applied = ApplyAxisMap(record);
 
-        if (const auto still = Find(record, stillKey))
+        if (const auto still = Find(record, stillKey); still.has_value())
             applied = components.sensing.SetStillnessThreshold(*still) && applied;
-        if (const auto upright = Find(record, uprightKey))
+        if (const auto upright = Find(record, uprightKey); upright.has_value())
             applied = components.estimation.SetUprightOffset(*upright) && applied;
 
         ApplySigns(record);
@@ -220,13 +220,13 @@ namespace calibration
 
     void CalibrationImpl::ApplySigns(const persistence::TuningRecord& record)
     {
-        if (const auto left = Find(record, motorKeys[0]))
+        if (const auto left = Find(record, motorKeys[0]); left.has_value())
             components.actuation.SetMotorInverted(motion::WheelSide::left, *left < 0.0f);
-        if (const auto right = Find(record, motorKeys[1]))
+        if (const auto right = Find(record, motorKeys[1]); right.has_value())
             components.actuation.SetMotorInverted(motion::WheelSide::right, *right < 0.0f);
-        if (const auto left = Find(record, encoderKeys[0]))
+        if (const auto left = Find(record, encoderKeys[0]); left.has_value())
             components.odometry.SetEncoderInverted(odometry::WheelSide::left, *left < 0.0f);
-        if (const auto right = Find(record, encoderKeys[1]))
+        if (const auto right = Find(record, encoderKeys[1]); right.has_value())
             components.odometry.SetEncoderInverted(odometry::WheelSide::right, *right < 0.0f);
     }
 
