@@ -65,6 +65,7 @@ namespace calibration
         std::size_t Capture(infra::ByteRange payload) override;
         bool Busy() const override;
 
+        std::optional<Result> Refusal() const;
         Result Accept(bool accepted);
         persistence::TuningRecord Record() const;
         bool Apply(const persistence::TuningRecord& record);

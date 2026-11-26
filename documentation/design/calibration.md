@@ -2,7 +2,7 @@
 title: "Runtime Calibration Design"
 type: design
 status: draft
-version: 0.2.0
+version: 0.3.0
 component: "calibration"
 date: 2026-11-25
 ---
@@ -12,7 +12,7 @@ date: 2026-11-25
 | Title     | Runtime Calibration Design |
 | Type      | design                     |
 | Status    | draft                      |
-| Version   | 0.2.0                      |
+| Version   | 0.3.0                      |
 | Component | calibration                |
 | Date      | 2026-11-25                 |
 
@@ -56,7 +56,8 @@ portable and tested on the host.
 ### Part B — Applying a change
 
 Each value takes effect at once, so the operator sees its result with the existing commands:
-`imu`, `attitude` and `odom`. A change is refused while the drive is armed.
+`imu`, `attitude` and `odom`. A change is refused while the drive is armed, and while the saved
+calibration loads at power-on.
 
 A change to the axis map or the stillness limit makes the gyroscope bias invalid. Inertial sensing
 then reports itself uncalibrated, so the robot cannot arm until the operator runs `calibrate`.
@@ -67,7 +68,9 @@ supervisor then count from the true upright.
 
 ### Part C — Console commands
 
-Delivery step 5 adds these commands. `cal` reads each value from its component.
+`cal` reads each value from its component and prints the store status. Each change prints `ok`, or
+the reason for the refusal: armed, still loading, or out of range. An `axes` or `still` change also
+asks for `calibrate`. Values take a decimal point, for example `cal still 0.05`.
 
 | Command                     | Effect                                                       |
 |-----------------------------|--------------------------------------------------------------|

@@ -1,5 +1,6 @@
 #include "core/cli/Cli.hpp"
 #include "core/cli/NumberParser.hpp"
+#include "core/cli/StatusNames.hpp"
 #include "infra/util/Tokenizer.hpp"
 #include <algorithm>
 #include <array>
@@ -10,36 +11,6 @@ namespace application
 {
     namespace
     {
-        const char* NameOf(persistence::RestoreResult result)
-        {
-            switch (result)
-            {
-                case persistence::RestoreResult::restored:
-                    return "restored";
-                case persistence::RestoreResult::defaults:
-                    return "defaults";
-                case persistence::RestoreResult::corrupt:
-                    return "corrupt";
-                default:
-                    return "pending";
-            }
-        }
-
-        const char* NameOf(persistence::SaveResult result)
-        {
-            switch (result)
-            {
-                case persistence::SaveResult::pending:
-                    return "pending";
-                case persistence::SaveResult::saved:
-                    return "saved";
-                case persistence::SaveResult::failed:
-                    return "failed";
-                default:
-                    return "none";
-            }
-        }
-
         const char* NameOf(motion::DriverState state)
         {
             switch (state)
@@ -176,6 +147,7 @@ namespace application
         , balanceControl(dependencies.balanceControl)
         , link(dependencies.link)
         , tuningStore(dependencies.tuningStore)
+        , calibrationCommand(tracer, { dependencies.calibration, dependencies.calibrationStore, dependencies.inertialSensing, dependencies.attitudeEstimation, dependencies.motionActuation, dependencies.wheelOdometry })
         , commands{ {
               { { "ping", "p", "reply with pong" },
                   [this](const infra::BoundedConstString& params)
@@ -276,6 +248,11 @@ namespace application
                   [this](const infra::BoundedConstString& params)
                   {
                       Store(params);
+                  } },
+              { { "cal", "z", "print the calibration, or set one value while disarmed, e.g. cal axes +x -z +y" },
+                  [this](const infra::BoundedConstString& params)
+                  {
+                      calibrationCommand.Execute(params);
                   } },
           } }
     {}

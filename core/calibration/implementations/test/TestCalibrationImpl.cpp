@@ -172,6 +172,22 @@ TEST_F(CalibrationImplTest, the_startup_condition_holds_once_the_restore_ends)
     EXPECT_EQ(persistence::RestoreResult::defaults, calibration->Restore());
 }
 
+TEST_F(CalibrationImplTest, every_change_is_refused_until_the_restore_ends)
+{
+    calibration.emplace(calibration::CalibrationImpl::Components{ sensing, estimation, actuation, odometry, control }, eeprom, access);
+
+    EXPECT_EQ(calibration::Result::restoring, calibration->SetAxisMap(tilted));
+    EXPECT_EQ(calibration::Result::restoring, calibration->SetStillnessThreshold(0.05f));
+    EXPECT_EQ(calibration::Result::restoring, calibration->SetUprightOffset(0.01f));
+    EXPECT_EQ(calibration::Result::restoring, calibration->CaptureUpright());
+    EXPECT_EQ(calibration::Result::restoring, calibration->SetMotorInverted(motion::WheelSide::left, true));
+    EXPECT_EQ(calibration::Result::restoring, calibration->SetEncoderInverted(odometry::WheelSide::right, true));
+    EXPECT_EQ(calibration::Result::restoring, calibration->SetGeometry(measured));
+
+    ExecuteAllActions();
+    EXPECT_EQ(persistence::SaveResult::none, calibration->LastSave());
+}
+
 TEST_F(CalibrationImplTest, every_change_is_refused_while_the_drive_is_engaged)
 {
     Start();

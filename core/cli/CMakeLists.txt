@@ -15,6 +15,7 @@ target_link_libraries(inverted_pendulum_bot.cli PUBLIC
     inverted_pendulum_bot.balance_control.interfaces
     inverted_pendulum_bot.ble_link.interfaces
     inverted_pendulum_bot.persistence.interfaces
+    inverted_pendulum_bot.calibration.interfaces
     inverted_pendulum_bot.platform_abstraction
     services.util
     services.peripheral
@@ -27,6 +28,10 @@ target_link_libraries(inverted_pendulum_bot.cli PUBLIC
 target_sources(inverted_pendulum_bot.cli PRIVATE
     Cli.hpp
     Cli.cpp
+    CalibrationCommand.hpp
+    CalibrationCommand.cpp
+    StatusNames.hpp
+    StatusNames.cpp
     NumberParser.hpp
     NumberParser.cpp
 )

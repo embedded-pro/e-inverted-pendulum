@@ -65,29 +65,29 @@ namespace calibration
 
     Result CalibrationImpl::SetAxisMap(const platform::AxisMap& map)
     {
-        if (Busy())
-            return Result::armed;
+        if (const auto refusal = Refusal(); refusal.has_value())
+            return *refusal;
         return Accept(components.sensing.SetAxisMap(map));
     }
 
     Result CalibrationImpl::SetStillnessThreshold(float threshold)
     {
-        if (Busy())
-            return Result::armed;
+        if (const auto refusal = Refusal(); refusal.has_value())
+            return *refusal;
         return Accept(components.sensing.SetStillnessThreshold(threshold));
     }
 
     Result CalibrationImpl::SetUprightOffset(float offset)
     {
-        if (Busy())
-            return Result::armed;
+        if (const auto refusal = Refusal(); refusal.has_value())
+            return *refusal;
         return Accept(components.estimation.SetUprightOffset(offset));
     }
 
     Result CalibrationImpl::CaptureUpright()
     {
-        if (Busy())
-            return Result::armed;
+        if (const auto refusal = Refusal(); refusal.has_value())
+            return *refusal;
 
         const auto estimate = components.estimation.Latest();
         if (!estimate.valid)
@@ -98,8 +98,8 @@ namespace calibration
 
     Result CalibrationImpl::SetMotorInverted(motion::WheelSide side, bool inverted)
     {
-        if (Busy())
-            return Result::armed;
+        if (const auto refusal = Refusal(); refusal.has_value())
+            return *refusal;
 
         components.actuation.SetMotorInverted(side, inverted);
         return Accept(true);
@@ -107,8 +107,8 @@ namespace calibration
 
     Result CalibrationImpl::SetEncoderInverted(odometry::WheelSide side, bool inverted)
     {
-        if (Busy())
-            return Result::armed;
+        if (const auto refusal = Refusal(); refusal.has_value())
+            return *refusal;
 
         components.odometry.SetEncoderInverted(side, inverted);
         return Accept(true);
@@ -116,8 +116,8 @@ namespace calibration
 
     Result CalibrationImpl::SetGeometry(const odometry::Geometry& geometry)
     {
-        if (Busy())
-            return Result::armed;
+        if (const auto refusal = Refusal(); refusal.has_value())
+            return *refusal;
         return Accept(components.odometry.SetGeometry(geometry));
     }
 
@@ -150,6 +150,15 @@ namespace calibration
     bool CalibrationImpl::Busy() const
     {
         return components.control.Engaged();
+    }
+
+    std::optional<Result> CalibrationImpl::Refusal() const
+    {
+        if (!Satisfied())
+            return Result::restoring;
+        if (Busy())
+            return Result::armed;
+        return std::nullopt;
     }
 
     Result CalibrationImpl::Accept(bool accepted)

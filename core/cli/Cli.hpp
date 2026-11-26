@@ -3,6 +3,8 @@
 #include "core/attitude_estimation/interfaces/AttitudeEstimation.hpp"
 #include "core/balance_control/interfaces/BalanceControl.hpp"
 #include "core/ble_link/interfaces/LinkStatus.hpp"
+#include "core/calibration/interfaces/Calibration.hpp"
+#include "core/cli/CalibrationCommand.hpp"
 #include "core/control_loop/interfaces/ControlLoop.hpp"
 #include "core/inertial_sensing/interfaces/InertialSensing.hpp"
 #include "core/motion_actuation/interfaces/MotionActuation.hpp"
@@ -30,6 +32,8 @@ namespace application
             balance::BalanceControl& balanceControl;
             const ble::LinkStatus& link;
             const persistence::TuningStore& tuningStore;
+            calibration::Calibration& calibration;
+            const persistence::TuningStore& calibrationStore;
         };
 
         Cli(platform::Platform& platform, const Dependencies& dependencies);
@@ -76,8 +80,9 @@ namespace application
             balance::BalanceControl& balanceControl;
             const ble::LinkStatus& link;
             const persistence::TuningStore& tuningStore;
+            CalibrationCommand calibrationCommand;
 
-            std::array<Command, 20> commands;
+            std::array<Command, 21> commands;
         };
 
         services::DebugLed debugLed;
