@@ -112,10 +112,10 @@ Not needed for a first balance. Each item links to where it is recorded.
 | Item                                         | Where it is recorded                      |
 |----------------------------------------------|-------------------------------------------|
 | Scenarios for REQ-LINK-009 and REQ-LINK-010  | `use-cases/README.md`, Traceability       |
-| Encoder index events (REQ-ODOM-005)          | `design/wheel-odometry.md`, question 1    |
+| Encoder index events (REQ-ODOM-005)          | `design/wheel-odometry.md`, decision 1    |
 | Motor current rating (REQ-DRIVE-005)         | `use-cases/safety.feature`                |
-| Battery voltage supervision                  | `design/safety-supervisor.md`, question 3 |
-| Motor current measurement                    | `design/motion-actuation.md`, question 3  |
+| Battery voltage supervision                  | `design/safety-supervisor.md`, decision 3 |
+| Motor current measurement                    | `design/motion-actuation.md`, decision 3  |
 | Persistent Bluetooth bonds                   | `design/ble-service.md`                   |
 | More scenarios on the host                   | `use-cases/README.md`                     |
 | Rate limiter with a variable time step       | This page, [Toolboxes](#toolboxes)        |

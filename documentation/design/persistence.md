@@ -2,9 +2,9 @@
 title: "Tuning Persistence Design"
 type: design
 status: draft
-version: 0.2.0
+version: 0.2.1
 component: "persistence"
-date: 2026-11-25
+date: 2026-11-26
 ---
 
 | Field     | Value                     |
@@ -12,30 +12,22 @@ date: 2026-11-25
 | Title     | Tuning Persistence Design |
 | Type      | design                    |
 | Status    | draft                     |
-| Version   | 0.2.0                     |
+| Version   | 0.2.1                     |
 | Component | persistence               |
-| Date      | 2026-11-25                |
+| Date      | 2026-11-26                |
 
 > Keeps the selected control strategy and the parameters of every strategy across a reset
-> (REQ-TUNE-007). The store is an external I2C EEPROM, so no write touches the internal flash
-> that the Bluetooth core shares.
+> (REQ-TUNE-007). The store is an external non-volatile memory, so no write touches the internal
+> flash that the Bluetooth radio shares.
 
 ---
 
 ## Responsibilities
 
-**Is responsible for:**
-
 - Restoring the strategy selection and all strategy parameters at power-on.
 - Saving them after the operator changes a selection or a parameter.
 - Detecting a torn or corrupt record and falling back to the defaults.
 - Reporting the result of the last restore and the last save.
-
-**Is NOT responsible for:**
-
-- Validating parameter values: balance control already rejects out-of-range values.
-- Bluetooth bonds: they stay volatile (`ble-service.md`).
-- Calibration values such as the IMU axis map or the wheel geometry.
 
 ---
 
@@ -61,17 +53,18 @@ header to mark, order and check each copy.
 
 ### Part B — Two copies
 
-`services::NvmRecordStore` from embedded-infra-lib keeps the record in two regions (Data Model,
-`regionSize`). Its document `docs/NvmRecordStore.md` gives the copy format, the restore and the
-save. A valid copy whose record does not decode is reported as corrupt, and the defaults stay in force.
+The record store from embedded-infra-lib keeps the record in two regions (Data Model, region
+size). The record store's own documentation in embedded-infra-lib gives the copy format, the
+restore and the save. A valid copy whose record does not decode is reported as corrupt. The
+defaults then stay in force.
 
-The 24C04 driver runs one operation at a time. Every store on the EEPROM shares one
-`infra::ClaimableResource`, which `Main.cpp` owns.
+The non-volatile memory driver runs one operation at a time. Every store on the non-volatile memory
+shares one claimable resource, which the application composition owns.
 
 ### Part C — When to save
 
 The store saves 2 seconds after the last accepted change, so a burst of tuning writes makes one
-EEPROM write. It never writes while the drive is engaged: the save waits until balance control
+memory write. It never writes while the drive is engaged: the save waits until balance control
 disengages. A rejected change does not start a save.
 
 The store sees changes because it stands between the operator interfaces and balance control.
@@ -88,7 +81,7 @@ the existing write.
 
 ### Part E — Failure is visible
 
-The EEPROM driver does not report bus errors. The store therefore reads back each copy after it
+The non-volatile memory driver does not report bus errors. The store therefore reads back each copy after it
 writes it, and treats a mismatch as a failed save. A failed read returns erased data, which the
 record store rejects. The store keeps the result of the last restore and the last save. The
 console command `store` shows both. A failed save is not retried at once: the next accepted change
@@ -110,11 +103,13 @@ starts a new save to the same copy.
 | Interface       | Purpose                                    | Contract                                                 |
 |-----------------|--------------------------------------------|----------------------------------------------------------|
 | Balance control | Read and write every strategy's parameters | Indexed access by strategy; writes refused while engaged |
-| EEPROM role     | Byte-addressed non-volatile storage        | Asynchronous read and write; at least 256 bytes          |
+| Memory role     | Byte-addressed non-volatile storage        | Asynchronous read and write; at least 256 bytes          |
 | Timer service   | The save delay                             | One-shot timer                                           |
+| Balance control | Parameter validation                       | Rejects out-of-range values; the store does not validate |
+| Bluetooth       | Bonds                                      | Stay volatile; see [Bluetooth service](ble-service.md)   |
 
-The EEPROM role is a new platform role. The selected board provides a 24C04 (512 bytes, 16-byte
-pages, address 0x50) on I2C3, SCL on PB10 and SDA on PB11. The host board provides 512 bytes of RAM.
+The non-volatile memory role is a new platform role. On the reference board it is an external
+memory of 512 bytes with 16-byte pages. On the host it is 512 bytes of RAM.
 
 ---
 
@@ -151,16 +146,16 @@ sequenceDiagram
     participant Operator
     participant Store
     participant Balance as Balance control
-    participant EEPROM
+    participant NVM as Non-volatile memory
     Operator->>Store: Set parameter
     Store->>Balance: Set parameter
     Balance-->>Store: Accepted
     Store-->>Operator: Accepted
     Note over Store: 2 s without a change, drive disengaged
     Store->>Balance: Read every strategy's parameters
-    Store->>EEPROM: Write the older copy
-    Store->>EEPROM: Read it back
-    EEPROM-->>Store: Data
+    Store->>NVM: Write the older copy
+    Store->>NVM: Read it back
+    NVM-->>Store: Data
     Note over Store: Compare, record the result
 ```
 
@@ -168,18 +163,19 @@ sequenceDiagram
 
 ## Constraints & Limitations
 
-| Constraint      | Value / Description                                                                                    |
-|-----------------|--------------------------------------------------------------------------------------------------------|
-| No writes armed | No EEPROM write starts while the drive is engaged. A save in progress finishes if the drive arms       |
-| Write time      | Header and record (Part A): 7 page writes of 5 ms, 35 ms per save, then a read-back; asynchronous      |
-| Endurance       | 1 million writes per cell; the save delay keeps tuning far below that                                  |
-| Record size     | 16 parameters fit in a 128-byte copy; more parameters stop the firmware with an assertion              |
-| No flash        | The store never writes internal flash, so the watchdog limits in `platform-abstraction.md` Part H hold |
+| Constraint      | Value / Description                                                                                                   |
+|-----------------|-----------------------------------------------------------------------------------------------------------------------|
+| No writes armed | No memory write starts while the drive is engaged. A save in progress finishes if the drive arms                      |
+| Write time      | Header and record (Part A): 7 page writes of 5 ms, 35 ms per save, then a read-back; asynchronous                     |
+| Endurance       | 1 million writes per cell; the save delay keeps tuning far below that                                                 |
+| Record size     | 16 parameters fit in a 128-byte copy; more parameters stop the firmware with an assertion                             |
+| No flash        | The store never writes internal flash, so the watchdog limits in platform abstraction Part H hold                     |
+| Calibration     | Calibration values, such as the IMU axis map or the wheel geometry, are not tuning; see [calibration](calibration.md) |
 
 ---
 
-## Open Questions
+## Decisions
 
-| # | Question                                                           | Options                                    | Status |
+| # | Decision                                                           | Options                                    | Status |
 |---|--------------------------------------------------------------------|--------------------------------------------|--------|
-| 1 | Should calibration values share the EEPROM with the tuning record? | Separate region later; one combined record | open   |
+| 1 | Should calibration values share the memory with the tuning record? | Separate region later; one combined record | open   |

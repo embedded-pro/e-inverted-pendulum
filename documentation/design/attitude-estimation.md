@@ -2,9 +2,9 @@
 title: "Attitude Estimation Design"
 type: design
 status: draft
-version: 0.3.0
+version: 0.3.1
 component: "attitude-estimation"
-date: 2026-11-25
+date: 2026-11-26
 ---
 
 | Field     | Value                      |
@@ -12,9 +12,9 @@ date: 2026-11-25
 | Title     | Attitude Estimation Design |
 | Type      | design                     |
 | Status    | draft                      |
-| Version   | 0.3.0                      |
+| Version   | 0.3.1                      |
 | Component | attitude-estimation        |
-| Date      | 2026-11-25                 |
+| Date      | 2026-11-26                 |
 
 > The controller can only be as good as the pitch estimate. Neither sensor alone is
 > usable: the gyroscope drifts, the accelerometer is fooled by the robot's own motion.
@@ -23,19 +23,9 @@ date: 2026-11-25
 
 ## Responsibilities
 
-**Is responsible for:**
 - Producing a body pitch angle and a pitch rate from inertial measurements.
 - Publishing an explicit validity indication with every estimate.
 - Limiting the influence of transient linear body acceleration on the pitch estimate.
-
-**Is NOT responsible for:**
-- Talking to the sensor part — it consumes calibrated measurements in a fixed body frame.
-- Estimating or removing the gyroscope bias, and judging stillness for calibration. Those belong
-  to inertial sensing, which publishes an already bias-corrected rate; see
-  `documentation/design/imu-sensing.md`.
-- Deciding what an invalid estimate means for the drive — the supervisor decides that.
-- Estimating wheel motion or chassis velocity — that is wheel odometry.
-- Choosing which sensor part is fitted; the design is deliberately part-agnostic.
 
 ---
 
@@ -43,9 +33,9 @@ date: 2026-11-25
 
 ### Part A — Why fusion is necessary
 
-Integrating the gyroscope gives a clean, low-latency angle that drifts without bound as
+Integrating the gyroscope gives a clean, low-latency angle. This angle drifts without bound as
 the small bias error accumulates. The accelerometer measures the gravity direction, giving
-an absolute reference that does not drift — but it measures *total* specific force, so any
+an absolute reference that does not drift. But it measures *total* specific force, so any
 acceleration of the chassis appears as a tilt. On a balancing robot this is the worst
 possible coupling: leaning forward to accelerate produces an acceleration that looks like
 more lean.
@@ -56,62 +46,65 @@ tuning decision in the component.
 
 ### Part B — Bias calibration
 
-During CALIBRATING the robot is held still and the mean angular rate on each axis is
-accumulated over a fixed window; that mean is the bias. The window must be long enough to
+During calibration the robot is held still. The component accumulates the mean angular rate on
+each axis over a fixed window; that mean is the bias. The window must be long enough to
 average sensor noise and short enough that the operator will actually hold still for it.
 
-Stillness is verified, not assumed: if the measured motion during the window exceeds the
-stillness threshold, the bias estimate would absorb real rotation and the component reports
+Stillness is verified, not assumed. If the measured motion during the window exceeds the
+stillness threshold, the bias estimate would absorb real rotation. The component then reports
 failure rather than poisoning every subsequent estimate. Bias is re-estimated on every
 power-on because it varies with temperature.
 
 ### Part C — Initial convergence
 
-The fused estimate starts from the accelerometer-derived angle rather than from zero, so
-that it begins close to the truth instead of converging towards it from an arbitrary
-starting point. Until the filter has run for its convergence interval the estimate is
-marked invalid, which is what prevents the supervisor from arming a robot whose estimate
+The fused estimate starts from the accelerometer-derived angle rather than from zero. It
+thus begins close to the truth instead of converging towards it from an arbitrary
+starting point. Until the filter has run for its convergence interval, the estimate is
+marked invalid. This prevents the supervisor from arming a robot whose estimate
 happens to read upright by accident.
 
 ### Part D — Rejecting body acceleration
 
 The accelerometer correction is attenuated when the measured specific force magnitude
-departs from one gravity, which is the signature of the chassis accelerating rather than
-merely tilting. During such an interval the estimate leans more heavily on the gyroscope,
-accepting a little drift in exchange for not being pulled off by the robot's own motion.
+departs from one gravity. That departure is the signature of the chassis accelerating rather than
+merely tilting. During such an interval the estimate leans more heavily on the gyroscope.
+It accepts a little drift in exchange for not being pulled off by the robot's own motion.
 This is what keeps a commanded acceleration from producing a sustained attitude error.
 
 ### Part E — Validity
 
-Validity is a first-class output, not an afterthought. The estimate is invalid when the
-sensing input is stale or has failed, when calibration has not completed or failed, and
-during the initial convergence interval. Downstream components are designed to treat
+Validity is a first-class output, not an afterthought. The estimate is invalid in these cases:
+
+- The sensing input is stale or has failed.
+- Calibration has not completed or has failed.
+- The initial convergence interval has not elapsed.
+ Downstream components are designed to treat
 invalid as unsafe rather than as a hint.
 
 ### Part F — Two filters, chosen by the operator
 
-Both formulations in `documentation/theory/attitude-estimation.md` are provided, and the operator
-chooses between them at run time rather than the design fixing one. They answer the same question
-with different trade-offs, and which is better on this robot is an empirical matter best settled by
-trying both on the bench:
+Both formulations in [attitude estimation theory](../theory/attitude-estimation.md) are provided.
+The operator chooses between them at run time rather than the design fixing one. They answer the
+same question with different trade-offs. Which is better on this robot is an empirical matter, best
+settled by trying both on the bench:
 
 - **Complementary.** One tuning constant, the crossover time, and a handful of operations per
   sample. The plausibility weight of Part D lengthens the crossover while the robot accelerates.
 - **Kalman, over pitch and gyroscope bias.** It carries the residual bias as a state, so drift left
-  over after calibration is estimated online, and its gain is derived from the process and
+  over after calibration is estimated online. Its gain is derived from the process and
   measurement noise rather than hand-tuned. The plausibility weight inflates the measurement noise
   instead of scaling a blend.
 
 Both integrate over the measured interval between samples, never the nominal one. Selecting a
-filter restarts it from the accelerometer-derived angle and restarts the convergence interval, so
-the estimate is invalid for that interval after every switch — a switch can never hand the
+filter restarts it from the accelerometer-derived angle and restarts the convergence interval.
+The estimate is thus invalid for that interval after every switch. A switch can never hand the
 controller an estimate the new filter has not yet earned.
 
 ### Part G — Axis convention for pitch rate
 
 The body frame is right-handed with x forward, y left and z up. A nose-up rotation turns x towards
 z, which is a *negative* rotation about y. Pitch is defined positive nose-up, so the pitch rate is
-the negated angular rate about y, while the accelerometer-derived angle follows the theory's
+the negated angular rate about y. The accelerometer-derived angle follows the theory's
 atan2 of the negated x and z components directly. Getting either sign wrong makes the two sensors
 disagree, and the filter converges to a steady error instead of the true angle.
 
@@ -120,7 +113,7 @@ disagree, and the filter converges to a steady error instead of the true angle.
 A sensor that is not mounted exactly level reads a constant pitch when the robot is upright. The
 estimator subtracts an upright offset from every pitch it publishes, while converging too. The
 filters themselves run on the uncorrected angle. The operator sets the offset at run time, within
-±0.35 rad (±20°); see `calibration.md`. A new offset also corrects the latest estimate at once.
+±0.35 rad (±20°); see [calibration](calibration.md). A new offset also corrects the latest estimate at once.
 The published pitch already has the offset removed, so the uncorrected angle is the published
 pitch plus the current offset.
 
@@ -139,10 +132,12 @@ pitch plus the current offset.
 
 ### Required
 
-| Interface            | Purpose                                         | Contract                                                                      |
-|----------------------|-------------------------------------------------|-------------------------------------------------------------------------------|
-| Inertial measurement | Angular rate and acceleration in the body frame | Fixed axis convention; staleness and transfer failure are reported explicitly |
-| Timebase             | Integration interval between samples            | Monotonic; the actual interval is used rather than the nominal one            |
+| Interface            | Purpose                                         | Contract                                                                         |
+|----------------------|-------------------------------------------------|----------------------------------------------------------------------------------|
+| Inertial measurement | Angular rate and acceleration in the body frame | Fixed axis convention; staleness and transfer failure are reported explicitly    |
+| Timebase             | Integration interval between samples            | Monotonic; the actual interval is used rather than the nominal one               |
+| Inertial sensing     | Gyroscope bias and stillness judgement          | Publishes an already bias-corrected rate; see [inertial sensing](imu-sensing.md) |
+| Safety supervisor    | Reaction to an invalid estimate                 | Decides what an invalid estimate means for the drive                             |
 
 ---
 
@@ -247,15 +242,18 @@ graph LR
 | Single axis            | Only pitch is estimated. Roll and yaw attitude are not; yaw *rate* comes from odometry, not from this component                      |
 | Sustained acceleration | Plausibility weighting handles transients. A long, steady acceleration is indistinguishable from a tilt and will bias the estimate   |
 | Temperature            | Bias is estimated once per power-on and not tracked thereafter; a large temperature excursion during a session degrades the estimate |
+| Sensor access          | Consumes calibrated measurements in a fixed body frame; does not talk to the sensor part                                             |
+| Part-agnostic          | Does not choose which sensor part is fitted                                                                                          |
+| Wheel motion           | Does not estimate wheel motion or chassis velocity; wheel odometry does                                                              |
 | Vibration              | Strong structural vibration raises accelerometer noise and effectively pushes the crossover; not compensated                         |
 
 ---
 
-## Open Questions
+## Decisions
 
-| # | Question                                                                                                        | Options                                                                                              | Status                                                                                               |
+| # | Decision                                                                                                        | Options                                                                                              | Status                                                                                               |
 |---|-----------------------------------------------------------------------------------------------------------------|------------------------------------------------------------------------------------------------------|------------------------------------------------------------------------------------------------------|
 | 1 | Complementary filter or single-axis Kalman filter?                                                              | Complementary — fewer cycles, one tuning constant; Kalman — principled weighting, tracks bias online | decided — both are provided and the operator selects one at run time (Part F)                        |
 | 2 | Should gyroscope bias be tracked continuously rather than fixed at calibration?                                 | Fixed per power-on; online estimation as part of a Kalman formulation                                | decided — the Kalman filter tracks the residual after calibration; the complementary filter does not |
-| 3 | Which inertial part is fitted, and does a separate accelerometer and gyroscope pair change the sampling design? | MPU6050 single part; LSM303 plus L3GD20 pair; MPU9250 single part                                    | decided — an MPU9250, sampled as one six-axis part on its data-ready interrupt                       |
+| 3 | Which inertial part is fitted, and does a separate accelerometer and gyroscope pair change the sampling design? | Six-axis single part; separate accelerometer and gyroscope pair; nine-axis single part               | decided — a nine-axis single part, sampled as one six-axis part on its data-ready interrupt          |
 | 4 | Should calibration be rejected outright if the robot is not near upright, not merely if it is moving?           | Stillness only; also require near-upright                                                            | open                                                                                                 |

@@ -2,9 +2,9 @@
 title: "Quadrature Decoding and Wheel Odometry"
 type: theory
 status: draft
-version: 0.1.0
+version: 0.1.1
 component: "motion-actuation"
-date: 2026-09-16
+date: 2026-11-26
 ---
 
 | Field     | Value                                  |
@@ -12,9 +12,9 @@ date: 2026-09-16
 | Title     | Quadrature Decoding and Wheel Odometry |
 | Type      | theory                                 |
 | Status    | draft                                  |
-| Version   | 0.1.0                                  |
+| Version   | 0.1.1                                  |
 | Component | motion-actuation                       |
-| Date      | 2026-09-16                             |
+| Date      | 2026-11-26                             |
 
 > How two square waves per wheel become the chassis velocity and yaw rate the controller
 > closes its outer loops on — and why the way velocity is derived from them matters more
@@ -25,13 +25,13 @@ date: 2026-09-16
 ## Overview
 
 Each wheel carries an incremental encoder producing two square waves in quadrature plus a
-once-per-revolution index. Quadrature encoding is what makes the signal *directional*: one
-channel alone gives speed but not sign, whereas the phase relationship between two channels
+once-per-revolution index. Quadrature encoding is what makes the signal *directional*. One
+channel alone gives speed but not sign. The phase relationship between two channels
 90° apart reveals which way the shaft is turning.
 
-From those counts the robot must recover wheel angle, wheel velocity, and then the chassis
-forward velocity and yaw rate that the outer control loops regulate. The main results are
-the differential-drive kinematics
+From those counts the robot must recover wheel angle and wheel velocity. From these it recovers
+the chassis forward velocity and yaw rate that the outer control loops regulate. The main results
+are the differential-drive kinematics
 
 $$
 v = \frac{r}{2}\left(\omega_L + \omega_R\right), \qquad \dot{\psi} = \frac{r}{b}\left(\omega_R - \omega_L\right)
@@ -43,8 +43,8 @@ $$
 \sigma_\omega = \frac{2\pi}{N_{\text{eff}}\,\Delta t}
 $$
 
-That second result is the practical one: at a 500 Hz control rate, naive differencing of a
-modest encoder produces velocity noise large enough to matter, and the way this is resolved
+That second result is the practical one. At a 500 Hz control rate, naive differencing of a
+modest encoder produces velocity noise large enough to matter. The way this is resolved
 constrains the whole odometry design.
 
 ---
@@ -85,7 +85,7 @@ A(t) = \operatorname{sgn}\sin\!\left(N_{\text{line}}\phi\right), \qquad
 B(t) = \operatorname{sgn}\sin\!\left(N_{\text{line}}\phi - \tfrac{\pi}{2}\right)
 $$
 
-Together they form a two-bit Gray code — exactly one bit changes per transition — cycling
+Together they form a two-bit Gray code: exactly one bit changes per transition. The code cycles
 through 00, 01, 11, 10 in one rotational direction and the reverse in the other:
 
 ```text
@@ -99,8 +99,8 @@ through 00, 01, 11, 10 in one rotational direction and the reverse in the other:
    reverse: 00 → 10 → 11 → 01 → 00
 ```
 
-The Gray-code property is what makes decoding robust: any transition changing *both* bits at
-once is impossible and therefore detectable as an error, whether from noise or from missed
+The Gray-code property is what makes decoding robust. Any transition changing *both* bits at
+once is impossible and therefore detectable as an error. The cause can be noise or missed
 edges at excessive speed.
 
 ### Derivation
@@ -112,7 +112,7 @@ $$
 N_{\text{eff}} = 4 N_{\text{line}}
 $$
 
-This is free resolution — no extra hardware, just counting all four transitions — and it
+This is free resolution: no extra hardware, just counting all four transitions. It
 directly reduces the quantisation noise derived in Step 5, which is why it is specified.
 
 **Step 2 — Direction.** The current and previous channel states together determine the
@@ -125,8 +125,8 @@ increment. Writing the state as $s = 2A + B$, the increment is a lookup on $(s_{
 | **11**             | ✗  | −1 | 0  | +1 |
 | **10**             | +1 | ✗  | −1 | 0  |
 
-The ✗ entries are the impossible double-bit transitions. They indicate that edges were missed
-— the wheel is turning faster than the decoder can follow — and must be treated as an error
+The ✗ entries are the impossible double-bit transitions. They indicate that edges were missed:
+the wheel is turning faster than the decoder can follow. They must be treated as an error
 rather than guessed at, since guessing produces silently wrong odometry.
 
 **Step 3 — Position.** Accumulating increments gives the count, and hence
@@ -146,7 +146,7 @@ $$
 $$
 
 This recovers the correct signed increment provided the wheel moves less than half a counter
-period per sample — a bound that holds by an enormous margin at 500 Hz, but which is the
+period per sample. This bound holds by an enormous margin at 500 Hz. It is still the
 assumption that makes the reconstruction valid at all.
 
 **Step 5 — Velocity and its quantisation noise.** The obvious estimator is a first difference:
@@ -163,7 +163,7 @@ $$
 $$
 
 apart. The interval $\Delta t$ is in the denominator, so **sampling faster makes velocity
-noisier**, which is the central and counter-intuitive tension of this component: the control
+noisier**. This is the central and counter-intuitive tension of this component. The control
 loop wants a fast update, and the fast update is what degrades the measurement.
 
 **Step 6 — Resolving the tension.** Three options, with different costs:
@@ -175,7 +175,7 @@ loop wants a fast update, and the fast update is what degrades the measurement.
   reduces noise by roughly $\sqrt{2\tau_f/\Delta t}$ while adding $\tau_f$ of lag. Smoother
   trade-off, same currency.
 - *Measure elapsed time between edges* rather than counts per interval. Noise then depends on
-  timer resolution rather than encoder resolution, which is excellent at low speed — but it
+  timer resolution rather than encoder resolution, which is excellent at low speed. But it
   degrades at high speed and requires a fallback, making it the most complex option.
 
 The saving grace is that velocity feeds the **outer** loop at 50 Hz, not the inner pitch loop
@@ -193,15 +193,15 @@ v = \frac{r}{2}\left(\omega_L + \omega_R\right), \qquad
 $$
 
 These are the two quantities the outer loops regulate. Note the asymmetry in error
-sensitivity: $v$ averages the two wheels, so independent noise partially cancels, whereas
-$\dot{\psi}$ differences them, so noise adds — and it is then divided by the small track width
+sensitivity. $v$ averages the two wheels, so independent noise partially cancels.
+$\dot{\psi}$ differences them, so noise adds. It is then divided by the small track width
 $b$, amplifying it further. **Yaw rate from odometry is intrinsically the noisier of the
 two.**
 
 **Step 8 — The index channel.** The index pulse marks one absolute shaft position per
-revolution and is useful for diagnostics and for detecting accumulated miscounts. It is
-deliberately *not* used to correct the incremental count: a spurious index pulse from
-electrical noise would teleport the odometry, turning a transient disturbance into a
+revolution. It is useful for diagnostics and for detecting accumulated miscounts. It is
+deliberately *not* used to correct the incremental count. A spurious index pulse from
+electrical noise would teleport the odometry. That turns a transient disturbance into a
 permanent error. Advisory only.
 
 ### Key Results
@@ -260,15 +260,15 @@ Geometry, viewed from above:
 
 **Sensitivities.** The dominant sensitivity is to $N_{\text{eff}}\Delta t$, the product that
 sets velocity noise. Encoder resolution and differencing interval are interchangeable in this
-respect — a coarse encoder differenced over a long interval performs identically to a fine
-one differenced quickly, but the two choices have very different lag, which is why the
+respect. A coarse encoder differenced over a long interval performs identically to a fine
+one differenced quickly. But the two choices have very different lag. This is why the
 differencing interval is tied to the outer loop rather than the inner.
 
-**Yaw rate is the weak link**, for the structural reason in Step 7: it differences the wheels
+**Yaw rate is the weak link**, for the structural reason in Step 7. It differences the wheels
 rather than averaging them, then divides by a small $b$. A narrow-track robot has intrinsically
 noisy odometric yaw. If yaw performance proves inadequate, the gyroscope's yaw-axis rate is
-the natural alternative — it is already being sampled and is far quieter, at the cost of the
-bias handling covered in `attitude-estimation.md`.
+the natural alternative. It is already being sampled and is far quieter. The cost is the
+bias handling covered in [attitude estimation](attitude-estimation.md).
 
 Geometric parameters enter as **scale errors, not noise**: an error in $r$ scales all
 velocities proportionally, and an error in $b$ scales yaw rate. Both are systematic and
@@ -332,7 +332,7 @@ $$
 $$
 
 which is well beyond software edge counting and firmly in hardware-timer territory —
-supporting the open question recorded in the actuation design.
+supporting the open decision recorded in the actuation design.
 
 ---
 
@@ -355,7 +355,7 @@ supporting the open question recorded in the actuation design.
 - **Does not handle**: uneven ground. All results assume both contact patches stay on a flat
   plane.
 - **Does not handle**: backlash. With the encoder on the motor shaft, gear backlash appears as
-  motor motion that the wheel does not follow — a direct error on every reversal.
+  motor motion that the wheel does not follow. This is a direct error on every reversal.
 
 ---
 
