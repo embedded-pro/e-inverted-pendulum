@@ -2,59 +2,17 @@
 #include "tools/lqr_design/LqrDesign.hpp"
 #include <cstdio>
 #include <cstdlib>
-#include <map>
-#include <optional>
 #include <string>
+#include <vector>
 
 namespace
 {
-    const std::map<std::string, float tools::RobotParameters::*> scalarOptions{
-        { "--body-mass", &tools::RobotParameters::bodyMass },
-        { "--wheels-mass", &tools::RobotParameters::wheelsMass },
-        { "--height", &tools::RobotParameters::height },
-        { "--body-inertia", &tools::RobotParameters::bodyInertia },
-        { "--wheel-inertia", &tools::RobotParameters::wheelInertia },
-        { "--wheel-radius", &tools::RobotParameters::wheelRadius },
-        { "--wheel-torque", &tools::RobotParameters::wheelTorque },
-        { "--period", &tools::RobotParameters::period },
-    };
-
-    const std::map<std::string, std::size_t> limitOptions{
-        { "--limit-pitch", 0 },
-        { "--limit-pitch-rate", 1 },
-        { "--limit-position", 2 },
-        { "--limit-velocity", 3 },
-    };
-
     void PrintUsage()
     {
         std::puts("usage: lqr_design --body-mass <kg> --wheels-mass <kg> --height <m> --body-inertia <kg m2>");
         std::puts("                  --wheel-inertia <kg m2> --wheel-torque <N m> [--wheel-radius <m>] [--period <s>]");
         std::puts("                  [--limit-pitch <rad>] [--limit-pitch-rate <rad/s>] [--limit-position <m>] [--limit-velocity <m/s>]");
         std::puts("see documentation/design/lqr-design-tool.md");
-    }
-
-    std::optional<tools::RobotParameters> Parse(int argc, char** argv)
-    {
-        tools::RobotParameters parameters;
-        for (int i = 1; i + 1 < argc; i += 2)
-        {
-            char* end{ nullptr };
-            const float value{ std::strtof(argv[i + 1], &end) };
-            if (end == argv[i + 1] || *end != '\0')
-                return std::nullopt;
-
-            if (const auto scalar = scalarOptions.find(argv[i]); scalar != scalarOptions.end())
-                parameters.*(scalar->second) = value;
-            else if (const auto limit = limitOptions.find(argv[i]); limit != limitOptions.end())
-                parameters.stateLimits[limit->second] = value;
-            else
-                return std::nullopt;
-        }
-
-        if (argc % 2 == 0 || parameters.bodyMass <= 0.0f || parameters.height <= 0.0f || parameters.wheelTorque <= 0.0f || parameters.wheelRadius <= 0.0f || parameters.period <= 0.0f || parameters.bodyInertia < 0.0f || parameters.wheelInertia < 0.0f || parameters.wheelsMass < 0.0f)
-            return std::nullopt;
-        return parameters;
     }
 
     const char* NameOf(tools::DesignFailure failure)
@@ -65,7 +23,7 @@ namespace
                 return "the plant does not discretise";
             case tools::DesignFailure::riccati:
                 return "the Riccati iteration does not converge";
-            case tools::DesignFailure::unstable:
+            case tools::DesignFailure::notSettled:
                 return "the closed loop does not settle within 5 s; loosen the state limits";
             case tools::DesignFailure::outOfRange:
                 return "a gain is outside its firmware range";
@@ -82,11 +40,30 @@ namespace
         std::printf("model gains (N m per state unit): %.6f %.6f %.6f %.6f\n", design.modelGains[0], design.modelGains[1], design.modelGains[2], design.modelGains[3]);
         std::printf("closed loop after 5 s: %.4f of the start\n", design.decay);
     }
+
+    void PrintCommands(const tools::LqrDesign& design)
+    {
+        const balance::LqrStrategy strategy;
+        const auto descriptors = strategy.Parameters();
+        std::puts("firmware commands:");
+        std::puts("  strategy lqr");
+        for (std::size_t i = 0; i != design.firmwareGains.size(); ++i)
+            std::printf("  param %zu %.6f\n", i, design.firmwareGains[i]);
+        for (std::size_t i = 0; i != design.firmwareGains.size(); ++i)
+            std::printf("  (%s, range %g to %g)\n", descriptors[i].name, descriptors[i].minimum, descriptors[i].maximum);
+    }
 }
 
 int main(int argc, char** argv)
 {
-    const auto parameters = Parse(argc, argv);
+    const std::vector<std::string> arguments(argv + 1, argv + argc);
+    if (arguments.size() == 1 && (arguments[0] == "--help" || arguments[0] == "-h"))
+    {
+        PrintUsage();
+        return EXIT_SUCCESS;
+    }
+
+    const auto parameters = tools::ParseArguments(arguments);
     if (!parameters.has_value())
     {
         PrintUsage();
@@ -96,17 +73,12 @@ int main(int argc, char** argv)
     const auto design = tools::DesignLqr(*parameters);
     PrintDesign(design);
 
-    const balance::LqrStrategy strategy;
-    const auto descriptors = strategy.Parameters();
-    std::puts("firmware commands:");
-    std::puts("  strategy lqr");
-    for (std::size_t i = 0; i != design.firmwareGains.size(); ++i)
-        std::printf("  param %zu %.6f    # %s, range %g to %g\n", i, design.firmwareGains[i], descriptors[i].name, descriptors[i].minimum, descriptors[i].maximum);
-
     if (design.failure != tools::DesignFailure::none)
     {
         std::printf("failed: %s\n", NameOf(design.failure));
         return EXIT_FAILURE;
     }
+
+    PrintCommands(design);
     return EXIT_SUCCESS;
 }

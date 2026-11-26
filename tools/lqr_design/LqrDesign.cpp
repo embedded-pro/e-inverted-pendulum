@@ -5,6 +5,9 @@
 #include "robotics/mobile/WheeledInvertedPendulum.hpp"
 #include <algorithm>
 #include <cmath>
+#include <cstdlib>
+#include <limits>
+#include <map>
 
 namespace tools
 {
@@ -13,6 +16,58 @@ namespace tools
         constexpr float initialPitch{ 0.05f };
         constexpr float settleSeconds{ 5.0f };
         constexpr float requiredDecay{ 0.01f };
+        constexpr float minimumPeriod{ 1e-4f };
+        constexpr float maximumPeriod{ 0.1f };
+        constexpr float unusedTrackWidth{ 0.1f };
+
+        const std::map<std::string, float RobotParameters::*> scalarOptions{
+            { "--body-mass", &RobotParameters::bodyMass },
+            { "--wheels-mass", &RobotParameters::wheelsMass },
+            { "--height", &RobotParameters::height },
+            { "--body-inertia", &RobotParameters::bodyInertia },
+            { "--wheel-inertia", &RobotParameters::wheelInertia },
+            { "--wheel-radius", &RobotParameters::wheelRadius },
+            { "--wheel-torque", &RobotParameters::wheelTorque },
+            { "--period", &RobotParameters::period },
+        };
+
+        const std::map<std::string, std::size_t> limitOptions{
+            { "--limit-pitch", 0 },
+            { "--limit-pitch-rate", 1 },
+            { "--limit-position", 2 },
+            { "--limit-velocity", 3 },
+        };
+
+        std::optional<float> ParseFinite(const std::string& text)
+        {
+            char* end{ nullptr };
+            const float value{ std::strtof(text.c_str(), &end) };
+            if (end == text.c_str() || *end != '\0' || !std::isfinite(value))
+                return std::nullopt;
+            return value;
+        }
+
+        bool Store(RobotParameters& parameters, const std::string& name, float value)
+        {
+            if (const auto scalar = scalarOptions.find(name); scalar != scalarOptions.end())
+                parameters.*(scalar->second) = value;
+            else if (const auto limit = limitOptions.find(name); limit != limitOptions.end())
+                parameters.stateLimits[limit->second] = value;
+            else
+                return false;
+            return true;
+        }
+
+        bool Valid(const RobotParameters& p)
+        {
+            const bool positive = p.bodyMass > 0.0f && p.height > 0.0f && p.wheelTorque > 0.0f && p.wheelRadius > 0.0f;
+            const bool nonNegative = p.wheelsMass >= 0.0f && p.bodyInertia >= 0.0f && p.wheelInertia >= 0.0f;
+            const bool period = p.period >= minimumPeriod && p.period <= maximumPeriod;
+            return positive && nonNegative && period && std::ranges::all_of(p.stateLimits, [](float limit)
+                                                            {
+                                                                return limit > 0.0f;
+                                                            });
+        }
 
         mobile::WheeledInvertedPendulumParameters<float> ModelParameters(const RobotParameters& parameters)
         {
@@ -22,9 +77,8 @@ namespace tools
             model.centreOfMassHeight = parameters.height;
             model.bodyPitchInertia = parameters.bodyInertia;
             model.wheelInertia = parameters.wheelInertia;
-            model.yawInertia = 0.0f;
             model.wheelRadius = parameters.wheelRadius;
-            model.trackWidth = 0.1f;
+            model.trackWidth = unusedTrackWidth;
             return model;
         }
 
@@ -47,6 +101,24 @@ namespace tools
         return true;
     }
 
+    std::optional<RobotParameters> ParseArguments(const std::vector<std::string>& arguments)
+    {
+        if (arguments.size() % 2 != 0)
+            return std::nullopt;
+
+        RobotParameters parameters;
+        for (std::size_t i = 0; i != arguments.size(); i += 2)
+        {
+            const auto value = ParseFinite(arguments[i + 1]);
+            if (!value.has_value() || !Store(parameters, arguments[i], *value))
+                return std::nullopt;
+        }
+
+        if (!Valid(parameters))
+            return std::nullopt;
+        return parameters;
+    }
+
     std::array<float, 4> ToFirmwareGains(const std::array<float, 4>& modelGains, float wheelTorque)
     {
         const float scale{ 1.0f / (2.0f * wheelTorque) };
@@ -64,7 +136,11 @@ namespace tools
 
         float largest{ 0.0f };
         for (std::size_t i = 0; i != 4; ++i)
+        {
+            if (!std::isfinite(state[i]))
+                return std::numeric_limits<float>::infinity();
             largest = std::max(largest, std::fabs(state[i]));
+        }
         return largest / initialPitch;
     }
 
@@ -95,7 +171,7 @@ namespace tools
         design.decay = ClosedLoopDecay(design.a, design.b, design.modelGains, static_cast<std::size_t>(settleSeconds / parameters.period));
 
         if (!(design.decay < requiredDecay))
-            design.failure = DesignFailure::unstable;
+            design.failure = DesignFailure::notSettled;
         else if (!FitsFirmwareRanges(design.firmwareGains))
             design.failure = DesignFailure::outOfRange;
         return design;

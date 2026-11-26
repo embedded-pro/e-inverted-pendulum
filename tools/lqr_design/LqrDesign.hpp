@@ -5,6 +5,8 @@
 #include <cstddef>
 #include <cstdint>
 #include <optional>
+#include <string>
+#include <vector>
 
 namespace tools
 {
@@ -26,7 +28,7 @@ namespace tools
         none,
         discretisation,
         riccati,
-        unstable,
+        notSettled,
         outOfRange
     };
 
@@ -40,6 +42,7 @@ namespace tools
         DesignFailure failure{ DesignFailure::none };
     };
 
+    std::optional<RobotParameters> ParseArguments(const std::vector<std::string>& arguments);
     LqrDesign DesignLqr(const RobotParameters& parameters);
     bool FitsFirmwareRanges(const std::array<float, 4>& firmwareGains);
     std::array<float, 4> ToFirmwareGains(const std::array<float, 4>& modelGains, float wheelTorque);
