@@ -2,7 +2,7 @@
 title: "Roadmap"
 type: roadmap
 status: draft
-version: 0.3.0
+version: 0.3.1
 component: "system"
 date: 2026-11-26
 ---
@@ -12,7 +12,7 @@ date: 2026-11-26
 | Title     | Roadmap    |
 | Type      | roadmap    |
 | Status    | draft      |
-| Version   | 0.3.0      |
+| Version   | 0.3.1      |
 | Component | system     |
 | Date      | 2026-11-26 |
 
@@ -111,7 +111,6 @@ Not needed for a first balance. Each item links to where it is recorded.
 
 | Item                                         | Where it is recorded                      |
 |----------------------------------------------|-------------------------------------------|
-| Scenarios for REQ-LINK-009 and REQ-LINK-010  | `use-cases/README.md`, Traceability       |
 | Encoder index events (REQ-ODOM-005)          | `design/wheel-odometry.md`, decision 1    |
 | Motor current rating (REQ-DRIVE-005)         | `use-cases/safety.feature`                |
 | Battery voltage supervision                  | `design/safety-supervisor.md`, decision 3 |
