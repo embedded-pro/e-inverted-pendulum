@@ -23,17 +23,17 @@ date: 2026-11-26
 
 ## Milestones
 
-| #  | Milestone                    | State       | Where it is defined                                       |
-|----|------------------------------|-------------|-----------------------------------------------------------|
-| M1 | Component firmware           | done        | `architecture/system.md`                                  |
-| M2 | Scaffold removed             | done        | —                                                         |
-| M3 | Safety scenarios on the host | done        | `integration_tests/README.md`, `use-cases/safety.feature` |
-| M4 | Hardware watchdog            | done        | `design/platform-abstraction.md`, Part H; REQ-SAFE-010    |
-| M5 | Tuning kept across a reset   | done        | `design/persistence.md`; REQ-TUNE-007                     |
-| M6 | Runtime calibration          | done        | `design/calibration.md`                                   |
-| M7 | Bench bring-up               | next        | This page, [M7](#m7--bench-bring-up)                      |
-| M8 | First balance                | planned     | This page, [M8](#m8--first-balance)                       |
-| M9 | Driving                      | planned     | This page, [M9](#m9--driving)                             |
+| #  | Milestone                    | State   | Where it is defined                                       |
+|----|------------------------------|---------|-----------------------------------------------------------|
+| M1 | Component firmware           | done    | `architecture/system.md`                                  |
+| M2 | Scaffold removed             | done    | —                                                         |
+| M3 | Safety scenarios on the host | done    | `integration_tests/README.md`, `use-cases/safety.feature` |
+| M4 | Hardware watchdog            | done    | `design/platform-abstraction.md`, Part H; REQ-SAFE-010    |
+| M5 | Tuning kept across a reset   | done    | `design/persistence.md`; REQ-TUNE-007                     |
+| M6 | Runtime calibration          | done    | `design/calibration.md`                                   |
+| M7 | Bench bring-up               | next    | This page, [M7](#m7--bench-bring-up)                      |
+| M8 | First balance                | planned | This page, [M8](#m8--first-balance)                       |
+| M9 | Driving                      | planned | This page, [M9](#m9--driving)                             |
 
 ```mermaid
 flowchart LR
