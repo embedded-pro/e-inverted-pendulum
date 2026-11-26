@@ -175,6 +175,20 @@ TEST_F(CalibrationCommandTest, upright_with_a_value_sets_the_offset_in_degrees)
     command.Execute("upright 1.5");
 }
 
+TEST_F(CalibrationCommandTest, a_negative_upright_offset_is_accepted)
+{
+    EXPECT_CALL(calibration, SetUprightOffset(testing::FloatNear(-1.5f * degree, 1e-6f))).WillOnce(testing::Return(calibration::Result::accepted));
+
+    command.Execute("upright -1.5");
+}
+
+TEST_F(CalibrationCommandTest, repeated_spaces_between_arguments_are_ignored)
+{
+    EXPECT_CALL(calibration, SetAxisMap(AxisMapIs(platform::AxisMap{ 0, 2, 1, 1.0f, -1.0f, 1.0f }))).WillOnce(testing::Return(calibration::Result::accepted));
+
+    command.Execute("axes  +x   -z +y ");
+}
+
 TEST_F(CalibrationCommandTest, motor_and_encoder_set_one_wheel_sign)
 {
     EXPECT_CALL(calibration, SetMotorInverted(motion::WheelSide::left, true)).WillOnce(testing::Return(calibration::Result::accepted));
@@ -209,18 +223,10 @@ TEST_F(CalibrationCommandTest, each_refusal_is_reported)
 
 TEST_F(CalibrationCommandTest, malformed_arguments_print_the_usage)
 {
-    command.Execute("axes +x -z");
-    command.Execute("axes +x -w +y");
-    command.Execute("still fast");
-    command.Execute("motor middle -");
-    command.Execute("encoder left x");
-    command.Execute("wheel 0.03 0.1");
-    command.Execute("upright 1.5 2.0");
-    command.Execute("bogus");
-
-    const auto output = Output();
-    std::size_t usages{ 0 };
-    for (auto at = output.find("usage: cal"); at != std::string::npos; at = output.find("usage: cal", at + 1))
-        ++usages;
-    EXPECT_EQ(8u, usages);
+    for (const auto* line : { "axes +x -z", "axes +x -z +y +x", "axes +x -w +y", "axes +X -z +y", "axes x -z +y", "axes +xx -z +y", "still fast", "still 1", "motor middle -", "motor left", "encoder left x", "wheel 0.03 0.1", "wheel 0.03 0.1 2", "upright 1.5 2.0", "bogus" })
+    {
+        text.clear();
+        command.Execute(line);
+        EXPECT_THAT(Output(), testing::HasSubstr("usage: cal")) << line;
+    }
 }

@@ -68,7 +68,9 @@ supervisor then count from the true upright.
 
 ### Part C — Console commands
 
-`cal` reads each value from its component and prints the store status.
+`cal` reads each value from its component and prints the store status. Each change prints `ok`, or
+the reason for the refusal: armed, still loading, or out of range. An `axes` or `still` change also
+asks for `calibrate`. Values take a decimal point, for example `cal still 0.05`.
 
 | Command                     | Effect                                                       |
 |-----------------------------|--------------------------------------------------------------|

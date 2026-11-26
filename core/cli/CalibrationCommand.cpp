@@ -75,7 +75,10 @@ namespace application
 
         const infra::Tokenizer tokens{ params, ' ' };
         if (!Dispatch(tokens))
-            tracer.Trace() << "usage: cal [axes <+x|-x|+y|-y|+z|-z> x3 | still <rad/s> | upright [<deg>] | motor <left|right> <+|-> | encoder <left|right> <+|-> | wheel <radius> <track> <gear>]";
+        {
+            tracer.Trace() << "usage: cal [axes <+x|-x|+y|-y|+z|-z> x3 | motor|encoder <left|right> <+|->]";
+            tracer.Trace() << "       cal [still <rad/s> | upright [<deg>] | wheel <m> <m> <ratio>], decimals such as 0.05";
+        }
     }
 
     void CalibrationCommand::Print()
@@ -204,7 +207,7 @@ namespace application
             case calibration::Result::restoring:
                 tracer.Trace() << "refused: the saved calibration is still loading";
                 break;
-            default:
+            case calibration::Result::invalid:
                 tracer.Trace() << "refused: value out of range or not a permutation";
                 break;
         }
