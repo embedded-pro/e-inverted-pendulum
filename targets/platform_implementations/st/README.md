@@ -33,6 +33,53 @@ keyed off `TARGET_MCU`). To support another STM32 board, add a `TARGET_MCU`
 case there pointing at the matching `hal_st` clock header/function, and add a
 preset in `CMakePresets.json`.
 
+## Peripheral and pin allocation (NUCLEO-WB55RG)
+
+The design reason is in `documentation/design/platform-abstraction.md`, Part E.
+
+The selected part has two general-purpose timers with an encoder mode, one low-power timer with
+an encoder mode, and one timer with four independent output channels and a break input. The
+motor driver's four bridge inputs want that four-channel timer, so that both motors switch in
+phase and a single break input releases every input in hardware. That leaves the second
+general-purpose timer and the low-power timer for the wheels.
+
+| Timer  | Use                                                                     |
+|--------|-------------------------------------------------------------------------|
+| TIM1   | Motor driver bridge inputs, four channels, break input on the fault net |
+| TIM2   | Right wheel encoder, x4 quadrature                                      |
+| LPTIM1 | Left wheel encoder, x4 quadrature                                       |
+| TIM16  | Free                                                                    |
+| TIM17  | Free                                                                    |
+
+The low-power timer's counter is 16 bits, which is ample for the configured encoder
+resolution, and it has no per-phase polarity; the left wheel is the unmirrored one, so it does
+not need any.
+
+The serial buses are just as constrained. This part has two SPIs. Every I2C1 pin option
+collides with the console UART, an encoder phase or a motor output. I2C3 is free on PA7/PC1
+and on PB10/PB11; its other pins collide with SPI1 or SPI2. So:
+
+| Bus  | Use                                                                                        |
+|------|--------------------------------------------------------------------------------------------|
+| SPI1 | Motor driver configuration and read-back, on PB3/PB4/PB5 with an active-high select on PA4 |
+| SPI2 | Inertial sensor, with data-ready on PC6                                                    |
+
+The reservation matters: the motor driver's configuration channel is the only other thing on
+this board that needs a bus, and spending SPI1 on the sensor would have left it nowhere to go.
+
+| Signal                       | Pins                                 |
+|------------------------------|--------------------------------------|
+| Bridge inputs A1, A2, B1, B2 | PA8, PA9, PA10, PA11 (TIM1 CH1–CH4)  |
+| Driver fault                 | PA6 (TIM1 break) and PC4 (interrupt) |
+| Driver sleep, reset          | PB8, PB9                             |
+| Left encoder A, B, index     | PC0, PC2 (LPTIM1 IN1, IN2), PC5      |
+| Right encoder A, B, index    | PA0, PA1 (TIM2 CH1, CH2), PC3        |
+
+This is a board-level allocation, not part of the abstraction — the roles above say nothing
+about timers or buses, and a board with more of them is free to spend them differently. It is
+recorded here because it is the constraint that shaped three component designs, and
+rediscovering it from the pinout tables is expensive.
+
 ## Wireless coprocessor
 
 CPU2 must run ST's **full** BLE stack, flashed once per board with STM32CubeProgrammer.

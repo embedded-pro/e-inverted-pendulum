@@ -113,7 +113,8 @@ nowhere to go.
 
 This is a board-level allocation, not part of the abstraction. The roles above say nothing about
 counters or buses, and a board with more of them is free to spend them differently. It is
-recorded here because it is the constraint that shaped three component designs.
+recorded here because it is the constraint that shaped three component designs. The reference
+board's allocation is in its [platform README](../../targets/platform_implementations/st/README.md).
 
 ### Part F — Failure is expressible
 
