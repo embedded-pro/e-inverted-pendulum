@@ -2,7 +2,7 @@
 title: "BLE Service Design"
 type: design
 status: draft
-version: 0.3.1
+version: 0.3.2
 component: "ble-service"
 date: 2026-11-26
 ---
@@ -12,7 +12,7 @@ date: 2026-11-26
 | Title     | BLE Service Design |
 | Type      | design             |
 | Status    | draft              |
-| Version   | 0.3.1              |
+| Version   | 0.3.2              |
 | Component | ble-service        |
 | Date      | 2026-11-26         |
 
@@ -27,7 +27,7 @@ date: 2026-11-26
   connection lifecycle.
 - Carrying motion setpoints inward, and range-checking them before they reach the controller.
 - Decaying setpoints to zero on operator silence, and zeroing them on link loss.
-- Carrying mode commands — arm, disarm, clear fault — inward to the safety supervisor.
+- Carrying mode commands — arm, disarm, clear fault, calibrate — inward to the safety supervisor.
 - Streaming telemetry outward to a subscribed client without ever blocking the control loop.
 - Carrying strategy selection and parameter access between the client and balance control.
 - Enforcing that no commanding write is honoured before pairing.
@@ -42,7 +42,7 @@ One service carries four characteristic groups, separated by direction and lifet
 than by feature, so that a congested or dropped link degrades predictably:
 
 - **Motion** — written frequently by the client while driving. The only high-rate inbound path.
-- **Mode** — written rarely, with high consequence. Arm, disarm, clear fault, plus the
+- **Mode** — written rarely, with high consequence. Arm, disarm, clear fault, calibrate, plus the
   readable mode and latched fault cause.
 - **Telemetry** — notified outward at a fixed rate while subscribed. Never written.
 - **Tuning** — the active strategy, the list of available strategies, the parameter
@@ -196,7 +196,7 @@ The command line reports the link without a phone:
 | Robot control service  | The GATT service exposing all four characteristic groups                       | Discoverable while connected; single client                                                               |
 | Advertising lifecycle  | Advertise while unconnected, resume after disconnection                        | At most one concurrent connection; a second is refused                                                    |
 | Motion command intake  | Accept velocity and yaw-rate setpoints                                         | Pairing required; out-of-range values rejected, not clamped; setpoints decay to zero after the timeout    |
-| Mode command intake    | Accept arm, disarm and clear-fault                                             | Pairing required; forwarded to the supervisor, which applies its own preconditions                        |
+| Mode command intake    | Accept arm, disarm, clear-fault and calibrate                                  | Pairing required; forwarded to the supervisor, which applies its own preconditions                        |
 | Telemetry notification | Publish robot state to a subscriber                                            | Fixed rate while subscribed; silent otherwise; never blocks the control loop; samples internally coherent |
 | Tuning access          | Strategy list, active strategy, parameter descriptor, indexed parameter access | Pairing required for writes; the controller decides acceptance and this component reports the outcome     |
 | Link status            | Report radio state, address and attribute MTU                                  | Readable at any time, including before the radio has started                                              |
