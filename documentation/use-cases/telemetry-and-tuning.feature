@@ -109,3 +109,17 @@ Feature: Telemetry and runtime tuning over Bluetooth Low Energy
     When the client writes a value outside the published range of a parameter
     Then the write is rejected
     And the stored parameter value is unchanged
+
+  @REQ-LINK-011
+  Scenario: The client reads and changes the calibration
+    Given the robot is in IDLE
+    When the client sets the left motor sign to -1
+    Then the change is accepted
+    And reading every calibration value reports the left motor sign as -1
+
+  @REQ-LINK-011
+  Scenario: Calibration changes are refused while ARMED
+    Given the robot is ARMED and balancing
+    When the client sets the wheel geometry
+    Then the change is refused because the drive is armed
+    And the wheel geometry is unchanged

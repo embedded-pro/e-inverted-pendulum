@@ -61,6 +61,7 @@ supervisor then count from the true upright.
 
 ### Part C — Console commands
 
+A paired Bluetooth client has the same access ([BLE service](ble-service.md), Part K).
 `cal` reads each value from its component and prints the store status. Each change prints `ok`, or
 the reason for the refusal: armed, still loading, or out of range. An `axes` or `still` change also
 asks for `calibrate`. Values take a decimal point, for example `cal still 0.05`.

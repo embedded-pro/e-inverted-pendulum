@@ -17,7 +17,7 @@ namespace ble
     public:
         static constexpr std::size_t maximumAdvertisementSize{ 31 };
 
-        BleLink(platform::Bluetooth& bluetooth, infra::BoundedConstString deviceName, safety::SafetySupervisor& supervisor, balance::BalanceControl& balanceControl, const telemetry::TelemetrySource& telemetry);
+        BleLink(platform::Bluetooth& bluetooth, infra::BoundedConstString deviceName, safety::SafetySupervisor& supervisor, balance::BalanceControl& balanceControl, const telemetry::TelemetrySource& telemetry, const CalibrationAccess::Dependencies& calibration);
         ~BleLink();
 
         bool Connected() const;

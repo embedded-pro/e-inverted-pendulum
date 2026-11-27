@@ -1,6 +1,7 @@
 #pragma once
 
 #include "core/balance_control/interfaces/BalanceControl.hpp"
+#include "core/ble_link/CalibrationAccess.hpp"
 #include "core/safety_supervisor/interfaces/SafetySupervisor.hpp"
 #include "core/telemetry/interfaces/Telemetry.hpp"
 #include "infra/timer/Timer.hpp"
@@ -57,7 +58,7 @@ namespace ble
             std::chrono::milliseconds telemetryPeriod{ 40 };
         };
 
-        RobotControlService(services::GattServer& gattServer, safety::SafetySupervisor& supervisor, balance::BalanceControl& balanceControl, const telemetry::TelemetrySource& telemetry, const Config& config = Config());
+        RobotControlService(services::GattServer& gattServer, safety::SafetySupervisor& supervisor, balance::BalanceControl& balanceControl, const telemetry::TelemetrySource& telemetry, const CalibrationAccess::Dependencies& calibration, const Config& config = Config());
 
         void Connected();
         void Disconnected();
@@ -113,6 +114,7 @@ namespace ble
         WriteHandler motionWrites;
         WriteHandler modeWrites;
         WriteHandler tuningWrites;
+        CalibrationAccess calibrationAccess;
         infra::TimerRepeating ticker;
 
         uint16_t mtu{ services::attDefaultMaxMtuSize };

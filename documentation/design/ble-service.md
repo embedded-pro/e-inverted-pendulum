@@ -2,9 +2,9 @@
 title: "BLE Service Design"
 type: design
 status: draft
-version: 0.3.2
+version: 0.4.0
 component: "ble-service"
-date: 2026-11-26
+date: 2026-11-27
 ---
 
 | Field     | Value              |
@@ -12,9 +12,9 @@ date: 2026-11-26
 | Title     | BLE Service Design |
 | Type      | design             |
 | Status    | draft              |
-| Version   | 0.3.2              |
+| Version   | 0.4.0              |
 | Component | ble-service        |
-| Date      | 2026-11-26         |
+| Date      | 2026-11-27         |
 
 > The robot's only window on the world. Designed on the assumption that the link will
 > fail at the worst moment, and that losing it must never drop a balancing robot.
@@ -30,6 +30,7 @@ date: 2026-11-26
 - Carrying mode commands — arm, disarm, clear fault, calibrate — inward to the safety supervisor.
 - Streaming telemetry outward to a subscribed client without ever blocking the control loop.
 - Carrying strategy selection and parameter access between the client and balance control.
+- Carrying calibration reads and changes between the client and the calibration component.
 - Enforcing that no commanding write is honoured before pairing.
 
 ---
@@ -38,7 +39,7 @@ date: 2026-11-26
 
 ### Part A — Service layout
 
-One service carries four characteristic groups, separated by direction and lifetime rather
+One service carries five characteristic groups, separated by direction and lifetime rather
 than by feature, so that a congested or dropped link degrades predictably:
 
 - **Motion** — written frequently by the client while driving. The only high-rate inbound path.
@@ -47,6 +48,7 @@ than by feature, so that a congested or dropped link degrades predictably:
 - **Telemetry** — notified outward at a fixed rate while subscribed. Never written.
 - **Tuning** — the active strategy, the list of available strategies, the parameter
   descriptor, and indexed parameter access.
+- **Calibration** — read every calibration value, and change one value or one group of values.
 
 ### Part B — The command timeout
 
@@ -109,7 +111,7 @@ reaches the application. Just Works does not protect the pairing exchange itself
 in the middle. That is accepted for an operator robot that is paired within arm's reach. Bonds
 are held in volatile memory until non-volatile storage exists, so a client pairs again after
 every reset. The
-tuning control point is itself a commanding characteristic, so tuning queries also need pairing.
+tuning and calibration control points are commanding characteristics, so their queries also need pairing.
 
 ### Part G — Attribute MTU
 
@@ -131,6 +133,7 @@ All UUIDs share the base `c7a1xxxx-5f6e-4d2b-9a3c-8e1f4b6d2a70`.
 | Mode           | c7a10003    | read, write, notify    | written: one command byte; read: mode, cause, last command, last outcome                 |
 | Telemetry      | c7a10004    | read, notify           | pitch, pitch rate, velocity, yaw rate, effort left, effort right as float32; mode, cause |
 | Tuning         | c7a10005    | write, notify          | request and response, below                                                              |
+| Calibration    | c7a10006    | write, notify          | request and response, Part K                                                             |
 
 | Code | Mode        | Code | Latched cause      | Code | Command     | Code | Outcome  |
 |------|-------------|------|--------------------|------|-------------|------|----------|
@@ -185,6 +188,49 @@ The command line reports the link without a phone:
 - the public address,
 - the negotiated attribute MTU.
 
+### Part K — Calibration access
+
+The calibration characteristic uses the request and response rules of the tuning characteristic.
+A request starts with an operation byte and a side byte: 0 left, 1 right, 0 when no wheel applies.
+Every response repeats both and adds a status.
+
+| Operation            | Request after the side byte    | Response after the status |
+|----------------------|--------------------------------|---------------------------|
+| 1 — read all         | nothing                        | every value, below        |
+| 2 — set axis map     | three signed axes              | nothing                   |
+| 3 — set stillness    | limit as float32 (rad/s)       | nothing                   |
+| 4 — set upright      | offset as float32 (rad)        | nothing                   |
+| 5 — capture upright  | nothing                        | nothing                   |
+| 6 — set motor sign   | +1 or −1 as a signed byte      | nothing                   |
+| 7 — set encoder sign | +1 or −1 as a signed byte      | nothing                   |
+| 8 — set geometry     | radius, track, gear as float32 | nothing                   |
+
+A signed axis is ±1, ±2 or ±3 for sensor x, y or z, as in the calibration record
+([calibration](calibration.md), Part D). The axis map changes as one group, and so does the geometry.
+A client therefore never makes an intermediate map with a repeated axis.
+A request that arrives while the previous response is still being sent is ignored.
+
+The read-all response holds, in order:
+
+- the three signed axes, one byte each,
+- the stillness limit and the upright offset as float32,
+- the left and right motor signs, then the left and right encoder signs, one signed byte each,
+- the wheel radius, track width and gear ratio as float32.
+
+This is 27 bytes after the status, so the read needs an attribute MTU of at least 33 bytes.
+
+| Code | Status                                          |
+|------|-------------------------------------------------|
+| 0    | Accepted                                        |
+| 1    | Refused: the drive is armed                     |
+| 2    | Refused: the saved calibration is still loading |
+| 3    | Invalid request, or a value out of range        |
+| 4    | MTU too small                                   |
+
+The calibration component checks each value, applies it and saves it. This component only carries
+the request. An accepted axis map or stillness change clears the gyroscope bias. The client then
+sends the Calibrate mode command before it can arm.
+
 ---
 
 ## Interfaces
@@ -199,6 +245,7 @@ The command line reports the link without a phone:
 | Mode command intake    | Accept arm, disarm, clear-fault and calibrate                                  | Pairing required; forwarded to the supervisor, which applies its own preconditions                        |
 | Telemetry notification | Publish robot state to a subscriber                                            | Fixed rate while subscribed; silent otherwise; never blocks the control loop; samples internally coherent |
 | Tuning access          | Strategy list, active strategy, parameter descriptor, indexed parameter access | Pairing required for writes; the controller decides acceptance and this component reports the outcome     |
+| Calibration access     | Read every calibration value; change one value or one group                    | Pairing required; the calibration component decides acceptance and this component reports the outcome     |
 | Link status            | Report radio state, address and attribute MTU                                  | Readable at any time, including before the radio has started                                              |
 
 ### Required
@@ -209,6 +256,7 @@ The command line reports the link without a phone:
 | Safety supervisor    | Forward mode commands; read mode and latched fault cause | The supervisor may reject any command; rejection is reported, not retried |
 | Balance control      | Deliver setpoints; access strategies and parameters      | Rejected writes leave stored values unchanged                             |
 | Telemetry source     | Obtain a coherent state sample                           | Sampled from one control iteration; non-blocking                          |
+| Calibration          | Read and change the calibration values                   | Refuses a change while armed or loading; saves each accepted change       |
 | Timebase             | Telemetry cadence and command timeout                    | Monotonic                                                                 |
 
 Boundaries with the neighbouring components:
@@ -355,3 +403,4 @@ graph LR
 | 3 | Should telemetry rate be negotiable by the client?                                       | Fixed at 25 per second; client-selectable within bounds                                      | decided: fixed at 25 per second     |
 | 4 | Should motion and mode commands share one characteristic to save a round trip?           | Separate — different rates and consequences; combined                                        | decided: separate                   |
 | 5 | Should the service expose a diagnostic log, or is telemetry plus fault cause sufficient? | Telemetry only; add a fault history                                                          | decided: telemetry only             |
+| 6 | Should calibration share the tuning characteristic?                                      | Own characteristic; new tuning operations                                                    | decided: own characteristic         |

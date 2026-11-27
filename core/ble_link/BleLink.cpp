@@ -4,10 +4,10 @@
 
 namespace ble
 {
-    BleLink::BleLink(platform::Bluetooth& bluetooth, infra::BoundedConstString deviceName, safety::SafetySupervisor& supervisor, balance::BalanceControl& balanceControl, const telemetry::TelemetrySource& telemetry)
+    BleLink::BleLink(platform::Bluetooth& bluetooth, infra::BoundedConstString deviceName, safety::SafetySupervisor& supervisor, balance::BalanceControl& balanceControl, const telemetry::TelemetrySource& telemetry, const CalibrationAccess::Dependencies& calibration)
         : services::GapPeripheralObserver(bluetooth.Gap())
         , services::GattServerObserver(bluetooth.GattServer())
-        , service(bluetooth.GattServer(), supervisor, balanceControl, telemetry)
+        , service(bluetooth.GattServer(), supervisor, balanceControl, telemetry, calibration)
     {
         services::GapAdvertisementFormatter advertisementFormatter{ advertisement };
         advertisementFormatter.AppendFlags(services::GapAdvertisementFlags::leGeneralDiscoverableMode | services::GapAdvertisementFlags::brEdrNotSupported);

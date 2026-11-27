@@ -8,11 +8,13 @@ target_link_libraries(inverted_pendulum_bot.ble_link_test PUBLIC
     inverted_pendulum_bot.platform_abstraction_mock
     services.ble_test_doubles
     infra.timer_test_helper
+    infra.event_test_helper
 )
 
 target_sources(inverted_pendulum_bot.ble_link_test PRIVATE
     Mocks.hpp
     TestBleLink.cpp
+    TestCalibrationAccess.cpp
     TestDeviceIdentity.cpp
     TestRobotControlService.cpp
     TestWireFormat.cpp

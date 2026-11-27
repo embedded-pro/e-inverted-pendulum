@@ -13,6 +13,9 @@ target_link_libraries(inverted_pendulum_bot.ble_link PUBLIC
     inverted_pendulum_bot.safety_supervisor.interfaces
     inverted_pendulum_bot.balance_control.interfaces
     inverted_pendulum_bot.telemetry.interfaces
+    inverted_pendulum_bot.calibration.interfaces
+    inverted_pendulum_bot.inertial_sensing.interfaces
+    inverted_pendulum_bot.attitude_estimation.interfaces
     services.ble
     infra.timer
 )
@@ -22,6 +25,8 @@ target_sources(inverted_pendulum_bot.ble_link PRIVATE
     BleEndpoint.cpp
     BleLink.hpp
     BleLink.cpp
+    CalibrationAccess.hpp
+    CalibrationAccess.cpp
     DeviceIdentity.hpp
     DeviceIdentity.cpp
     RobotControlService.hpp

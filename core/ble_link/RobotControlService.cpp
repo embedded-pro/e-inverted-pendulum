@@ -33,7 +33,7 @@ namespace ble
         onWrite(data);
     }
 
-    RobotControlService::RobotControlService(services::GattServer& gattServer, safety::SafetySupervisor& supervisor, balance::BalanceControl& balanceControl, const telemetry::TelemetrySource& telemetry, const Config& config)
+    RobotControlService::RobotControlService(services::GattServer& gattServer, safety::SafetySupervisor& supervisor, balance::BalanceControl& balanceControl, const telemetry::TelemetrySource& telemetry, const CalibrationAccess::Dependencies& calibration, const Config& config)
         : supervisor(supervisor)
         , balanceControl(balanceControl)
         , telemetry(telemetry)
@@ -55,6 +55,7 @@ namespace ble
               {
                   TuningWritten(data);
               })
+        , calibrationAccess(service, calibration)
     {
         gattServer.AddService(service);
     }
@@ -79,11 +80,13 @@ namespace ble
         modeInFlight = false;
         tuningInFlight = false;
         publishedMode = unpublished;
+        calibrationAccess.Disconnected();
     }
 
     void RobotControlService::AttMtuChanged(uint16_t newMtu)
     {
         mtu = std::max(newMtu, services::attDefaultMaxMtuSize);
+        calibrationAccess.AttMtuChanged(newMtu);
     }
 
     services::GattServerService& RobotControlService::Service()
