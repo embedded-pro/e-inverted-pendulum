@@ -2,9 +2,9 @@
 title: "Runtime Calibration Design"
 type: design
 status: draft
-version: 0.3.1
+version: 0.3.2
 component: "calibration"
-date: 2026-11-26
+date: 2026-11-27
 ---
 
 | Field     | Value                      |
@@ -12,9 +12,9 @@ date: 2026-11-26
 | Title     | Runtime Calibration Design |
 | Type      | design                     |
 | Status    | draft                      |
-| Version   | 0.3.1                      |
+| Version   | 0.3.2                      |
 | Component | calibration                |
-| Date      | 2026-11-26                 |
+| Date      | 2026-11-27                 |
 
 > Lets the operator set the robot's physical calibration from the console, test it at once, and
 > keep it across a reset. Until now each value was a constant in the source, so each change
@@ -184,6 +184,6 @@ Five pull requests, each one built and tested on its own:
 
 ## Decisions
 
-| # | Decision                                                     | Options                                              | Status |
-|---|--------------------------------------------------------------|------------------------------------------------------|--------|
-| 1 | Should the target's own axis map be removed once this works? | Keep as identity; remove the platform axis map input | open   |
+| # | Decision                                                     | Options                                              | Status     |
+|---|--------------------------------------------------------------|------------------------------------------------------|------------|
+| 1 | Should the target's own axis map be removed once this works? | Keep as identity; remove the platform axis map input | open (#80) |

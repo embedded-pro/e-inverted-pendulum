@@ -2,9 +2,9 @@
 title: "Wheel Odometry Design"
 type: design
 status: draft
-version: 0.3.1
+version: 0.3.2
 component: "wheel-odometry"
-date: 2026-11-26
+date: 2026-11-27
 ---
 
 | Field     | Value                 |
@@ -12,9 +12,9 @@ date: 2026-11-26
 | Title     | Wheel Odometry Design |
 | Type      | design                |
 | Status    | draft                 |
-| Version   | 0.3.1                 |
+| Version   | 0.3.2                 |
 | Component | wheel-odometry        |
-| Date      | 2026-11-26            |
+| Date      | 2026-11-27            |
 
 > Turns two sixteen-bit hardware counters that wrap every revolution into a signed wheel
 > position that never wraps, a wheel angular velocity, and the chassis forward velocity and
@@ -298,11 +298,11 @@ graph LR
 
 ## Decisions
 
-| # | Decision                                                                            | Options                                                                                                                                       | Status                                                         |
-|---|-------------------------------------------------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------|----------------------------------------------------------------|
-| 1 | How is the once-per-revolution index event exposed (REQ-ODOM-005)?                  | Extend the portable encoder interface with an index accessor; add an interrupt-driven index latch in the hardware layer; drop the requirement | open — see the note below                                      |
-| 2 | Are the wheel radius, track width and gear ratio defaults the built robot's values? | Measure on the assembled chassis; fit from a straight-line and a spin-in-place run                                                            | open — defaults are placeholders                               |
-| 3 | Should velocity be filtered before the outer loop sees it?                          | Leave raw and let balance control filter; add a configurable first-order filter here                                                          | open — raw for now, decided by the balance loop's noise budget |
+| # | Decision                                                                            | Options                                                                                                                                       | Status                                                               |
+|---|-------------------------------------------------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------|----------------------------------------------------------------------|
+| 1 | How is the once-per-revolution index event exposed (REQ-ODOM-005)?                  | Extend the portable encoder interface with an index accessor; add an interrupt-driven index latch in the hardware layer; drop the requirement | open — see the note below (#96)                                      |
+| 2 | Are the wheel radius, track width and gear ratio defaults the built robot's values? | Measure on the assembled chassis; fit from a straight-line and a spin-in-place run                                                            | open — defaults are placeholders (#97)                               |
+| 3 | Should velocity be filtered before the outer loop sees it?                          | Leave raw and let balance control filter; add a configurable first-order filter here                                                          | open — raw for now, decided by the balance loop's noise budget (#98) |
 
 **On decision 1.** The requirement cannot be met through the interface this component consumes.
 The portable encoder abstraction exposes counter, resolution, direction and speed. It has no

@@ -2,9 +2,9 @@
 title: "Control Loop Design"
 type: design
 status: draft
-version: 0.3.1
+version: 0.3.2
 component: "control-loop"
-date: 2026-11-26
+date: 2026-11-27
 ---
 
 | Field     | Value               |
@@ -12,9 +12,9 @@ date: 2026-11-26
 | Title     | Control Loop Design |
 | Type      | design              |
 | Status    | draft               |
-| Version   | 0.3.1               |
+| Version   | 0.3.2               |
 | Component | control-loop        |
-| Date      | 2026-11-26          |
+| Date      | 2026-11-27          |
 
 > Turns a stream of inertial samples into a paced sequence of estimation, balance and outer-loop
 > work, and measures how well that pace is kept.
@@ -134,6 +134,6 @@ sequenceDiagram
 
 ## Decisions
 
-| # | Decision                                                           | Options                                                    | Status |
-|---|--------------------------------------------------------------------|------------------------------------------------------------|--------|
-| 1 | Should the balance stage run from the data-ready interrupt itself? | Event context, as now; interrupt context for lower latency | open   |
+| # | Decision                                                           | Options                                                    | Status     |
+|---|--------------------------------------------------------------------|------------------------------------------------------------|------------|
+| 1 | Should the balance stage run from the data-ready interrupt itself? | Event context, as now; interrupt context for lower latency | open (#82) |

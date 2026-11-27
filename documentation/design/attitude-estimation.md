@@ -2,9 +2,9 @@
 title: "Attitude Estimation Design"
 type: design
 status: draft
-version: 0.4.0
+version: 0.4.1
 component: "attitude-estimation"
-date: 2026-11-26
+date: 2026-11-27
 ---
 
 | Field     | Value                      |
@@ -12,9 +12,9 @@ date: 2026-11-26
 | Title     | Attitude Estimation Design |
 | Type      | design                     |
 | Status    | draft                      |
-| Version   | 0.4.0                      |
+| Version   | 0.4.1                      |
 | Component | attitude-estimation        |
-| Date      | 2026-11-26                 |
+| Date      | 2026-11-27                 |
 
 > The controller can only be as good as the pitch estimate. Neither sensor alone is
 > usable: the gyroscope drifts, the accelerometer is fooled by the robot's own motion.
@@ -261,4 +261,4 @@ graph LR
 | 1 | Complementary filter or single-axis Kalman filter?                                                              | Complementary — fewer cycles, one tuning constant; Kalman — principled weighting, tracks bias online | decided — both are provided and the operator selects one at run time (Part F)                        |
 | 2 | Should gyroscope bias be tracked continuously rather than fixed at calibration?                                 | Fixed per power-on; online estimation as part of a Kalman formulation                                | decided — the Kalman filter tracks the residual after calibration; the complementary filter does not |
 | 3 | Which inertial part is fitted, and does a separate accelerometer and gyroscope pair change the sampling design? | Six-axis single part; separate accelerometer and gyroscope pair; nine-axis single part               | decided — a nine-axis single part, sampled as one six-axis part on its data-ready interrupt          |
-| 4 | Should calibration be rejected outright if the robot is not near upright, not merely if it is moving?           | Stillness only; also require near-upright                                                            | open                                                                                                 |
+| 4 | Should calibration be rejected outright if the robot is not near upright, not merely if it is moving?           | Stillness only; also require near-upright                                                            | open (#77)                                                                                           |
