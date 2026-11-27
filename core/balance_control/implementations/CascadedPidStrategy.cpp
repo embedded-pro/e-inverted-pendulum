@@ -24,8 +24,8 @@ namespace balance
     CascadedPidStrategy::CascadedPidStrategy(const Config& config)
         : gains(config.gains)
         , pitchLoop({}, { -1.0f, 1.0f })
-        , velocityLoop(config.maximumLean)
-        , yawLoop(config.maximumDifferential)
+        , velocityLoop(-config.maximumLean, config.maximumLean)
+        , yawLoop(-config.maximumDifferential, config.maximumDifferential)
     {
         Clear();
     }
@@ -53,8 +53,8 @@ namespace balance
 
     void CascadedPidStrategy::Steer(const Setpoints& setpoints, const odometry::ChassisMotion& chassis, float intervalSeconds)
     {
-        pitchLoop.SetPoint(-velocityLoop.Process(setpoints.velocity, chassis.forwardVelocity, GainsFrom(velocityKp), intervalSeconds));
-        differential = yawLoop.Process(setpoints.yawRate, chassis.yawRate, GainsFrom(yawKp), intervalSeconds);
+        pitchLoop.SetPoint(-velocityLoop.Update(setpoints.velocity, chassis.forwardVelocity, GainsFrom(velocityKp), intervalSeconds));
+        differential = yawLoop.Update(setpoints.yawRate, chassis.yawRate, GainsFrom(yawKp), intervalSeconds);
     }
 
     Effort CascadedPidStrategy::Balance(const estimation::Estimate& estimate, float intervalSeconds)
@@ -91,8 +91,8 @@ namespace balance
         gains[index] = value;
     }
 
-    PidGains CascadedPidStrategy::GainsFrom(std::size_t proportional) const
+    controllers::PidContinuous<float>::Gains CascadedPidStrategy::GainsFrom(std::size_t proportional) const
     {
-        return PidGains{ gains[proportional], gains[proportional + 1], gains[proportional + 2] };
+        return controllers::PidContinuous<float>::Gains{ gains[proportional], gains[proportional + 1], gains[proportional + 2] };
     }
 }

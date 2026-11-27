@@ -2,7 +2,7 @@
 title: "Attitude Estimation Design"
 type: design
 status: draft
-version: 0.3.1
+version: 0.4.0
 component: "attitude-estimation"
 date: 2026-11-26
 ---
@@ -12,7 +12,7 @@ date: 2026-11-26
 | Title     | Attitude Estimation Design |
 | Type      | design                     |
 | Status    | draft                      |
-| Version   | 0.3.1                      |
+| Version   | 0.4.0                      |
 | Component | attitude-estimation        |
 | Date      | 2026-11-26                 |
 
@@ -70,6 +70,11 @@ departs from one gravity. That departure is the signature of the chassis acceler
 merely tilting. During such an interval the estimate leans more heavily on the gyroscope.
 It accepts a little drift in exchange for not being pulled off by the robot's own motion.
 This is what keeps a commanded acceleration from producing a sustained attitude error.
+
+The trust in the correction falls linearly from one, at one gravity, to zero at the acceleration
+band. At zero trust the accelerometer angle has no effect. A restart still begins from the
+accelerometer angle, whatever the trust. The tilt and trust come from numerical-toolbox
+(`doc/filters/active/GravityTilt.md` there).
 
 ### Part E — Validity
 

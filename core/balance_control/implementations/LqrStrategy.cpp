@@ -23,7 +23,7 @@ namespace balance
         : maximumPositionDeviation(config.maximumPositionDeviation)
         , gains(config.gains)
         , regulator(RegulatorFor(config.gains))
-        , yawLoop(config.maximumDifferential)
+        , yawLoop(-config.maximumDifferential, config.maximumDifferential)
     {}
 
     const char* LqrStrategy::Name() const
@@ -44,7 +44,7 @@ namespace balance
             positionDeviation = std::clamp(positionDeviation + velocityDeviation * intervalSeconds, -maximumPositionDeviation, maximumPositionDeviation);
 
         saturated = false;
-        differential = yawLoop.Process(setpoints.yawRate, chassis.yawRate, PidGains{ gains[yawKp], gains[yawKi], gains[yawKd] }, intervalSeconds);
+        differential = yawLoop.Update(setpoints.yawRate, chassis.yawRate, controllers::PidContinuous<float>::Gains{ gains[yawKp], gains[yawKi], gains[yawKd] }, intervalSeconds);
     }
 
     Effort LqrStrategy::Balance(const estimation::Estimate& estimate, float)

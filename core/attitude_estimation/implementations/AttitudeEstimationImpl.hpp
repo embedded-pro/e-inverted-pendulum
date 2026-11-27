@@ -3,13 +3,14 @@
 #include "core/attitude_estimation/implementations/ComplementaryPitchFilter.hpp"
 #include "core/attitude_estimation/implementations/KalmanPitchFilter.hpp"
 #include "core/attitude_estimation/interfaces/AttitudeEstimation.hpp"
+#include "numerical/filters/active/GravityTilt.hpp"
 #include <chrono>
 
 namespace estimation
 {
     float PitchRateAboutBodyY(const platform::InertialAxes& angularRate);
     float AccelerometerPitch(const platform::InertialAxes& acceleration);
-    float AccelerometerTrust(const platform::InertialAxes& acceleration, float accelerationBand);
+    filters::GravityTilt<float> AccelerometerTilt(const platform::InertialAxes& acceleration, float accelerationBand);
 
     class AttitudeEstimationImpl final
         : public AttitudeEstimation

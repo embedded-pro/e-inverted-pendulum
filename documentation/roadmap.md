@@ -2,7 +2,7 @@
 title: "Roadmap"
 type: roadmap
 status: draft
-version: 0.2.2
+version: 0.3.1
 component: "system"
 date: 2026-11-26
 ---
@@ -12,7 +12,7 @@ date: 2026-11-26
 | Title     | Roadmap    |
 | Type      | roadmap    |
 | Status    | draft      |
-| Version   | 0.2.2      |
+| Version   | 0.3.1      |
 | Component | system     |
 | Date      | 2026-11-26 |
 
@@ -31,7 +31,7 @@ date: 2026-11-26
 | M4 | Hardware watchdog            | done    | `design/platform-abstraction.md`, Part H; REQ-SAFE-010    |
 | M5 | Tuning kept across a reset   | done    | `design/persistence.md`; REQ-TUNE-007                     |
 | M6 | Runtime calibration          | done    | `design/calibration.md`                                   |
-| M7 | Bench bring-up               | next    | This page, [M7](#m7--bench-bring-up)                      |
+| M7 | Bench bring-up               | current | This page, [M7](#m7--bench-bring-up)                      |
 | M8 | First balance                | planned | This page, [M8](#m8--first-balance)                       |
 | M9 | Driving                      | planned | This page, [M9](#m9--driving)                             |
 
@@ -74,12 +74,12 @@ Work on the robot, with the wheels off the ground.
 
 ## M8 — First balance
 
-| Step | Action                                                                              | Exit condition                    |
-|------|-------------------------------------------------------------------------------------|-----------------------------------|
-| 1    | Compute LQR gains from the measured mass and geometry (see [Toolboxes](#toolboxes)) | A first gain set to start from    |
-| 2    | Tune the inner pitch loop with the robot on a tether                                | The robot holds upright for 60 s  |
-| 3    | Raise the outer velocity loop gains                                                 | The robot holds its position      |
-| 4    | Check a fall on the robot                                                           | FAULT within 20 ms (REQ-SAFE-002) |
+| Step | Action                                                                     | Exit condition                    |
+|------|----------------------------------------------------------------------------|-----------------------------------|
+| 1    | Run `tools/lqr_design` with the measured masses, inertias and wheel torque | A first gain set to start from    |
+| 2    | Tune the inner pitch loop with the robot on a tether                       | The robot holds upright for 60 s  |
+| 3    | Raise the outer velocity loop gains                                        | The robot holds its position      |
+| 4    | Check a fall on the robot                                                  | FAULT within 20 ms (REQ-SAFE-002) |
 
 ## M9 — Driving
 
@@ -92,18 +92,18 @@ Work on the robot, with the wheels off the ground.
 
 ## Toolboxes
 
-Generic algorithms move to the shared toolboxes. Each step is one pull request, opened after
-the previous one merges.
+Generic algorithms moved to the shared toolboxes, one pull request per step.
 
-| Step | Repository            | Change                                                                          | Needed by |
-|------|-----------------------|---------------------------------------------------------------------------------|-----------|
-| T1   | robotics-toolbox-cpp  | Linearised wheeled inverted pendulum model (`theory/pendulum-dynamics.md`)      | M8 step 1 |
-| T2   | this                  | Add robotics-toolbox; `tools/lqr_design` prints LQR gains from measured values  | M8 step 1 |
-| T3   | this                  | Wheel odometry uses `robotics::DifferentialDrive`                               | —         |
-| T4   | numerical-toolbox-cpp | Wrapped counter delta; PID with continuous gains; gravity-vector tilt and trust | T5        |
-| T5   | this                  | Use the T4 algorithms in place of the local copies                              | —         |
+| Step | Repository            | Change                                                                         | State |
+|------|-----------------------|--------------------------------------------------------------------------------|-------|
+| T1   | robotics-toolbox-cpp  | Linearised wheeled inverted pendulum model (`theory/pendulum-dynamics.md`)     | done  |
+| T2   | this                  | Add robotics-toolbox; `tools/lqr_design` prints LQR gains from measured values | done  |
+| T3   | this                  | Wheel odometry uses `robotics::DifferentialDrive`                              | done  |
+| T4   | numerical-toolbox-cpp | PID with continuous gains; gravity-vector tilt and trust                       | done  |
+| T5   | this                  | Use the T4 algorithms in place of the local copies                             | done  |
 
-T3 to T5 change no behaviour and can wait until after a first balance.
+The wrapped counter delta stays in wheel odometry: it is integer arithmetic, and numerical-toolbox is
+float only.
 
 ## Backlog
 
@@ -111,12 +111,11 @@ Not needed for a first balance. Each item links to where it is recorded.
 
 | Item                                         | Where it is recorded                      |
 |----------------------------------------------|-------------------------------------------|
-| Scenarios for REQ-LINK-009 and REQ-LINK-010  | `use-cases/README.md`, Traceability       |
 | Encoder index events (REQ-ODOM-005)          | `design/wheel-odometry.md`, decision 1    |
 | Motor current rating (REQ-DRIVE-005)         | `use-cases/safety.feature`                |
 | Battery voltage supervision                  | `design/safety-supervisor.md`, decision 3 |
 | Motor current measurement                    | `design/motion-actuation.md`, decision 3  |
 | Persistent Bluetooth bonds                   | `design/ble-service.md`                   |
 | More scenarios on the host                   | `use-cases/README.md`                     |
-| Rate limiter with a variable time step       | This page, [Toolboxes](#toolboxes)        |
-| Signed axis permutation in numerical-toolbox | This page, [Toolboxes](#toolboxes)        |
+| Rate limiter with a variable time step       | Not designed yet                          |
+| Signed axis permutation in numerical-toolbox | Not designed yet                          |

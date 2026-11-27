@@ -69,3 +69,29 @@ Feature: Remote teleoperation over Bluetooth Low Energy
     Then the commanded setpoints are zeroed
     And the robot continues to balance in place
     And the mode remains ARMED
+
+  @REQ-LINK-009
+  Scenario: Each robot advertises under its own address
+    Given two robots with different factory identities
+    When both robots are advertising
+    Then their public addresses differ
+
+  @REQ-LINK-009
+  Scenario: The address survives a reset
+    Given the robot is advertising under a public address
+    When the robot is reset
+    Then the robot advertises under the same public address
+
+  @REQ-LINK-010
+  Scenario: The console reports the link before the radio starts
+    Given the radio has not reported its stack running
+    When the operator asks the console for the link status
+    Then the console reports that the radio is starting
+
+  @REQ-LINK-010
+  Scenario: The console reports a connected link
+    Given a client is connected and has negotiated an attribute MTU of 247 bytes
+    When the operator asks the console for the link status
+    Then the console reports that the radio is connected
+    And the console reports the public address
+    And the console reports an attribute MTU of 247 bytes
