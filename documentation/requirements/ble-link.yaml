@@ -47,7 +47,7 @@
   title: Link protection
   shall: >
     The device shall require pairing before accepting any characteristic write that
-    commands motion, changes mode, or modifies tuning parameters.
+    commands motion, changes mode, modifies tuning parameters or changes calibration.
 
 - id: REQ-LINK-009
   title: Distinct device identity
@@ -62,3 +62,9 @@
     The device shall report on its diagnostic console whether the radio is starting,
     advertising or connected, together with its address and the negotiated attribute
     MTU.
+
+- id: REQ-LINK-011
+  title: Calibration over the link
+  shall: >
+    The device shall expose every calibration value for reading and changing over the
+    GATT server, and shall apply the same checks to a change as to the console.

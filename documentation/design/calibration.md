@@ -2,9 +2,9 @@
 title: "Runtime Calibration Design"
 type: design
 status: draft
-version: 0.3.1
+version: 0.3.2
 component: "calibration"
-date: 2026-11-26
+date: 2026-11-27
 ---
 
 | Field     | Value                      |
@@ -12,9 +12,9 @@ date: 2026-11-26
 | Title     | Runtime Calibration Design |
 | Type      | design                     |
 | Status    | draft                      |
-| Version   | 0.3.1                      |
+| Version   | 0.3.2                      |
 | Component | calibration                |
-| Date      | 2026-11-26                 |
+| Date      | 2026-11-27                 |
 
 > Lets the operator set the robot's physical calibration from the console, test it at once, and
 > keep it across a reset. Until now each value was a constant in the source, so each change
@@ -61,6 +61,7 @@ supervisor then count from the true upright.
 
 ### Part C — Console commands
 
+A paired Bluetooth client has the same access ([BLE service](ble-service.md), Part K).
 `cal` reads each value from its component and prints the store status. Each change prints `ok`, or
 the reason for the refusal: armed, still loading, or out of range. An `axes` or `still` change also
 asks for `calibrate`. Values take a decimal point, for example `cal still 0.05`.

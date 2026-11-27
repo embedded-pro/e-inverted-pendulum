@@ -34,7 +34,7 @@ int main()
     static safety::SafetySupervisorImpl supervisor{ motionActuation, inertialSensing, balanceControl, calibration };
     static telemetry::TelemetryRecorder telemetryRecorder{ supervisor, balanceControl, wheelOdometry, supervisor };
     static control::ControlLoopImpl controlLoop{ inertialSensing, attitudeEstimation, telemetryRecorder, supervisor };
-    static ble::BleEndpoint bleEndpoint{ platform, "inverted-pendulum", supervisor, persistentBalanceControl, telemetryRecorder };
+    static ble::BleEndpoint bleEndpoint{ platform, "inverted-pendulum", supervisor, persistentBalanceControl, telemetryRecorder, { calibration, inertialSensing, attitudeEstimation, motionActuation, wheelOdometry } };
     static application::Cli cli{ platform, { motionActuation, wheelOdometry, inertialSensing, attitudeEstimation, controlLoop, supervisor, persistentBalanceControl, bleEndpoint, persistentBalanceControl, calibration, calibration } };
 
     platform.Run();

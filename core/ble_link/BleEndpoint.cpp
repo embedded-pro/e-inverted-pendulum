@@ -2,11 +2,12 @@
 
 namespace ble
 {
-    BleEndpoint::BleEndpoint(platform::Platform& platform, infra::BoundedConstString deviceName, safety::SafetySupervisor& supervisor, balance::BalanceControl& balanceControl, const telemetry::TelemetrySource& telemetry)
+    BleEndpoint::BleEndpoint(platform::Platform& platform, infra::BoundedConstString deviceName, safety::SafetySupervisor& supervisor, balance::BalanceControl& balanceControl, const telemetry::TelemetrySource& telemetry, const CalibrationAccess::Dependencies& calibration)
         : deviceName{ deviceName }
         , supervisor{ supervisor }
         , balanceControl{ balanceControl }
         , telemetry{ telemetry }
+        , calibration{ calibration }
     {
         platform.StartBluetooth(deviceName, [this](platform::Bluetooth& bluetooth)
             {
@@ -24,6 +25,6 @@ namespace ble
 
     void BleEndpoint::RadioReady(platform::Bluetooth& bluetooth)
     {
-        link.emplace(bluetooth, deviceName, supervisor, balanceControl, telemetry);
+        link.emplace(bluetooth, deviceName, supervisor, balanceControl, telemetry, calibration);
     }
 }

@@ -32,7 +32,7 @@ namespace
                 });
             ExpectAdvertising();
 
-            link.emplace(bluetooth, "inverted-pendulum", supervisor, balanceControl, telemetrySource);
+            link.emplace(bluetooth, "inverted-pendulum", supervisor, balanceControl, telemetrySource, ble::CalibrationAccess::Dependencies{ calibration, sensing, estimation, actuation, odometry });
 
             for (auto& characteristic : registered->Characteristics())
                 characteristic.Attach(operations);
@@ -76,6 +76,11 @@ namespace
         testing::StrictMock<ble::SafetySupervisorMock> supervisor;
         testing::StrictMock<ble::BalanceControlMock> balanceControl;
         testing::StrictMock<ble::TelemetrySourceMock> telemetrySource;
+        testing::StrictMock<ble::CalibrationMock> calibration;
+        testing::StrictMock<ble::InertialSensingMock> sensing;
+        testing::StrictMock<ble::AttitudeEstimationMock> estimation;
+        testing::StrictMock<ble::MotionActuationMock> actuation;
+        testing::StrictMock<ble::WheelOdometryMock> odometry;
         services::GattServerService* registered{ nullptr };
         Bytes advertisement;
         Bytes scanResponse;
@@ -173,7 +178,7 @@ namespace
                     radioReady = onReady;
                 });
 
-            endpoint.emplace(platform, "inverted-pendulum", supervisor, balanceControl, telemetrySource);
+            endpoint.emplace(platform, "inverted-pendulum", supervisor, balanceControl, telemetrySource, ble::CalibrationAccess::Dependencies{ calibration, sensing, estimation, actuation, odometry });
         }
 
         testing::StrictMock<platform::PlatformMock> platform;
@@ -183,6 +188,11 @@ namespace
         testing::StrictMock<ble::SafetySupervisorMock> supervisor;
         testing::StrictMock<ble::BalanceControlMock> balanceControl;
         testing::StrictMock<ble::TelemetrySourceMock> telemetrySource;
+        testing::StrictMock<ble::CalibrationMock> calibration;
+        testing::StrictMock<ble::InertialSensingMock> sensing;
+        testing::StrictMock<ble::AttitudeEstimationMock> estimation;
+        testing::StrictMock<ble::MotionActuationMock> actuation;
+        testing::StrictMock<ble::WheelOdometryMock> odometry;
         std::string startedName;
         infra::Function<void(platform::Bluetooth&)> radioReady;
         std::optional<ble::BleEndpoint> endpoint;

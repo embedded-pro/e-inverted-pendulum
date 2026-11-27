@@ -11,7 +11,7 @@ namespace ble
         : public LinkStatus
     {
     public:
-        BleEndpoint(platform::Platform& platform, infra::BoundedConstString deviceName, safety::SafetySupervisor& supervisor, balance::BalanceControl& balanceControl, const telemetry::TelemetrySource& telemetry);
+        BleEndpoint(platform::Platform& platform, infra::BoundedConstString deviceName, safety::SafetySupervisor& supervisor, balance::BalanceControl& balanceControl, const telemetry::TelemetrySource& telemetry, const CalibrationAccess::Dependencies& calibration);
 
         std::optional<LinkReport> Report() const override;
 
@@ -22,6 +22,7 @@ namespace ble
         safety::SafetySupervisor& supervisor;
         balance::BalanceControl& balanceControl;
         const telemetry::TelemetrySource& telemetry;
+        CalibrationAccess::Dependencies calibration;
         std::optional<BleLink> link;
     };
 }

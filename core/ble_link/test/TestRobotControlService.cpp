@@ -53,7 +53,7 @@ namespace
                     registered = &added;
                 });
 
-            service.emplace(gattServer, supervisor, balanceControl, telemetrySource);
+            service.emplace(gattServer, supervisor, balanceControl, telemetrySource, ble::CalibrationAccess::Dependencies{ calibration, sensing, estimation, actuation, odometry });
 
             for (auto& characteristic : registered->Characteristics())
                 characteristic.Attach(operations);
@@ -109,12 +109,17 @@ namespace
         testing::StrictMock<ble::SafetySupervisorMock> supervisor;
         testing::StrictMock<ble::BalanceControlMock> balanceControl;
         testing::StrictMock<ble::TelemetrySourceMock> telemetrySource;
+        testing::StrictMock<ble::CalibrationMock> calibration;
+        testing::StrictMock<ble::InertialSensingMock> sensing;
+        testing::StrictMock<ble::AttitudeEstimationMock> estimation;
+        testing::StrictMock<ble::MotionActuationMock> actuation;
+        testing::StrictMock<ble::WheelOdometryMock> odometry;
         services::GattServerService* registered{ nullptr };
         std::optional<Service> service;
     };
 }
 
-TEST_F(RobotControlServiceTest, registers_the_robot_control_service_with_four_characteristics)
+TEST_F(RobotControlServiceTest, registers_the_robot_control_service_with_five_characteristics)
 {
     EXPECT_TRUE(registered->Type() == services::AttAttribute::Uuid{ ble::uuid::robotControlService });
 
@@ -122,7 +127,7 @@ TEST_F(RobotControlServiceTest, registers_the_robot_control_service_with_four_ch
     for ([[maybe_unused]] auto& characteristic : registered->Characteristics())
         ++count;
 
-    EXPECT_EQ(4u, count);
+    EXPECT_EQ(5u, count);
 }
 
 TEST_F(RobotControlServiceTest, every_commanding_characteristic_needs_an_encrypted_link)
@@ -132,6 +137,7 @@ TEST_F(RobotControlServiceTest, every_commanding_characteristic_needs_an_encrypt
     EXPECT_EQ(Permissions::encryptedWrite, Characteristic(ble::uuid::motion).Permissions());
     EXPECT_EQ(Permissions::encryptedWrite, Characteristic(ble::uuid::mode).Permissions());
     EXPECT_EQ(Permissions::encryptedWrite, Characteristic(ble::uuid::tuning).Permissions());
+    EXPECT_EQ(Permissions::encryptedWrite, Characteristic(ble::uuid::calibration).Permissions());
     EXPECT_EQ(Permissions::none, Characteristic(ble::uuid::telemetry).Permissions());
 }
 
