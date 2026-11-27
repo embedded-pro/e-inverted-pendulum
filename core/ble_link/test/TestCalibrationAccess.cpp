@@ -118,8 +118,22 @@ TEST_F(CalibrationAccessTest, reading_all_reports_every_value)
 
 TEST_F(CalibrationAccessTest, reading_all_with_a_small_mtu_carries_only_the_status)
 {
+    access.AttMtuChanged(32);
 
     EXPECT_EQ((Bytes{ 1, 0, 4 }), Request({ 1, 0 }));
+}
+
+TEST_F(CalibrationAccessTest, reading_all_fits_an_mtu_of_thirty_three_bytes)
+{
+    access.AttMtuChanged(33);
+    EXPECT_CALL(sensing, CurrentAxisMap()).WillOnce(testing::Return(platform::AxisMap{}));
+    EXPECT_CALL(sensing, StillnessThreshold()).WillOnce(testing::Return(0.09f));
+    EXPECT_CALL(estimation, UprightOffset()).WillOnce(testing::Return(0.0f));
+    EXPECT_CALL(actuation, MotorInverted(testing::_)).WillRepeatedly(testing::Return(false));
+    EXPECT_CALL(odometry, EncoderInverted(testing::_)).WillRepeatedly(testing::Return(false));
+    EXPECT_CALL(odometry, CurrentGeometry()).WillOnce(testing::Return(odometry::Geometry{}));
+
+    EXPECT_EQ(30u, Request({ 1, 0 }).size());
 }
 
 TEST_F(CalibrationAccessTest, setting_the_axis_map_decodes_the_signed_axes)

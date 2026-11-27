@@ -16,6 +16,8 @@ namespace ble
         constexpr std::size_t requestHeaderSize{ 2 };
         constexpr std::size_t attributeValueHeaderSize{ 3 };
         constexpr uint8_t right{ 1 };
+        constexpr std::size_t axisMapSize{ 3 };
+        constexpr std::size_t geometrySize{ 3 * sizeof(float) };
 
         std::optional<std::pair<uint8_t, float>> AxisOf(uint8_t value)
         {
@@ -152,7 +154,7 @@ namespace ble
 
     std::size_t CalibrationAccess::SetAxisMap(infra::ConstByteRange value)
     {
-        if (value.size() != 3)
+        if (value.size() != axisMapSize)
             return Respond(Status::invalidRequest);
 
         const auto x = AxisOf(value[0]);
@@ -193,10 +195,10 @@ namespace ble
 
     std::size_t CalibrationAccess::SetGeometry(infra::ConstByteRange value)
     {
-        if (value.size() != 3 * sizeof(float))
+        if (value.size() != geometrySize)
             return Respond(Status::invalidRequest);
 
-        return Report(dependencies.calibration.SetGeometry(odometry::Geometry{ GetFloat(value, 0), GetFloat(value, 4), GetFloat(value, 8) }));
+        return Report(dependencies.calibration.SetGeometry(odometry::Geometry{ GetFloat(value, 0), GetFloat(value, sizeof(float)), GetFloat(value, 2 * sizeof(float)) }));
     }
 
     std::size_t CalibrationAccess::Report(calibration::Result result)
@@ -209,9 +211,11 @@ namespace ble
                 return Respond(Status::armed);
             case calibration::Result::restoring:
                 return Respond(Status::restoring);
-            default:
+            case calibration::Result::invalid:
                 return Respond(Status::invalidRequest);
         }
+
+        return Respond(Status::invalidRequest);
     }
 
     std::size_t CalibrationAccess::Respond(Status status)

@@ -206,8 +206,9 @@ Every response repeats both and adds a status.
 | 8 — set geometry     | radius, track, gear as float32 | nothing                   |
 
 A signed axis is ±1, ±2 or ±3 for sensor x, y or z, as in the calibration record
-([calibration](calibration.md), Part D). The axis map and the geometry change as one group,
-so a client never makes a map with a repeated axis on the way to a valid one.
+([calibration](calibration.md), Part D). The axis map changes as one group, and so does the geometry.
+A client therefore never makes an intermediate map with a repeated axis.
+A request that arrives while the previous response is still being sent is ignored.
 
 The read-all response holds, in order:
 
