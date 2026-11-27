@@ -184,7 +184,7 @@ namespace ble
     {
         const auto inverted = value.size() == 1 ? InvertedOf(value[0]) : std::nullopt;
 
-        if (!inverted)
+        if (!inverted.has_value())
             return Respond(Status::invalidRequest);
 
         if (operation == Operation::setMotorSign)
