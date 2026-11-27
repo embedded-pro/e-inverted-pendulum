@@ -2,9 +2,9 @@
 title: "Safety Supervisor Design"
 type: design
 status: draft
-version: 0.5.1
+version: 0.5.2
 component: "safety-supervisor"
-date: 2026-11-26
+date: 2026-11-27
 ---
 
 | Field     | Value                    |
@@ -12,9 +12,9 @@ date: 2026-11-26
 | Title     | Safety Supervisor Design |
 | Type      | design                   |
 | Status    | draft                    |
-| Version   | 0.5.1                    |
+| Version   | 0.5.2                    |
 | Component | safety-supervisor        |
-| Date      | 2026-11-26               |
+| Date      | 2026-11-27               |
 
 > The supervisor owns the single decision that can hurt someone: whether the motors may
 > be energised. Everything else in the firmware is advisory to it.
@@ -254,7 +254,7 @@ sequenceDiagram
 
 | # | Decision                                                                                                     | Options                                               | Status                                                                                    |
 |---|--------------------------------------------------------------------------------------------------------------|-------------------------------------------------------|-------------------------------------------------------------------------------------------|
-| 1 | Should the fall threshold scale with measured wheel velocity, since a moving robot has less recovery margin? | Fixed threshold; velocity-dependent threshold         | open                                                                                      |
+| 1 | Should the fall threshold scale with measured wheel velocity, since a moving robot has less recovery margin? | Fixed threshold; velocity-dependent threshold         | open (#93)                                                                                |
 | 2 | Should a hardware watchdog back the software liveness monitor?                                               | Software only; add the target's watchdog              | decided: the target's watchdog resets a stalled event loop (platform abstraction, Part H) |
-| 3 | Should battery voltage be a supervised fault source?                                                         | Out of scope this revision; add an undervoltage fault | open                                                                                      |
-| 4 | Should repeated falls within a short window require a longer operator acknowledgement?                       | Treat every fall identically; escalate on repetition  | deferred                                                                                  |
+| 3 | Should battery voltage be a supervised fault source?                                                         | Out of scope this revision; add an undervoltage fault | open (#94)                                                                                |
+| 4 | Should repeated falls within a short window require a longer operator acknowledgement?                       | Treat every fall identically; escalate on repetition  | deferred (#95)                                                                            |

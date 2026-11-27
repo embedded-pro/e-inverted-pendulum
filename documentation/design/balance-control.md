@@ -2,9 +2,9 @@
 title: "Balance Control Design"
 type: design
 status: draft
-version: 0.6.0
+version: 0.6.1
 component: "balance-control"
-date: 2026-11-26
+date: 2026-11-27
 ---
 
 | Field     | Value                  |
@@ -12,9 +12,9 @@ date: 2026-11-26
 | Title     | Balance Control Design |
 | Type      | design                 |
 | Status    | draft                  |
-| Version   | 0.6.0                  |
+| Version   | 0.6.1                  |
 | Component | balance-control        |
-| Date      | 2026-11-26             |
+| Date      | 2026-11-27             |
 
 > **The control law is a runtime choice, not an architectural commitment.** This document
 > designs the seam that makes that true: one strategy interface, several interchangeable
@@ -332,7 +332,7 @@ graph LR
 | # | Decision                                                                                                         | Options                                                                      | Status                              |
 |---|------------------------------------------------------------------------------------------------------------------|------------------------------------------------------------------------------|-------------------------------------|
 | 1 | Which strategy is the factory default?                                                                           | Cascaded PID; LQR                                                            | decided: cascaded PID               |
-| 2 | Should stored parameters be invalidated when a strategy's descriptor changes between firmware versions?          | Version the descriptor and reject stale values; always fall back to defaults | open                                |
+| 2 | Should stored parameters be invalidated when a strategy's descriptor changes between firmware versions?          | Version the descriptor and reject stale values; always fall back to defaults | open (#78)                          |
 | 3 | Should the outer velocity loop limit the pitch setpoint it may request, independently of effort saturation?      | Rely on effort saturation; add an explicit pitch setpoint clamp              | decided: clamp at 10 degrees        |
-| 4 | Should a third strategy exist for bench testing, commanding zero effort while reporting what it would have done? | Not needed; add an observing strategy                                        | open                                |
+| 4 | Should a third strategy exist for bench testing, commanding zero effort while reporting what it would have done? | Not needed; add an observing strategy                                        | open (#79)                          |
 | 5 | How is the yaw term handled by a full-state strategy — inside the gain vector or as a separate loop?             | Separate yaw loop for both strategies; per-strategy choice                   | decided: separate yaw loop for both |

@@ -2,9 +2,9 @@
 title: "Platform Abstraction Design"
 type: design
 status: draft
-version: 0.5.1
+version: 0.5.2
 component: "platform-abstraction"
-date: 2026-11-26
+date: 2026-11-27
 ---
 
 | Field     | Value                       |
@@ -12,9 +12,9 @@ date: 2026-11-26
 | Title     | Platform Abstraction Design |
 | Type      | design                      |
 | Status    | draft                       |
-| Version   | 0.5.1                       |
+| Version   | 0.5.2                       |
 | Component | platform-abstraction        |
-| Date      | 2026-11-26                  |
+| Date      | 2026-11-27                  |
 
 > The seam that lets a balancing robot be developed, tested and debugged without a
 > balancing robot. Every peripheral the application needs appears here as a role, and
@@ -307,6 +307,6 @@ graph LR
 | # | Decision                                                                                 | Options                                                               | Status                                                                                                                                                                                                                                                                   |
 |---|------------------------------------------------------------------------------------------|-----------------------------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | 1 | Does the inertial role expose raw samples or a configured sample rate the board owns?    | Application-driven polling; board-driven sample callback              | decided — a board-driven callback. The part asserts data-ready at its own cadence, so the board owns the rate and timestamps each sample as the driver delivers it, one bus transfer after the edge; polling would report the poller's interval rather than the sensor's |
-| 2 | Should the simulated plant live behind the host board or beside it as a separate tool?   | Behind the host board; separate simulator composed at the entry point | open                                                                                                                                                                                                                                                                     |
+| 2 | Should the simulated plant live behind the host board or beside it as a separate tool?   | Behind the host board; separate simulator composed at the entry point | open (#91)                                                                                                                                                                                                                                                               |
 | 3 | Is the parameter store a distinct role or part of the board's general configuration?     | Distinct role; folded into board configuration                        | decided — a distinct non-volatile memory role ([persistence](persistence.md))                                                                                                                                                                                            |
-| 4 | Should a second board be defined now to prove the abstraction is not shaped by one part? | Defer until the first board works; define early as a design check     | open                                                                                                                                                                                                                                                                     |
+| 4 | Should a second board be defined now to prove the abstraction is not shaped by one part? | Defer until the first board works; define early as a design check     | open (#92)                                                                                                                                                                                                                                                               |

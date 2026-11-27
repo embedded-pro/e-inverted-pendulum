@@ -2,9 +2,9 @@
 title: "Tuning Persistence Design"
 type: design
 status: draft
-version: 0.2.1
+version: 0.2.2
 component: "persistence"
-date: 2026-11-26
+date: 2026-11-27
 ---
 
 | Field     | Value                     |
@@ -12,9 +12,9 @@ date: 2026-11-26
 | Title     | Tuning Persistence Design |
 | Type      | design                    |
 | Status    | draft                     |
-| Version   | 0.2.1                     |
+| Version   | 0.2.2                     |
 | Component | persistence               |
-| Date      | 2026-11-26                |
+| Date      | 2026-11-27                |
 
 > Keeps the selected control strategy and the parameters of every strategy across a reset
 > (REQ-TUNE-007). The store is an external non-volatile memory, so no write touches the internal
@@ -176,6 +176,6 @@ sequenceDiagram
 
 ## Decisions
 
-| # | Decision                                                           | Options                                    | Status |
-|---|--------------------------------------------------------------------|--------------------------------------------|--------|
-| 1 | Should calibration values share the memory with the tuning record? | Separate region later; one combined record | open   |
+| # | Decision                                                           | Options                                    | Status     |
+|---|--------------------------------------------------------------------|--------------------------------------------|------------|
+| 1 | Should calibration values share the memory with the tuning record? | Separate region later; one combined record | open (#90) |

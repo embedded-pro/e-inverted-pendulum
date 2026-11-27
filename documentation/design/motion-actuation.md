@@ -2,9 +2,9 @@
 title: "Motion Actuation Design"
 type: design
 status: draft
-version: 0.3.1
+version: 0.3.2
 component: "motion-actuation"
-date: 2026-11-26
+date: 2026-11-27
 ---
 
 | Field     | Value                   |
@@ -12,9 +12,9 @@ date: 2026-11-26
 | Title     | Motion Actuation Design |
 | Type      | design                  |
 | Status    | draft                   |
-| Version   | 0.3.1                   |
+| Version   | 0.3.2                   |
 | Component | motion-actuation        |
-| Date      | 2026-11-26              |
+| Date      | 2026-11-27              |
 
 > Turns an abstract effort command into current through two motors. The one component that
 > must always be able to stop, whatever else has failed. What the wheels then did is measured
@@ -309,6 +309,6 @@ graph LR
 
 | # | Decision                                                                                                              | Options                                                           | Status                                                                                                  |
 |---|-----------------------------------------------------------------------------------------------------------------------|-------------------------------------------------------------------|---------------------------------------------------------------------------------------------------------|
-| 1 | Should effort compensate for measured battery voltage so torque per unit effort stays constant as the battery drains? | Leave to the balance loops; add feed-forward compensation         | open                                                                                                    |
+| 1 | Should effort compensate for measured battery voltage so torque per unit effort stays constant as the battery drains? | Leave to the balance loops; add feed-forward compensation         | open (#88)                                                                                              |
 | 2 | Fast or slow current decay mode for the bridges?                                                                      | Depends on measured current ripple against motor inductance       | decided — slow by default for linearity through zero effort; fast stays selectable for bench comparison |
-| 3 | Should the driver's current regulation be relied upon, or a separate measurement taken?                               | Rely on the driver; add sensing for telemetry and stall detection | open                                                                                                    |
+| 3 | Should the driver's current regulation be relied upon, or a separate measurement taken?                               | Rely on the driver; add sensing for telemetry and stall detection | open (#89)                                                                                              |
